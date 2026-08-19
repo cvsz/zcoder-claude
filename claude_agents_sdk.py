@@ -1,0 +1,99 @@
+"""
+claude_agents_sdk.py — COMPATIBILITY SHIM (Clean Architecture refactor, 2026-08-14)
+
+Real content moved to three places:
+  • Pure config/validation/local-persistence (PermissionMode, TOOL_PRESETS,
+    AgentSession, McpServerConfig, budget encode/decode, dreaming
+    validation, build_multiagent_config)
+    -> domain/agents/agent_config.py
+  • Live Anthropic API clients (ManagedAgent, McpTunnel, ManagedAgentsClient)
+    -> infrastructure/anthropic_api/agents_gateway.py
+  • CLI presentation (every cmd_agent_* / cmd_mcp_tunnel_open / print())
+    -> interfaces/cli/commands/agent_commands.py
+
+This was the largest module in the codebase (2,314 lines) mixing all three
+concerns in one file. This shim re-exports every public name so existing
+`from claude_agents_sdk import X` call sites (main.py) and the
+`import claude_agents_sdk as mod` + `importlib.reload(mod)` pattern in
+tests/test_claude_agents_sdk.py keep working unmodified during the
+migration (Strangler Fig pattern).
+"""
+
+from domain.agents.agent_config import (
+    PermissionMode, TOOL_PRESETS, AgentSession, McpServerConfig,
+    SESSION_BUDGET_MIN_CENTS, MEMORY_STORE_BETA, DREAMING_BETA,
+    DREAMING_SUPPORTED_MODELS, DREAMING_INSTRUCTIONS_MAX_CHARS,
+    FILES_API_BETA, REVIEW_SPECIALIST_PRESETS,
+    _encode_session_budget, _budget_to_dict, _list_cost_cents,
+    validate_dreaming_model, validate_dreaming_instructions, build_multiagent_config,
+    SESSIONS_DIR,
+)
+from infrastructure.anthropic_api.agents_gateway import (
+    ManagedAgent, McpTunnel, ManagedAgentsClient,
+    ENDPOINT, MCP_TUNNELS_BETA, TUNNELS_ENDPOINT, MANAGED_AGENTS_BETA,
+)
+from interfaces.cli.commands.agent_commands import (
+    cmd_mcp_tunnel_open,
+    cmd_managed_agent_run,
+    cmd_agent_memory_store_create,
+    cmd_agent_memory_list,
+    cmd_agent_memory_stores_list,
+    cmd_agent_memory_store_archive,
+    cmd_agent_memory_store_delete,
+    cmd_agent_memory_get,
+    cmd_agent_memory_create,
+    cmd_agent_memory_update,
+    cmd_agent_memory_delete,
+    cmd_agent_vault_create,
+    cmd_agent_vault_add_credential,
+    cmd_agent_vault_list,
+    cmd_agent_dream,
+    cmd_agent_dream_get,
+    cmd_agent_dream_list,
+    cmd_agent_dream_cancel,
+    cmd_agent_dream_archive,
+    cmd_agent_schedule_create,
+    cmd_agent_schedule_list,
+    cmd_agent_schedule_cancel,
+    cmd_agent_env_self_hosted_create,
+    cmd_agent_env_work_stats,
+    cmd_agent_webhook_register,
+    cmd_agent_create,
+    cmd_agent_get,
+    cmd_agent_list,
+    cmd_agent_update,
+    cmd_agent_review_multiagent,
+    cmd_agent_outcome_rubric_upload,
+    cmd_agent_chat,
+    cmd_agent_orchestrate,
+    cmd_agent_list_sessions,
+    cmd_agent_session_get,
+    cmd_agent_session_budget_set,
+    cmd_agent_session_budget_remove,
+    cmd_list_tool_presets,
+)
+
+__all__ = [
+    "PermissionMode", "TOOL_PRESETS", "AgentSession", "McpServerConfig",
+    "SESSION_BUDGET_MIN_CENTS", "MEMORY_STORE_BETA", "DREAMING_BETA",
+    "DREAMING_SUPPORTED_MODELS", "DREAMING_INSTRUCTIONS_MAX_CHARS",
+    "FILES_API_BETA", "REVIEW_SPECIALIST_PRESETS",
+    "_encode_session_budget", "_budget_to_dict", "_list_cost_cents",
+    "validate_dreaming_model", "validate_dreaming_instructions", "build_multiagent_config",
+    "ManagedAgent", "McpTunnel", "ManagedAgentsClient",
+    "ENDPOINT", "MCP_TUNNELS_BETA", "TUNNELS_ENDPOINT", "MANAGED_AGENTS_BETA", "SESSIONS_DIR",
+    "cmd_mcp_tunnel_open", "cmd_managed_agent_run",
+    "cmd_agent_memory_store_create", "cmd_agent_memory_list", "cmd_agent_memory_stores_list",
+    "cmd_agent_memory_store_archive", "cmd_agent_memory_store_delete", "cmd_agent_memory_get",
+    "cmd_agent_memory_create", "cmd_agent_memory_update", "cmd_agent_memory_delete",
+    "cmd_agent_vault_create", "cmd_agent_vault_add_credential", "cmd_agent_vault_list",
+    "cmd_agent_dream", "cmd_agent_dream_get", "cmd_agent_dream_list",
+    "cmd_agent_dream_cancel", "cmd_agent_dream_archive",
+    "cmd_agent_schedule_create", "cmd_agent_schedule_list", "cmd_agent_schedule_cancel",
+    "cmd_agent_env_self_hosted_create", "cmd_agent_env_work_stats",
+    "cmd_agent_webhook_register", "cmd_agent_create", "cmd_agent_get", "cmd_agent_list",
+    "cmd_agent_update", "cmd_agent_review_multiagent", "cmd_agent_outcome_rubric_upload",
+    "cmd_agent_chat", "cmd_agent_orchestrate", "cmd_agent_list_sessions",
+    "cmd_agent_session_get", "cmd_agent_session_budget_set", "cmd_agent_session_budget_remove",
+    "cmd_list_tool_presets",
+]

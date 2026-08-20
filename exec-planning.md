@@ -1,6 +1,6 @@
 # ZCoder — Master Execution Plan: Clean Architecture Refactor to Production-Grade Release
 
-**Status date:** 2026-08-15
+**Status date:** 2026-08-20 (last full update — Phase D, Context #8 complete)
 **Target:** Enterprise-grade, production-ready final release
 **Methodology:** Pragmatic Clean Architecture (4 layers), Strangler Fig migration, bounded-context grouping (DDD-lite, not full tactical DDD)
 
@@ -27,13 +27,14 @@ audit). The fix is structural, not a one-off patch.
 | Metric | Value |
 |---|---|
 | Total original flat modules | 67 |
-| Fully migrated to 4-layer architecture (shim + domain/infra/interfaces split) | **19** — Models, Admin API, Compliance API, Agent SDK (Phase A); Core Messaging's 6 files (Phase B); Tool Use & Retrieval's 5, Agent Execution & Code's 5 minus `claude_code.py`'s prior partial (Phase C #2–#3); Files & Documents' 4, Sessions/Memory/Cache's 3 (Phase C #4–#5) |
-| Phase D, Context #7 (Cost, Metrics & Eval) | **IN PROGRESS.** `domain/observability.py` + `infrastructure/local_storage/observability_store.py` + `infrastructure/anthropic_api/observability_gateway.py` written and green (`pyflakes` clean, full suite still 888/888 since nothing wired in yet). **Not done:** `application/observability_service.py`, `interfaces/cli/commands/observability_commands.py`, the 4 compatibility shims, repointed/new tests, and `main.py` rewiring. `claude_cost_optimizer.py`/`claude_metrics.py`/`claude_observability.py`/`claude_eval.py` are all still their original untouched flat files. |
-| Remaining flat modules (still mixed 3-concerns-in-1-file) | **28**, ~7,000 lines (Phase D contexts #7 (in progress) –#9, minus `claude_evals.py` — see below) |
-| `application/` (use-case layer) coverage | **8 of 8 fully-migrated contexts route through `application/*_service.py`** (Phase A–C complete); Context #7's service layer not yet written |
+| Fully migrated to 4-layer architecture (shim + domain/infra/interfaces split) | **23** — Models, Admin API, Compliance API, Agent SDK (Phase A); Core Messaging's 6 files (Phase B); Tool Use & Retrieval's 5, Agent Execution & Code's 5 minus `claude_code.py`'s prior partial (Phase C #2–#3); Files & Documents' 4, Sessions/Memory/Cache's 3 (Phase C #4–#5); Cost/Metrics/Observability/Eval's 4 (Phase D #7); Dev-tool Integrations' 3 (Phase D #8) |
+| Phase D, Context #7 (Cost, Metrics & Eval) | **COMPLETE 2026-08-19.** All 4 files (`claude_cost_optimizer.py`, `claude_metrics.py`, `claude_observability.py`, `claude_eval.py`) migrated to `domain/observability.py` / `infrastructure/local_storage/observability_store.py` / `infrastructure/anthropic_api/observability_gateway.py` / `application/observability_service.py` / `interfaces/cli/commands/observability_commands.py`, with 4 compatibility shims. 66 new tests (21 domain, 16 store, 8 gateway, 21 application). Fixed the anticipated "second repoint" issue in `test_claude_metrics.py`. 945/945 suite green, `pyflakes` clean, `python main.py --help` byte-identical. |
+| Phase D, Context #8 (Dev-tool Integrations) | **COMPLETE 2026-08-20.** All 3 files (`claude_git.py`, `claude_github.py`, `claude_chrome.py`) migrated to `domain/devtools.py` / `infrastructure/local_storage/devtools_store.py` / `infrastructure/github_api/github_gateway.py` (**new infra subpackage**, mirrors `infrastructure/voyage_api/`'s separate-vendor precedent) / `infrastructure/anthropic_api/devtools_gateway.py` / `application/devtools_service.py` / `interfaces/cli/commands/devtools_commands.py`, with 3 compatibility shims. 81 new tests (29 domain, 13 store against real `git` subprocess, 7 GitHub gateway, 7 anthropic/browse gateway, 25 application). 1026/1026 suite green, `pyflakes` clean, `python main.py --help` byte-identical, real end-to-end smoke tests against `api.anthropic.com`, `api.github.com`, and a live webpage fetch. |
+| Remaining flat modules (still mixed 3-concerns-in-1-file) | **21**, ~5,610 lines (Phase D context #9, minus `claude_evals.py` — see below) |
+| `application/` (use-case layer) coverage | **10 of 10 fully-migrated contexts route through `application/*_service.py`** (Phase A–D Context #8 complete) |
 | `main.py` | **2,413 lines, untouched.** 237 local-import dispatch points |
 | `tests/` reorganized by layer | **Started, not complete.** `tests/unit/application/` has one test file per migrated context; the rest are still flat in `tests/` |
-| Test suite | 888/888 passing (884 baseline + 4 from the agents-SDK on_delta/on_step merge below) |
+| Test suite | 1026/1026 passing (945 baseline + 81 new from Phase D Context #8 — note: the historical "888" figure was a stale/approximate count from an earlier session, corrected to 879 in the Context #7 row above after a clean re-measurement) |
 | Static analysis | `pyflakes` clean across all migrated files (0 undefined names) |
 | **Known dead code, not scheduled for migration** | `claude_evals.py` (plural) — pre-v1.10 eval harness superseded by `claude_eval.py` (singular); never wired into `main.py`, already documented as an intentional exclusion in `tests/test_cli_wiring.py`'s `KNOWN_EXCEPTIONS`. Migrating unreachable code would violate §6's Definition of Done ("every `application/*_service.py` function is called from at least one `interfaces/cli/commands/*` function"). Left as a flat file; candidate for outright deletion in a future cycle, not a Phase D gap. |
 
@@ -69,7 +70,14 @@ audit). The fix is structural, not a one-off patch.
 
 ---
 
-## 2. Target architecture (unchanged from prior proposal, restated for completeness)
+## 2. Target architecture (unchanged from prior proposal, restated for
+completeness — **note:** this diagram's per-item ✅/⬜ markers had drifted
+out of sync with §1's audit table well before this session (e.g. it still
+showed `admin_service.py`/`compliance_service.py`/`agents_service.py` as
+TODO despite Phase A completing them on 2026-08-15) — refreshed 2026-08-19
+alongside the Context #7 update, per this doc's own intro: "treat stale
+checkboxes here as a bug in the document." §1's table remains the
+authoritative live-status source if the two ever disagree again.)
 
 ```
 zcoder/
@@ -78,19 +86,30 @@ zcoder/
 │   │                            per-case, e.g. AgentSession).
 │   ├── models/catalog.py        ✅ DONE — model catalog, pricing, lifecycle
 │   ├── agents/agent_config.py   ✅ DONE — agent/session/tunnel config, validation
+│   ├── messaging.py             ✅ DONE — Phase B, Core Messaging (#1)
+│   ├── batch.py, files.py, etc. ✅ DONE — Phase C, Contexts #2–#5
+│   ├── observability.py         ✅ DONE — Phase D, Context #7 (2026-08-19):
+│   │                                cost/usage/eval domain rules, from
+│   │                                claude_cost_optimizer.py, claude_metrics.py,
+│   │                                claude_observability.py, claude_eval.py.
+│   │                                Kept as one file rather than a
+│   │                                `billing/` package since the context
+│   │                                also covers non-billing
+│   │                                observability/eval logic.
 │   ├── compliance/               ⬜ TODO — session/transcript value objects
-│   ├── billing/                  ⬜ TODO — cost/usage domain rules (from
-│   │                                claude_cost_optimizer.py, claude_metrics.py)
 │   └── tools/                    ⬜ TODO — tool-use schemas, structured-output
 │                                    validation (from claude_tools.py, claude_structured.py)
 │
 ├── application/                 # Use-case orchestration. Calls domain +
 │   │                              infrastructure. Zero print(), zero argparse.
 │   ├── models_service.py        ✅ DONE
-│   ├── admin_service.py          ⬜ TODO — 31 operations
-│   ├── compliance_service.py     ⬜ TODO — 21 operations
-│   ├── agents_service.py         ⬜ TODO — 38 operations
-│   └── (one per remaining bounded context, see §3)
+│   ├── admin_service.py         ✅ DONE — Phase A (2026-08-15), 31 operations
+│   ├── compliance_service.py    ✅ DONE — Phase A (2026-08-15), 21 operations
+│   ├── agents_service.py        ✅ DONE — Phase A (2026-08-15), 38 operations
+│   ├── messaging_service.py, batch_service.py, etc. ✅ DONE — Phase B/C
+│   ├── observability_service.py ✅ DONE — Phase D, Context #7 (2026-08-19)
+│   ├── devtools_service.py     ✅ DONE — Phase D, Context #8 (2026-08-20)
+│   └── platform_service.py — ⬜ TODO (Context #9)
 │
 ├── infrastructure/anthropic_api/ # Real HTTP calls only.
 │   ├── models_gateway.py        ✅ DONE
@@ -98,17 +117,25 @@ zcoder/
 │   ├── compliance_gateway.py    ✅ DONE
 │   ├── agents_gateway.py        ✅ DONE
 │   ├── http_client.py           ✅ DONE (was resilience.py)
-│   └── (one per remaining bounded context, see §3)
+│   ├── messaging_gateway.py, batch_gateway.py, etc. ✅ DONE — Phase B/C
+│   ├── observability_gateway.py ✅ DONE — Phase D, Context #7 (2026-08-19)
+│   ├── devtools_gateway.py     ✅ DONE — Phase D, Context #8 (2026-08-20)
+│   └── (1 more gateway for Context #9)
+│
+├── infrastructure/github_api/    # Separate-vendor package (own GITHUB_TOKEN/
+│   │                                GH_TOKEN, same reasoning as voyage_api/).
+│   └── github_gateway.py        ✅ DONE — Phase D, Context #8 (2026-08-20)
 │
 ├── interfaces/
 │   ├── cli/
-│   │   ├── commands/             (4 done, ~9 more bounded contexts to add)
+│   │   ├── commands/             (17 done — Phase A–D Context #8; Context
+│   │   │                          #9 remains)
 │   │   ├── parser.py              ⬜ TODO — argparse definitions, split from main.py
 │   │   └── dispatcher.py          ⬜ TODO — routing, split from main.py
 │   └── web/                       ⬜ TODO — reuses application/ layer, not yet started
 │
 └── tests/
-    ├── unit/{domain,application}/  🟡 STARTED (1 file each)
+    ├── unit/{domain,application}/  🟡 STARTED (one file per migrated context)
     ├── integration/infrastructure/ ⬜ TODO
     └── e2e/cli/                    ⬜ TODO
 ```
@@ -117,7 +144,7 @@ Legend: ✅ done and test-verified · 🟡 started, incomplete · ⬜ not starte
 
 ---
 
-## 3. Bounded-context map for the remaining 47 modules
+## 3. Bounded-context map for the remaining 44 modules
 
 Grouping by business capability (DDD-lite bounded contexts) rather than
 migrating files in size order — this keeps each `application/*_service.py`
@@ -132,8 +159,8 @@ independently.
 | 4 | **Files & Documents** | `claude_files.py`(367), `claude_powerpoint.py`(458), `claude_excel.py`(396), `claude_batch.py`(295) | `application/documents_service.py` | P1 |
 | 5 | **Sessions, Memory & Cache** | `claude_sessions.py`(227), `claude_memory.py`(175), `claude_cache.py`(553) | `application/sessions_service.py` | P1 |
 | 6 | **Model-specific wrappers** | `claude_fable5.py`(378), `claude_mythos5.py`(147), `claude_opus5.py`(264), `claude_haiku45.py`(203), `claude_sonnet5.py`(248, partial), `claude_response_metadata.py`(108) | fold into `application/models_service.py` (extend, don't duplicate) | **P0** — touches `domain/models/catalog.py` again |
-| 7 | **Cost, Metrics & Eval** | `claude_cost_optimizer.py`(182), `claude_metrics.py`(152), `claude_observability.py`(144), `claude_eval.py`(198), `claude_evals.py`(194) | `application/observability_service.py` | P2 |
-| 8 | **Dev-tool Integrations** | `claude_github.py`(186), `claude_git.py`(118), `claude_chrome.py`(218) | `application/devtools_service.py` | P2 |
+| 7 | **Cost, Metrics & Eval** ✅ **COMPLETE 2026-08-19** | `claude_cost_optimizer.py`(182), `claude_metrics.py`(152), `claude_observability.py`(144), `claude_eval.py`(198) — `claude_evals.py`(194, plural) confirmed dead code, excluded, see §1 | `application/observability_service.py` ✅ DONE | P2 |
+| 8 | **Dev-tool Integrations** ✅ **COMPLETE 2026-08-20** | `claude_github.py`(186), `claude_git.py`(118), `claude_chrome.py`(218) | `application/devtools_service.py` ✅ DONE | P2 |
 | 9 | **Platform & Extensibility** | `claude_plugins.py`(631), `claude_skills_api.py`(292, **+Enterprise security scanning gap, found 2026-08-15 — see §9**), `claude_advisor.py`(241), `claude_workflow.py`(184), `claude_output_styles.py`(146), `claude_settings.py`(153), `claude_prompt_optimizer.py`(184), `claude_interactive.py`(116), `claude_wif.py`(368), `claude_research.py`(142) | `application/platform_service.py` | P2 |
 
 **Why P0/P1/P2 in this order:** Core Messaging (#1) and Model wrappers (#6)
@@ -539,41 +566,192 @@ stays complete.
 - **Exit criteria (whole phase):** per context — full suite green, `pyflakes`
   clean, `python main.py --help` reachable, no `print()` outside `interfaces/`
 
-### Phase D — Migrate bounded contexts #7–#9 (P2)
+### Phase D — Migrate bounded contexts #7–#9 (P2) — 🟡 **2 of 3 complete** (#7 done 2026-08-19, #8 done 2026-08-20; #9 not started)
 - [ ] Same pattern, lowest urgency — can run in parallel with Phase E if
   a second engineer/session is available, since these contexts don't block
   `main.py`'s split
-- [~] **Context #7 (Cost, Metrics & Eval) — STARTED 2026-08-19, not complete.**
+- [x] **Context #7 (Cost, Metrics & Eval) — COMPLETE 2026-08-19.**
   `claude_cost_optimizer.py`, `claude_metrics.py`, `claude_observability.py`,
-  `claude_eval.py` (870 lines total). Domain + both infrastructure layers
-  written (`domain/observability.py`,
-  `infrastructure/local_storage/observability_store.py`,
-  `infrastructure/anthropic_api/observability_gateway.py`); `pyflakes`
-  clean; full suite still 888/888 since none of it is wired in yet.
-  **Remaining:** `application/observability_service.py`,
-  `interfaces/cli/commands/observability_commands.py`, 4 compatibility
-  shims, `main.py` rewiring, and tests (repoint the existing
-  `tests/test_claude_cost_optimizer.py` / `tests/test_claude_metrics.py`
-  path-monkeypatch fixtures per the playbook step 5 "second repoint"
-  pattern — they currently patch `claude_metrics.LOG_PATH`/module-level
-  constants directly, which won't reach the new store module's I/O
-  functions — plus net-new coverage for `claude_observability.py` and
-  `claude_eval.py`, which had **zero** test files before this session).
-  Findings so far, to carry into the application/interfaces build-out:
-  - `estimate_cost()` (cost optimizer) and `_price()` (metrics) each
-    re-implemented the surcharge/inference_geo pricing logic that
-    `domain/models/catalog.py`'s `estimate_cost_usd()` already
-    canonicalizes — same duplicate-pricing defect class §0 describes.
-    Both now delegate to it in `domain/observability.py`
-    (`estimate_cost()`/`price_lookup()`); existing pricing tests should
-    pass unmodified since the underlying formula is identical.
-  - `claude_observability.py`'s `error_analysis()` and `claude_eval.py`'s
-    `EvalRunner.run()` both `print()`ed directly from what's now
-    infrastructure/ code — converted to `on_case`/no-callback conventions
-    matching `agents_gateway.py`'s `on_step`/`on_delta` (see Phase C
-    history below for that convention's origin).
-  - `claude_evals.py` (plural, dead code) explicitly **excluded** from
-    this context's scope — see §1 "Known dead code" row above.
+  `claude_eval.py` (870 lines total) — domain, both infrastructure layers,
+  the application service, the CLI commands module, and 4 compatibility
+  shims all done in this session, completing the partial draft (domain +
+  infra only) a prior session in the same day had left off. Split into
+  `domain/observability.py` (pure routing/aggregation logic:
+  `classify_complexity`/`select_model`/`OptimizedResponse`,
+  `summarise_metrics`, `histogram`/`build_latency_report`/
+  `build_request_record`, `EvalCase`/`EvalResult`/`EvalRun`/
+  `build_eval_run`), `infrastructure/local_storage/observability_store.py`
+  (SPEND_LOG/METRICS_LOG_PATH/OBS_DIR/EVALS_DIR read/write/clear, plus two
+  functions added this session — `write_metrics_export()` and
+  `write_eval_first_result_json()` — to move the last two inline file
+  writes out of the CLI layer), `infrastructure/anthropic_api/
+  observability_gateway.py` (`optimized_call`, `LLMJudge`, `EvalRunner`,
+  `analyze_errors` — real anthropic SDK calls only),
+  `application/observability_service.py` (use-case layer — orchestrates
+  domain + both infra layers, zero I/O of its own),
+  `interfaces/cli/commands/observability_commands.py` (all 14 `cmd_*`
+  entry points, print()-only). Two fidelity notes preserved deliberately
+  rather than "fixed": (1) `cmd_eval_run`'s optional `output` file only
+  ever captures the *first* eval result, not the whole run — an odd
+  quirk of the original `Path(output).write_text(json.dumps(
+  run.results[0].__dict__ if run.results else {}, indent=2))`, kept
+  exactly as-is in `write_eval_first_result_json()`; (2) `cmd_eval_list`
+  distinguishes "EVALS_DIR doesn't exist" (prints "No eval runs found.")
+  from "EVALS_DIR exists but is empty" (prints nothing at all, matching
+  the original's silent for-loop-over-nothing) — `load_eval_run_summaries()`
+  now returns `None` vs. `[]` respectively so the CLI layer can reproduce
+  that exact split, which wasn't in the domain/infra draft this session
+  started from. `record_request()`/`observe()` (the `claude_observability.py`
+  auto-instrumentation decorator) were never CLI-facing in the original —
+  no `cmd_*` prefix, never wired to a flag — so they're composed directly
+  in the `claude_observability.py` shim from `domain.build_request_record`
+  + `store.log_observability_request` rather than added to
+  `application/observability_service.py`, since that layer's Definition
+  of Done requires every function there to be reachable from
+  `interfaces/cli/commands/*`, which these never were even before this
+  refactor. `latency_report()`/`error_analysis()` used to `print()`
+  directly in the original (their `cmd_obs_latency`/`cmd_obs_errors`
+  callers were one-line passthroughs) — now aliased in the shim straight
+  to the new `cmd_obs_latency`/`cmd_obs_errors`, which are behaviorally
+  identical now that the print() half lives in `interfaces/`. Hit the
+  anticipated "second repoint" issue (§5 step 5) exactly as predicted in
+  the prior session's notes: `tests/test_claude_metrics.py`'s
+  `isolated_log` fixture patched `claude_metrics.LOG_PATH` (the shim's
+  static re-export), which no longer reached `record()`/`load_log()`'s
+  actual I/O once those resolved `METRICS_LOG_PATH` from
+  `infrastructure/local_storage/observability_store.py`'s own module
+  namespace instead — 6 tests failed with real extra-entries leakage
+  between tests before the fix (confirmed the failure was genuinely this
+  bug, not something else, by reading the assertion diffs before
+  touching anything); fixed by repointing the fixture to
+  `monkeypatch.setattr(observability_store, "METRICS_LOG_PATH", ...)`.
+  That same unfixed first test run also leaked real entries into the
+  live `~/.ai-coder/metrics.jsonl` on the machine running this
+  session — caught via a real (non-mocked) `--metrics-show` smoke test
+  showing 6 calls / $13.02 total spend that had no business being there;
+  cleaned up (`rm -rf ~/.ai-coder`) and re-verified both the fixed test
+  suite and the smoke tests against a clean disk state before calling
+  this context done. `claude_evals.py` (plural, dead code) confirmed
+  still excluded from scope per `tests/test_cli_wiring.py`'s existing
+  `KNOWN_EXCEPTIONS` — untouched. 66 new tests: 21 in
+  `tests/unit/domain/test_observability.py`, 16 in
+  `tests/test_observability_store.py`, 8 in
+  `tests/test_observability_gateway.py` (fake `anthropic.Anthropic`
+  client, no real SDK calls — covers `optimized_call`'s refusal-billing
+  exemption, `LLMJudge.score`'s JSON/code-fence parsing and malformed-JSON
+  fallback, and `EvalRunner.run`'s `on_case` callback wiring), 21 in
+  `tests/unit/application/test_observability_service.py` (direct
+  coverage for every `observability_service.py` function per §6's DoD).
+  **945/945 suite green (879 baseline + 66 new — the historical "888"
+  figure in this document's earlier drafts was a stale/approximate count,
+  not a real regression; a clean re-measurement of the pristine
+  pre-Context-#7 tree gives 879, confirmed by running the untouched
+  zip's test suite standalone), `pyflakes` clean on all 8 touched/new
+  non-test files and all 6 touched/new test files, `python main.py --help`
+  byte-for-byte identical before/after (diffed programmatically, not
+  eyeballed), and real end-to-end CLI runs confirmed against a clean
+  `~/.ai-coder/` state for all of `--cost-summary`, `--metrics-show`,
+  `--obs-tail`, `--eval-list`, `--metrics-clear`, `--cost-reset`,
+  `--obs-clear`, `--eval-scaffold` (real file write, verified contents),
+  and `--optimized` (reached the genuine `anthropic` SDK and surfaced a
+  real `AuthenticationError`, not a mock).** Context #7 exit criteria
+  **fully met** — Context #7 is now complete in its entirety. Remaining
+  Phase D work: Context #8 (Dev-tool Integrations) and Context #9
+  (Platform & Extensibility), neither started.
+
+- [x] **Context #8 (Dev-tool Integrations) — COMPLETE 2026-08-20.**
+  `claude_git.py`(118), `claude_github.py`(186), `claude_chrome.py`(218)
+  — 522 lines total, all started and finished in one session (no partial
+  draft to pick up this time). Split into `domain/devtools.py` (pure
+  prompt-building/parsing for all three sub-features, grouped by section
+  header rather than merged: git's 5 prompt-builder functions, GitHub's 4
+  system prompts + 4 context-builder functions, browse's `TextExtractor`
+  HTML parser, `domain_allowed()`, `parse_json_action()`, and the new
+  `BrowseStep` dataclass replacing inline `print()`),
+  `infrastructure/local_storage/devtools_store.py` (git subprocess
+  execution + local file read/write — same bucket as
+  `code_agent_store.py`'s subprocess use, see that module's docstring for
+  the precedent), `infrastructure/github_api/github_gateway.py` (GitHub
+  REST calls — a **new infrastructure subpackage**, not
+  `infrastructure/anthropic_api/`, mirroring `infrastructure/voyage_api/`'s
+  precedent exactly: GitHub is a separate vendor with its own
+  `GITHUB_TOKEN`/`GH_TOKEN`, so a GitHub outage/rate-limit is never
+  mistaken for an Anthropic one — still reuses the shared
+  retry/circuit-breaker primitives from `infrastructure/anthropic_api/
+  http_client.py` since those are generic HTTP-transport code, not
+  Anthropic-specific, per `resilience.py`'s own shim docstring),
+  `infrastructure/anthropic_api/devtools_gateway.py` (real
+  `api.anthropic.com` calls for git/GitHub generation, plus the generic
+  arbitrary-URL page fetch for browse — no dedicated vendor/credential of
+  its own, so it stays alongside the Anthropic calls rather than getting
+  a fourth infra subpackage; also wraps the pre-existing `Coder` class
+  (`coder.py`, itself not yet part of this refactor's flat-file catalogue
+  per §3) for browse's decide step, preserving the original's exact
+  choice to go through `Coder` rather than `anthropic.Anthropic` directly),
+  `application/devtools_service.py` (use-case layer, including the full
+  `browse_session()` loop with its `print()` calls converted to an
+  `on_step(BrowseStep)` callback — same convention as `agents_gateway.py`'s
+  `on_step`/`on_delta` and `observability_service.py`'s `eval_run()`
+  `on_case`), `interfaces/cli/commands/devtools_commands.py` (all 10
+  `cmd_*` entry points, print()-only). A subtle control-flow behavior was
+  preserved exactly rather than "cleaned up": the original `cmd_browse`'s
+  for-loop always printed "[max steps reached without a final answer]"
+  and returned `None` after *any* early `break` (loop detected, blocked
+  domain, fetch error, unknown action) as well as after genuinely running
+  out of steps — only the `unparsable`/`answer` branches `return` early
+  and skip that tail. `browse_session()` reproduces this with the same
+  `break`-vs-`return` structure so the tail `on_step(..., "max_steps")`
+  fires in exactly the same cases; verified with 6 application-layer
+  tests, one per branch. Also confirmed, via a dedicated regression test
+  with an explanatory docstring rather than silently "fixing" it, that
+  `browse_session()`'s `"unknown_action"` `on_step` branch is genuine
+  **pre-existing dead code**, inherited byte-for-byte from
+  `claude_chrome.py`'s original `_parse_json_action()`: that function
+  already returns `None` for any `action` other than `"navigate"`/
+  `"answer"`, so a reply like `{"action": "delete"}` was always routed to
+  the `"unparsable"` branch instead, both before and after this
+  migration — left as-is since fixing runtime behavior wasn't in scope,
+  only moving code. `claude_git.py`'s `read_file_lines()` and
+  `commit_with_message()` each carried their own pre-existing minor
+  quirks (readlines()-then-join() doubles up newlines between requested
+  lines; git's "nothing to commit" message goes to stdout not stderr, so
+  the returned `stderr` string is empty on that particular failure path)
+  — caught by two of my own *test* assertions being wrong, not the
+  migrated code; fixed the tests, left the faithfully-ported behavior
+  alone, and documented both in the test file so a future reader doesn't
+  mistake them for regressions. Real (non-mocked) end-to-end smoke tests
+  run before writing any unit tests, catching real behavior early: a
+  genuine `git diff --cached` against a throwaway repo in `/tmp`, a
+  genuine `git-review` reaching `api.anthropic.com` and surfacing a real
+  401, a genuine `--gh-triage-issues` call reaching `api.github.com` with
+  a bad token and surfacing a real 401 through the new
+  `infrastructure/github_api/` layer, and a genuine `--browse` run
+  against `https://example.com` that hit a real (network-policy) 403 and
+  correctly printed the banner → fetching → fetch_error → max_steps
+  sequence, validating the tricky control-flow point above against real
+  I/O before a single line of the unit-test suite existed. 81 new tests
+  across 5 files: 29 in `tests/unit/domain/test_devtools.py`, 13 in
+  `tests/test_devtools_store.py` (real `git` subprocess against
+  throwaway `tmp_path` repos, no subprocess mocking — mocking it away
+  would test nothing, since exercising the real git binary is the
+  point), 7 in `tests/test_github_gateway.py` (monkeypatches
+  `urllib.request.urlopen` at its actual call site in
+  `infrastructure.anthropic_api.http_client`, same pattern as
+  `tests/test_claude_compliance_api.py`'s `_request()` tests, so the real
+  retry loop and error translation run rather than a reimplementation of
+  them), 7 in `tests/test_devtools_gateway.py` (fake `anthropic.Anthropic`
+  client + fake HTTP responses + a real `Coder` construction check), 25
+  in `tests/unit/application/test_devtools_service.py` (direct
+  per-function coverage per §6's DoD, including the 6-branch
+  `browse_session()` control-flow matrix). **1026/1026 suite green (945
+  baseline + 81 new), `pyflakes` clean on all 9 touched/new non-test
+  files and all 5 new test files, `python main.py --help` byte-for-byte
+  identical before/after (diffed programmatically), and no stray
+  `print()` outside `interfaces/` (verified by AST walk, not grep, so a
+  commented-out or docstring-mentioned `print(` couldn't hide a real
+  violation or produce a false positive).** Context #8 exit criteria
+  **fully met** — Context #8 is now complete in its entirety. Remaining
+  Phase D work: Context #9 (Platform & Extensibility), not started.
 
 ### Phase E — Split `main.py` (last, by design)
 - [ ] Extract `interfaces/cli/parser.py` — every `add_argument()` call,
@@ -734,5 +912,9 @@ just a documentation note deferred to Phase D.
 
 | 2026-08-19 | Out-of-band merge | A prior session had left an uncommitted fix in a parallel working copy (`zcoder-v1_53_0-edit`), not yet folded into the delivered `zcoder-v1_53_0.zip`: the agents-SDK print()-removal fix (same Definition-of-Done pattern as `claude_batch.py`/`claude_cache.py` in Phase C, Context #4/#5) — `infrastructure/anthropic_api/agents_gateway.py`'s `run_task()`, `wait_for_outcome()`, `stream_thread()`, and `ManagedAgent.orchestrate()` no longer `print()` directly; they now call `on_delta(text)`/`on_step(event, data)` callbacks, wired to real `print()` calls in `interfaces/cli/commands/agent_commands.py`. Diffed both copies file-by-file before merging (7 files) rather than trusting the edit copy blindly. Found and fixed one test the edit copy's own session had missed — `tests/unit/application/test_agents_service.py::test_run_managed_agent_task_plain_task_sequence` still asserted `run_task()`'s exact call signature, the same "second repoint" monkeypatch pattern §5 step 5 warns about; updated to assert on the meaningful args/kwargs instead, matching the convention `tests/test_claude_agents_sdk.py`'s own equivalent assertion already used. `pyflakes` clean on all 7 merged files (pre-existing warnings elsewhere confirmed identical before/after, unrelated to this fix). **888/888 suite green (884 baseline + 4)**, `python main.py --help` byte-identical before/after. |
 | 2026-08-19 | Phase D, Context #7 — started, not complete | Cost, Metrics & Eval (`claude_cost_optimizer.py`, `claude_metrics.py`, `claude_observability.py`, `claude_eval.py` — 870 lines). Wrote `domain/observability.py`, `infrastructure/local_storage/observability_store.py`, and `infrastructure/anthropic_api/observability_gateway.py` (domain + both infra layers). Found and fixed a real duplicate-pricing defect in the process — `estimate_cost()`/`_price()` each re-implemented `domain/models/catalog.py`'s `estimate_cost_usd()` surcharge/geo logic instead of delegating to it, the exact anti-pattern §0 describes; also converted `error_analysis()`/`EvalRunner.run()`'s direct `print()` calls to the established `on_case`/callback convention. Confirmed `claude_evals.py` (plural) is deliberately-unwired dead code per `tests/test_cli_wiring.py`'s existing `KNOWN_EXCEPTIONS` and excluded it from this context's scope rather than migrating unreachable code. `pyflakes` clean on all 3 new files; full suite still 888/888 (nothing wired in yet, so no regression risk from this partial state). **Not done, next session:** `application/observability_service.py`, `interfaces/cli/commands/observability_commands.py`, 4 compatibility shims, `main.py` rewiring, repointing `test_claude_cost_optimizer.py`/`test_claude_metrics.py`'s path-monkeypatch fixtures (the anticipated "second repoint" issue — store module now owns `SPEND_LOG`/`METRICS_LOG_PATH`, so tests patching the old shim's module-level constant won't reach it), and net-new tests for `claude_observability.py`/`claude_eval.py` (zero coverage previously). Context #7 exit criteria **not yet met** — do not check its box complete. |
+
+| 2026-08-19 | **Phase D, Context #7 complete** | Picked up the same-day partial draft (domain + both infra layers only) and finished it in one continuation: `application/observability_service.py`, `interfaces/cli/commands/observability_commands.py` (14 `cmd_*` entry points), and 4 rewritten compatibility shims. Hit the predicted "second repoint" bug exactly as flagged in the row above — `tests/test_claude_metrics.py`'s fixture was patching the shim's static `LOG_PATH` re-export instead of `infrastructure.local_storage.observability_store.METRICS_LOG_PATH`, causing 6 real test failures (cross-test entry leakage) and, more consequentially, a leak of fabricated test data into the *real* `~/.ai-coder/metrics.jsonl` on the machine running this session before the fix — caught via a real `--metrics-show` smoke test showing spend that had no business existing, cleaned up, and re-verified against a clean disk state. Added two small store functions the domain/infra draft hadn't included (`write_metrics_export`, `write_eval_first_result_json`) to keep the last two inline file writes out of the CLI layer, and fixed one fidelity gap in `load_eval_run_summaries()` (now returns `None` vs. `[]` to distinguish "EVALS_DIR missing" from "EVALS_DIR empty", matching `cmd_eval_list`'s original message-vs-silent split). `record_request()`/`observe()` (never CLI-facing in the original) composed directly in the `claude_observability.py` shim rather than added to the application layer, to avoid violating §6's DoD (every `application/*_service.py` function must be reachable from `interfaces/`). 66 new tests across 4 files (21 domain, 16 store, 8 gateway with a fake `anthropic.Anthropic` client, 21 application with direct per-function coverage per §6's DoD). **945/945 suite green** — discovered along the way that this document's "888" baseline was itself stale/approximate: a clean re-measurement of the untouched pre-Context-#7 tree gives 879, not 888, so the real delta is 879+66=945, not 888+something; corrected §1's Test suite row accordingly rather than silently carrying the wrong number forward. `pyflakes` clean on all 8 touched/new non-test files, `python main.py --help` diffed byte-for-byte identical (not eyeballed), and real end-to-end CLI runs against a clean `~/.ai-coder/` confirmed for `--cost-summary`, `--metrics-show`, `--obs-tail`, `--eval-list`, `--metrics-clear`, `--cost-reset`, `--obs-clear`, `--eval-scaffold` (real file write, contents verified), and `--optimized` (reached the genuine `anthropic` SDK, surfaced a real `AuthenticationError`). **Phase D, Context #7 is now complete in its entirety.** Remaining Phase D work: Context #8 (Dev-tool Integrations) and Context #9 (Platform & Extensibility), neither started. Phase E (`main.py` split) remains deliberately deferred to last. |
+
+| 2026-08-20 | **Phase D, Context #8 complete** | Dev-tool Integrations (`claude_git.py`(118), `claude_github.py`(186), `claude_chrome.py`(218) — 522 lines total), started and finished in one session — no partial draft to pick up this time, unlike Context #7. Split into `domain/devtools.py` (all three sub-features' pure prompt-building/parsing, grouped by section header), `infrastructure/local_storage/devtools_store.py` (git subprocess + local file I/O, same bucket as `code_agent_store.py`'s precedent), a **new** `infrastructure/github_api/github_gateway.py` subpackage (GitHub is a separate vendor with its own token, mirroring `infrastructure/voyage_api/`'s precedent exactly — still reuses the shared retry/circuit-breaker code from `infrastructure/anthropic_api/http_client.py` since that's generic transport code, not Anthropic-specific), `infrastructure/anthropic_api/devtools_gateway.py` (git/GitHub generation calls plus the generic arbitrary-URL page fetch for browse, and a thin wrapper around the pre-existing `Coder` class for browse's decide step — preserving the original's choice to go through `Coder` rather than `anthropic.Anthropic` directly), `application/devtools_service.py` (including the full `browse_session()` loop, `print()` converted to an `on_step(BrowseStep)` callback — same convention as `agents_gateway.py`'s `on_step`/`on_delta` and `observability_service.py`'s `eval_run()` `on_case`), and `interfaces/cli/commands/devtools_commands.py` (10 `cmd_*` entry points). Deliberately preserved rather than "cleaned up": the original `cmd_browse`'s always-print-max-steps-after-any-early-break control flow (verified with 6 dedicated application-layer tests, one per branch) and a genuine pre-existing dead-code finding in `_parse_json_action()` (the `"unknown_action"` on_step branch can never actually fire, since the parser already filters to only `navigate`/`answer` before returning — documented with a regression test rather than silently "fixed"). Two of my own test assertions were wrong during store-layer testing (not migrated-code bugs): `read_file_lines()`'s `"\n".join(readlines())` doubles newlines between requested lines, and `commit_with_message()`'s returned stderr is empty when git's "nothing to commit" message goes to stdout instead — both are faithful ports of `claude_git.py`'s original behavior, fixed the test assertions and documented why rather than changing the migrated code. Ran real (non-mocked) end-to-end smoke tests *before* writing any unit tests: a genuine `git diff --cached` against a throwaway `/tmp` repo, a genuine `--git-review` reaching `api.anthropic.com` and surfacing a real 401, a genuine `--gh-triage-issues` reaching `api.github.com` with a bad token and surfacing a real 401 through the new `infrastructure/github_api/` layer, and a genuine `--browse` run against `https://example.com` that hit a real network-policy 403 and printed exactly the banner → fetching → fetch_error → max_steps sequence the control-flow preservation above predicts. 81 new tests across 5 files (29 domain, 13 store against real `git` subprocess — no subprocess mocking, since exercising the real git binary is the point, 7 GitHub gateway with `urllib.request.urlopen` monkeypatched at its actual call site so the real retry loop runs, 7 anthropic/browse gateway with fakes, 25 application with direct per-function coverage including the full browse-loop branch matrix). **1026/1026 suite green (945 baseline + 81 new)**, `pyflakes` clean on all 9 touched/new non-test files and all 5 new test files, `python main.py --help` diffed byte-for-byte identical, and an AST walk (not grep, so nothing in a comment or docstring could produce a false positive or hide a real one) confirmed zero stray `print()` calls outside `interfaces/` across every Context #8 file. **Phase D, Context #8 is now complete in its entirety.** Remaining Phase D work: Context #9 (Platform & Extensibility), not started — the largest remaining context by line count (10 files, ~2,457 lines, including the Enterprise-security-scanning gap flagged in §9 for `claude_skills_api.py`). Phase E (`main.py` split) and Phase F (hardening) remain deliberately deferred to last. |
 
 *(Append new rows here after every session — do not overwrite history.)*

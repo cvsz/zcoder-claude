@@ -106,6 +106,14 @@ def clear_metrics_log() -> None:
         METRICS_LOG_PATH.unlink()
 
 
+def write_metrics_export(output_path: str, entries: List[dict], summary: dict) -> None:
+    """claude_metrics.py's former cmd_metrics_export() had this write
+    inline in the same function as the print() — split out here so the
+    CLI layer stays print()-only."""
+    with open(output_path, "w") as f:
+        json.dump({"entries": entries, "summary": summary}, f, indent=2)
+
+
 # ── Observability request log (claude_observability.py) ─────────────────
 
 OBS_DIR  = Path.home() / ".ai-coder" / "observability"
@@ -159,12 +167,17 @@ def save_eval_run(run: EvalRun) -> str:
     return str(p)
 
 
-def load_eval_run_summaries(limit: int = 20) -> List[dict]:
+def load_eval_run_summaries(limit: int = 20) -> Optional[List[dict]]:
     """Parsed contents of the most recent `limit` saved eval-run JSON
     files, newest first. Silently skips any file that fails to parse
-    (matches claude_eval.py's original cmd_eval_list behavior)."""
+    (matches claude_eval.py's original cmd_eval_list behavior). Returns
+    None (not []) when EVALS_DIR doesn't exist at all, so the caller can
+    reproduce the original's exact "No eval runs found." vs. "print
+    nothing" distinction: the original only printed that message when the
+    directory was missing outright — an existing-but-empty directory fell
+    through the for-loop and printed nothing."""
     if not EVALS_DIR.exists():
-        return []
+        return None
     summaries = []
     for p in sorted(EVALS_DIR.glob("*.json"), reverse=True)[:limit]:
         try:
@@ -177,6 +190,21 @@ def load_eval_run_summaries(limit: int = 20) -> List[dict]:
 def load_eval_suite(path: str) -> List[EvalCase]:
     data = json.loads(Path(path).read_text())
     return [EvalCase(**c) for c in data]
+
+
+def write_eval_first_result_json(output_path: str, run: EvalRun) -> None:
+    """claude_eval.py's former cmd_eval_run() had one, slightly odd,
+    inline write here: `output` (when passed) gets the *first* result
+    only, not the whole run — Path(output).write_text(json.dumps(
+    run.results[0].__dict__ if run.results else {}, indent=2)). Preserved
+    exactly as-is; not "fixed" to write the whole run, since that would be
+    a silent behavior change outside this migration's scope (same
+    discipline as observability_gateway.py's analyze_errors() leaving its
+    pre-existing temperature=0 quirk alone).
+    """
+    import dataclasses
+    payload = dataclasses.asdict(run.results[0]) if run.results else {}
+    Path(output_path).write_text(json.dumps(payload, indent=2))
 
 
 def write_eval_suite_scaffold(output_path: str) -> None:
@@ -195,5 +223,5 @@ __all__ = [
     "OBS_DIR", "OBS_LOG_FILE", "log_observability_request", "read_observability_logs",
     "clear_observability_log",
     "EVALS_DIR", "save_eval_run", "load_eval_run_summaries", "load_eval_suite",
-    "write_eval_suite_scaffold",
+    "write_eval_suite_scaffold", "write_metrics_export", "write_eval_first_result_json",
 ]

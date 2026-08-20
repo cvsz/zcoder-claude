@@ -12,14 +12,22 @@ import json
 import pytest
 
 import claude_metrics as metrics
+from infrastructure.local_storage import observability_store as _obs_store
 
 
 @pytest.fixture(autouse=True)
 def isolated_log(tmp_path, monkeypatch):
     """Every test gets its own LOG_PATH so nothing touches the real
-    ~/.ai-coder/metrics.jsonl or leaks state between tests."""
+    ~/.ai-coder/metrics.jsonl or leaks state between tests.
+
+    2026-08-19 Phase D, Context #7 "second repoint" (exec-planning.md §5
+    step 5): record()/load_log()/cmd_metrics_export() now resolve
+    METRICS_LOG_PATH from infrastructure/local_storage/
+    observability_store.py's own module namespace, not from this shim's
+    LOG_PATH re-export — patching claude_metrics.LOG_PATH no longer
+    reaches that I/O, so the fixture patches the store module directly."""
     log_path = tmp_path / "metrics.jsonl"
-    monkeypatch.setattr(metrics, "LOG_PATH", log_path)
+    monkeypatch.setattr(_obs_store, "METRICS_LOG_PATH", log_path)
     return log_path
 
 

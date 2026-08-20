@@ -1,186 +1,65 @@
 """
-claude_github.py — GitHub Integration
-AI Model Coder CLI v1.9.1
+claude_github.py — GitHub Integration (compatibility shim)
+AI Model Coder CLI v1.54.0 (Clean Architecture refactor, Phase D, Context #8)
 
-Connects Claude to GitHub via the GitHub REST API (no external SDK —
-pure stdlib urllib). Review PRs, triage issues, summarise commit history,
-and generate PR descriptions automatically.
+This module used to contain the full implementation (186 lines: GitHub
+REST client with retry/circuit-breaking, `_call()` for the anthropic
+half, 4 core functions, and 4 cmd_* CLI entry points). It has been split
+into:
 
-CLI flags:
-  --gh-review-pr REPO/NUMBER    AI review of a pull request diff
-  --gh-triage-issues REPO       Triage open issues and suggest labels/owners
-  --gh-summarise-commits REPO   Summarise recent commit history
-  --gh-pr-description REPO/N   Generate a PR description from its diff
-  --gh-token TOKEN              GitHub personal access token (or GITHUB_TOKEN env var)
-  --gh-max-items N              Max issues/commits to process (default: 20)
+  domain/devtools.py                                    — the 4 GitHub
+                                                           system prompts
+                                                           and 4 pure
+                                                           context-building
+                                                           functions
+  infrastructure/github_api/github_gateway.py            — GITHUB_API,
+                                                           resolve_token()
+                                                           (was _gh_token()),
+                                                           get() (was
+                                                           _gh_get()),
+                                                           fetch_diff() (was
+                                                           _gh_fetch_diff()) —
+                                                           in its own
+                                                           package since
+                                                           GitHub is a
+                                                           separate vendor,
+                                                           same reasoning as
+                                                           infrastructure/
+                                                           voyage_api/
+  infrastructure/anthropic_api/devtools_gateway.py       — github_generate()
+                                                           (was _call())
+  application/devtools_service.py                        — use-case layer
+  interfaces/cli/commands/devtools_commands.py           — print(), the 4
+                                                           cmd_* entry points
+
+Two functions' original signatures took a pre-built `anthropic.Anthropic`
+client (`_call(client, model, ...)`, and `review_pr`/`triage_issues`/
+`summarise_commits`/`generate_pr_description` all took `client` too); the
+new `application/devtools_service.py` functions take `api_key` instead
+and build the client internally in the gateway, matching every other
+gateway in this refactor. Only `cmd_*` signatures are load-bearing for
+back-compat (main.py calls those), and those are unchanged.
+
+This file re-exports every name the old module used to export, so
+existing imports (`from claude_github import cmd_gh_review_pr`, etc.,
+used by main.py) keep working unmodified. See exec-planning.md §5
+(migration playbook).
 """
 
-from utils import sampling_kwargs
+from infrastructure.github_api.github_gateway import (
+    GITHUB_API, resolve_token as _gh_token, get as _gh_get, fetch_diff as _gh_fetch_diff,
+)
+from infrastructure.anthropic_api.devtools_gateway import github_generate as _call
+from application.devtools_service import (
+    review_pr, triage_issues, summarise_commits,
+    generate_pr_description_gh as generate_pr_description,
+)
+from interfaces.cli.commands.devtools_commands import (
+    cmd_gh_review_pr, cmd_gh_triage, cmd_gh_commits, cmd_gh_pr_description,
+)
 
-import json
-import os
-import urllib.request
-import urllib.error
-from typing import Optional
-import anthropic
-
-from exceptions import AICoderError
-from resilience import CircuitBreaker, retry, urlopen_json, urlopen_text
-
-GITHUB_API = "https://api.github.com"
-# Shared across all GitHub call sites in this module (issues, PRs, commits,
-# diffs) — they're all the same downstream dependency, so repeated GitHub
-# outages/rate-limiting should trip one breaker rather than one per call site.
-_breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
-
-
-@retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-def _gh_get(path: str, token: str) -> dict | list:
-    url = f"{GITHUB_API}{path}"
-    req = urllib.request.Request(url, headers={
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "ai-coder-cli/1.9.1",
-    })
-    try:
-        return urlopen_json(req, timeout=20)
-    except AICoderError as e:
-        raise RuntimeError(f"GitHub API error: {e.message}") from e
-
-
-@retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-def _gh_fetch_diff(diff_url: str, token: str, max_chars: int) -> str:
-    """Fetch a PR diff. Was previously inlined (and unretried/unhandled) at
-    both of review_pr()'s and generate_pr_description()'s call sites."""
-    req = urllib.request.Request(diff_url, headers={
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github.diff",
-    })
-    try:
-        return urlopen_text(req, timeout=30)[:max_chars]
-    except AICoderError as e:
-        raise RuntimeError(f"GitHub diff fetch error: {e.message}") from e
-
-
-def _gh_token(explicit: Optional[str]) -> str:
-    token = explicit or os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
-    if not token:
-        raise ValueError(
-            "GitHub token not found. Pass --gh-token or set GITHUB_TOKEN env var. "
-            "Create one at https://github.com/settings/tokens (needs 'repo' scope)."
-        )
-    return token
-
-
-def _call(client: anthropic.Anthropic, model: str, system: str, user: str,
-          max_tokens: int = 3000) -> str:
-    resp = client.messages.create(
-        model=model, max_tokens=max_tokens,
-        **sampling_kwargs(model, temperature=0.3),
-        system=system,
-        messages=[{"role": "user", "content": user}],
-    )
-    return resp.content[0].text.strip()
-
-
-def review_pr(repo: str, pr_number: int,
-              gh_token: str, client: anthropic.Anthropic, model: str) -> str:
-    pr = _gh_get(f"/repos/{repo}/pulls/{pr_number}", gh_token)
-    diff_url = pr.get("diff_url", "")
-    diff = _gh_fetch_diff(diff_url, gh_token, 15000)
-
-    context = (
-        f"PR #{pr_number}: {pr.get('title', '')}\n"
-        f"Author: {pr.get('user', {}).get('login', '')}\n"
-        f"Branch: {pr.get('head', {}).get('ref', '')} → {pr.get('base', {}).get('ref', '')}\n"
-        f"Body: {(pr.get('body') or '')[:1000]}\n\n"
-        f"Diff (truncated to 15k chars):\n{diff}"
-    )
-    return _call(client, model,
-                 "You are a senior software engineer reviewing a pull request. "
-                 "Comment on correctness, style, test coverage, and potential issues. "
-                 "Be specific: cite file names and line context from the diff.",
-                 context)
-
-
-def triage_issues(repo: str, max_items: int,
-                  gh_token: str, client: anthropic.Anthropic, model: str) -> str:
-    issues_raw = _gh_get(f"/repos/{repo}/issues?state=open&per_page={max_items}", gh_token)
-    if not isinstance(issues_raw, list):
-        return f"Unexpected response: {str(issues_raw)[:200]}"
-    issues_text = "\n".join(
-        f"#{i.get('number')} [{', '.join(l['name'] for l in i.get('labels', []))}] "
-        f"{i.get('title', '')} — {(i.get('body') or '')[:200]}"
-        for i in issues_raw
-    )
-    return _call(client, model,
-                 "You are a project maintainer triaging a backlog. For each issue: "
-                 "suggest a severity (critical/high/medium/low), an appropriate label, "
-                 "whether it's a bug/feature/question, and one-sentence resolution advice. "
-                 "Format as a concise table.",
-                 f"Repository: {repo}\n\nOpen issues:\n{issues_text}")
-
-
-def summarise_commits(repo: str, max_items: int,
-                      gh_token: str, client: anthropic.Anthropic, model: str) -> str:
-    commits_raw = _gh_get(f"/repos/{repo}/commits?per_page={max_items}", gh_token)
-    if not isinstance(commits_raw, list):
-        return f"Unexpected response: {str(commits_raw)[:200]}"
-    commits_text = "\n".join(
-        f"- [{c['sha'][:7]}] {c['commit']['message'].splitlines()[0]} "
-        f"({c['commit']['author']['name']}, {c['commit']['author']['date'][:10]})"
-        for c in commits_raw
-    )
-    return _call(client, model,
-                 "You are a technical writer summarising recent development activity. "
-                 "Group related commits thematically and highlight breaking changes, "
-                 "new features, bug fixes, and dependency updates.",
-                 f"Repository: {repo}\n\nRecent commits:\n{commits_text}")
-
-
-def generate_pr_description(repo: str, pr_number: int,
-                             gh_token: str, client: anthropic.Anthropic, model: str) -> str:
-    pr = _gh_get(f"/repos/{repo}/pulls/{pr_number}", gh_token)
-    diff = _gh_fetch_diff(pr.get("diff_url", ""), gh_token, 12000)
-    return _call(client, model,
-                 "Write a clear, concise PR description in Markdown. Include: "
-                 "## Summary, ## Changes, ## Testing, ## Notes. "
-                 "No filler sentences. Return only the Markdown.",
-                 f"PR title: {pr.get('title', '')}\nDiff:\n{diff}")
-
-
-# ── CLI entry points ─────────────────────────────────────────────────────────
-
-def cmd_gh_review_pr(repo_pr: str, gh_token_explicit: Optional[str],
-                     api_key: str, model: str):
-    repo, _, num = repo_pr.rpartition("/")
-    token = _gh_token(gh_token_explicit)
-    client = anthropic.Anthropic(api_key=api_key)
-    print(f"\n\033[94mReviewing PR #{num} in {repo}\033[0m\n")
-    print(review_pr(repo, int(num), token, client, model))
-
-
-def cmd_gh_triage(repo: str, max_items: int, gh_token_explicit: Optional[str],
-                  api_key: str, model: str):
-    token = _gh_token(gh_token_explicit)
-    client = anthropic.Anthropic(api_key=api_key)
-    print(f"\n\033[94mTriaging open issues in {repo}\033[0m\n")
-    print(triage_issues(repo, max_items, token, client, model))
-
-
-def cmd_gh_commits(repo: str, max_items: int, gh_token_explicit: Optional[str],
-                   api_key: str, model: str):
-    token = _gh_token(gh_token_explicit)
-    client = anthropic.Anthropic(api_key=api_key)
-    print(f"\n\033[94mCommit summary for {repo}\033[0m\n")
-    print(summarise_commits(repo, max_items, token, client, model))
-
-
-def cmd_gh_pr_description(repo_pr: str, gh_token_explicit: Optional[str],
-                           api_key: str, model: str):
-    repo, _, num = repo_pr.rpartition("/")
-    token = _gh_token(gh_token_explicit)
-    client = anthropic.Anthropic(api_key=api_key)
-    print(f"\n\033[94mGenerating PR description for #{num} in {repo}\033[0m\n")
-    print(generate_pr_description(repo, int(num), token, client, model))
+__all__ = [
+    "GITHUB_API", "_gh_token", "_gh_get", "_gh_fetch_diff", "_call",
+    "review_pr", "triage_issues", "summarise_commits", "generate_pr_description",
+    "cmd_gh_review_pr", "cmd_gh_triage", "cmd_gh_commits", "cmd_gh_pr_description",
+]

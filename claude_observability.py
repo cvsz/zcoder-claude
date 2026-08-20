@@ -1,56 +1,87 @@
 """
-claude_observability.py — Observability: structured request/response
-logging, latency histograms, and AI-powered error trend analysis.
-AI Model Coder CLI v1.10.0
+claude_observability.py — Observability (compatibility shim)
+AI Model Coder CLI v1.53.1 (Clean Architecture refactor, Phase D, Context #7)
+
+This module used to contain the full implementation (144 lines: structured
+request logging, the `observe` auto-instrumentation decorator, a latency
+histogram + report, AI-powered error-trend analysis, and 4 cmd_* CLI entry
+points). It has been split into:
+
+  domain/observability.py                             — histogram() (was
+                                                          _histogram()),
+                                                          build_latency_report()
+                                                          (pure aggregation
+                                                          half of the old
+                                                          latency_report()),
+                                                          build_request_record()
+                                                          (pure record-shaping
+                                                          half of the old
+                                                          record_request())
+  infrastructure/local_storage/observability_store.py — OBS_DIR, OBS_LOG_FILE
+                                                          (was LOG_FILE),
+                                                          log_observability_request()
+                                                          (was _log()),
+                                                          read_observability_logs()
+                                                          (was _read_logs()),
+                                                          clear_observability_log()
+  infrastructure/anthropic_api/observability_gateway.py — analyze_errors()
+                                                          (the real HTTP-call
+                                                          half of the old
+                                                          error_analysis(),
+                                                          minus its print())
+  application/observability_service.py                 — use-case layer
+  interfaces/cli/commands/observability_commands.py     — print(), the 4
+                                                          cmd_* entry points
+
+record_request() and the observe() decorator were programmatic
+instrumentation helpers, not CLI entry points (no cmd_* prefix, never
+wired to a flag) — they compose the pure domain record-builder with the
+infra log-append function directly here rather than living in
+application/observability_service.py, since that layer's Definition of
+Done requires every function there to be reachable from an
+interfaces/cli/commands/* function, which these never were even in the
+original. latency_report() and error_analysis() DID print() directly in
+the original (cmd_obs_latency/cmd_obs_errors were thin one-line
+passthroughs to them) — aliased below to the new cmd_obs_latency/
+cmd_obs_errors, which reproduce that exact printed output now that the
+print() half has moved to interfaces/ per this refactor's Definition of
+Done.
+
+This file re-exports every name the old module used to export, so
+existing imports (`from claude_observability import cmd_obs_latency`,
+etc., used by main.py) keep working unmodified. See exec-planning.md §5
+(migration playbook).
 """
 
-import json
-import math
-import time
-import uuid
-from collections import defaultdict
 from functools import wraps
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
-from datetime import datetime, timedelta
-import anthropic
+import time
+from typing import Callable, List, Optional
 
-OBS_DIR  = Path.home() / ".ai-coder" / "observability"
-LOG_FILE = OBS_DIR / "requests.jsonl"
+from domain.observability import histogram as _histogram
+from infrastructure.local_storage.observability_store import (
+    OBS_DIR, OBS_LOG_FILE as LOG_FILE,
+    log_observability_request as _log,
+    read_observability_logs as _read_logs,
+)
+from interfaces.cli.commands.observability_commands import (
+    cmd_obs_latency, cmd_obs_errors, cmd_obs_clear, cmd_obs_tail,
+)
 
-
-# ── Structured logging ────────────────────────────────────────────────────────
-
-def _log(record: Dict[str, Any]):
-    OBS_DIR.mkdir(parents=True, exist_ok=True)
-    with open(LOG_FILE, "a") as f:
-        f.write(json.dumps(record) + "\n")
-
-
-def _read_logs(hours: int = 24) -> List[Dict]:
-    if not LOG_FILE.exists(): return []
-    cutoff = (datetime.now() - timedelta(hours=hours)).isoformat()
-    records = []
-    with open(LOG_FILE) as f:
-        for line in f:
-            try:
-                r = json.loads(line)
-                if r.get("ts", "") >= cutoff: records.append(r)
-            except Exception: pass
-    return records
+# error_analysis/latency_report used to print() directly (cmd_obs_errors/
+# cmd_obs_latency were one-line passthroughs to them) — now that the
+# print() half lives in interfaces/, these old names are aliased straight
+# to the new cmd_* functions, which are behaviorally identical.
+error_analysis = cmd_obs_errors
+latency_report = cmd_obs_latency
 
 
 def record_request(model: str, prompt: str, response: str,
                    latency_ms: int, in_tokens: int, out_tokens: int,
                    error: Optional[str] = None, tags: Optional[List[str]] = None):
-    _log({"req_id": str(uuid.uuid4())[:8], "ts": datetime.now().isoformat(),
-          "model": model, "prompt_preview": prompt[:120],
-          "response_preview": response[:120] if response else "",
-          "latency_ms": latency_ms, "in_tokens": in_tokens,
-          "out_tokens": out_tokens, "error": error, "tags": tags or []})
+    from domain.observability import build_request_record
+    _log(build_request_record(model, prompt, response, latency_ms,
+                              in_tokens, out_tokens, error=error, tags=tags))
 
-
-# ── Decorator for auto-instrumentation ───────────────────────────────────────
 
 def observe(model: str = "unknown", tags: Optional[List[str]] = None):
     """Decorator: wrap any function that (a) takes prompt as first arg and
@@ -77,69 +108,8 @@ def observe(model: str = "unknown", tags: Optional[List[str]] = None):
     return decorator
 
 
-# ── Analytics ─────────────────────────────────────────────────────────────────
-
-def _histogram(values: List[float], buckets: int = 6) -> str:
-    if not values: return "(no data)"
-    lo, hi = min(values), max(values)
-    if hi == lo: return f"all values = {lo:.0f}"
-    width = (hi - lo) / buckets
-    counts = [0] * buckets
-    for v in values:
-        idx = min(int((v - lo) / width), buckets - 1)
-        counts[idx] += 1
-    lines = []
-    for i, c in enumerate(counts):
-        label = f"{lo + i*width:.0f}–{lo + (i+1)*width:.0f}"
-        bar   = "█" * max(1, int(c / max(counts) * 20)) if c else ""
-        lines.append(f"  {label:>12}ms  {bar} {c}")
-    return "\n".join(lines)
-
-
-def latency_report(hours: int = 24):
-    records = _read_logs(hours)
-    if not records: print(f"No requests in the last {hours}h."); return
-    lats = [r["latency_ms"] for r in records if "latency_ms" in r]
-    by_model: Dict[str, List[float]] = defaultdict(list)
-    for r in records: by_model[r.get("model","?")].append(r.get("latency_ms",0))
-    errors = [r for r in records if r.get("error")]
-
-    print(f"Requests (last {hours}h): {len(records)}  errors: {len(errors)}")
-    print(f"Latency — p50={sorted(lats)[len(lats)//2]:.0f}ms  "
-          f"p95={sorted(lats)[int(len(lats)*0.95)]:.0f}ms  "
-          f"avg={sum(lats)/len(lats):.0f}ms\n")
-    print("Latency histogram (ms):")
-    print(_histogram(lats))
-    print("\nBy model:")
-    for m, ls in sorted(by_model.items()):
-        avg = sum(ls)/len(ls)
-        print(f"  {m:<40} {len(ls):>4} calls  avg={avg:.0f}ms")
-
-
-def error_analysis(api_key: str, model: str, hours: int = 24):
-    records = _read_logs(hours)
-    errors  = [r for r in records if r.get("error")]
-    if not errors: print("No errors in logs."); return
-    summary = "\n".join(f"- {e['ts'][:16]} [{e['model']}] {e['error']}" for e in errors[-20:])
-    client  = anthropic.Anthropic(api_key=api_key)
-    resp = client.messages.create(
-        model=model, max_tokens=512, temperature=0,
-        system="You are an SRE. Analyse these API error logs and identify patterns + fixes.",
-        messages=[{"role": "user", "content": summary}])
-    print(resp.content[0].text)
-
-
-# ── CLI commands ──────────────────────────────────────────────────────────────
-
-def cmd_obs_latency(hours: int = 24):   latency_report(hours)
-def cmd_obs_errors(api_key: str, model: str, hours: int = 24):
-    error_analysis(api_key, model, hours)
-def cmd_obs_clear():
-    if LOG_FILE.exists(): LOG_FILE.unlink(); print("✓ Observability log cleared.")
-    else: print("No log to clear.")
-def cmd_obs_tail(n: int = 20):
-    recs = _read_logs(hours=999999)[-n:]
-    if not recs: print("No records."); return
-    for r in recs:
-        err = f" ERROR: {r['error']}" if r.get("error") else ""
-        print(f"{r['ts'][:19]}  {r['model']:<35}  {r.get('latency_ms',0):>5}ms{err}")
+__all__ = [
+    "OBS_DIR", "LOG_FILE", "_log", "_read_logs", "_histogram",
+    "record_request", "observe", "latency_report", "error_analysis",
+    "cmd_obs_latency", "cmd_obs_errors", "cmd_obs_clear", "cmd_obs_tail",
+]

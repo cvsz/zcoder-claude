@@ -15,8 +15,8 @@ We aim to acknowledge reports within 3 business days.
 
 | Version | Supported |
 |---------|-----------|
-| 1.16.x  | ✅        |
-| < 1.16  | ❌        |
+| 1.41.x  | ✅        |
+| < 1.41  | ❌        |
 
 ## Built-in security controls
 
@@ -52,6 +52,32 @@ This project ships the following controls (see `security.py`,
   have no recovery window. Every `cmd_*` that deletes something previews
   what it would do and requires an explicit `--compliance-yes` to actually
   execute, rather than acting on the first invocation.
+
+### API key types and scopes
+
+This CLI recognizes four distinct key types, each with its own blast radius:
+
+| Key type | CLI flag / env var | Scope |
+|----------|-------------------|-------|
+| Regular API key | `--api-key` / `ANTHROPIC_API_KEY` | Messages API, Tools, Files, Batch, Cache, etc. |
+| Admin API key | `--admin-api-key` / `ANTHROPIC_ADMIN_API_KEY` | Usage/Cost reporting, API key list/revoke, Enterprise User Management (Members, Invites, Groups, Roles) |
+| Compliance Access Key | `--compliance-api-key` / `ANTHROPIC_COMPLIANCE_API_KEY` | Activity Feed, read/hard-delete access to chats/files/projects, session transcripts |
+| Analytics API key | `--analytics-api-key` / `ANTHROPIC_ANALYTICS_API_KEY` | Enterprise Analytics API (`/v1/organizations/analytics/*`), decimal-string fractional-cent amounts |
+
+- **Admin API key scopes expanded (v1.38.0):** the Claude Enterprise User
+  Management API beta (`ce-user-management-2026-07-13`) added Members,
+  Invites, Groups, and read-only Custom Roles. These endpoints require an
+  Admin API key with the appropriate org-level scopes; a regular API key
+  will receive `403 Forbidden`.
+- **Analytics API key (v1.41.0):** a separate Analytics API key is required
+  for the `/v1/organizations/analytics/*` endpoint family. This key has a
+  narrower scope than the Admin API key — it can only read analytics data,
+  not manage users or keys.
+- **Workspace identity (`--whoami`, v1.41.0):** the `anthropic-workspace-id`
+  response header is now captured by `claude_response_metadata.py` and
+  exposed via `--whoami`. This does not require any special key type — it
+  works with a regular API key — but it reveals the workspace ID the key
+  resolved to, which can be useful for multi-workspace orgs.
 
 ## Known limitations / out of scope
 

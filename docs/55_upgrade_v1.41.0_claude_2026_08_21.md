@@ -31,9 +31,9 @@ Regression coverage: `tests/unit/domain/test_model_pricing_schedule.py` pins
 - `tests/unit/domain/test_skills.py`: manifest and package security regressions.
 
 This is intentionally separated from the pre-existing `claude_skills_api.py`
-Messages/container execution path so Phase D Context #9 can compose both
-surfaces through `application/platform_service.py` instead of expanding the
-legacy mixed-concern module.
+Messages/container execution path so the remaining flat-module migration can
+compose both surfaces through `application/platform_service.py` instead of
+expanding the legacy mixed-concern module.
 
 ### P1 — Managed Agents GitHub repository session resources
 
@@ -66,8 +66,8 @@ that Analytics API keys and Admin API keys are not interchangeable.
 The implementation primitives above are intentionally additive on the
 `upgrade/claude-2026-08-21` branch.  The remaining bounded integration work is:
 
-1. Fold Skills management/validation into Phase D Context #9's planned
-   `application/platform_service.py` and `interfaces/cli/commands/platform_commands.py`.
+1. Fold Skills management/validation into the remaining flat-module migration's
+   planned `application/platform_service.py` and `interfaces/cli/commands/platform_commands.py`.
 2. Compose GitHub repository resources into the already-migrated Agents
    application/interface layers while preserving the legacy `memory_store_id`
    create-session path.
@@ -85,4 +85,4 @@ The implementation primitives above are intentionally additive on the
 - existing CodeQL/security/dependency gates unchanged
 - live API smoke tests only with non-production credentials and no secret output
 
-No claim of Phase D Context #9 completion is made by this document.
+No claim of the remaining flat-module migration completion is made by this document.

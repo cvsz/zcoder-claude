@@ -31,7 +31,7 @@ not attached to a TTY.
 
 ```python
 from logging_config import get_logger
-logger = get_logger("my_module")   # -> "zcoder.my_module"
+logger = get_logger(__name__)   # -> "zcoder.domain.models.catalog"
 
 logger.info("thing_happened", extra={"key": "value"})
 logger.error("thing_failed", extra={"error_code": exc.error_code})
@@ -41,17 +41,22 @@ Use `extra={...}` for structured fields, not f-string interpolation —
 that's what makes the JSON output queryable by field instead of requiring
 regex over a message string.
 
-## 2. Application-level usage & request logs — pre-existing, unchanged
+## 2. Application-level usage & request logs — migrated to Clean Architecture
 
-- **`claude_metrics.py`** (`--metrics-show`, `--metrics-today`,
-  `--metrics-model`, `--metrics-export`) — per-call token counts, cost
-  (against a verified pricing table), and latency, logged to
-  `~/.ai-coder/metrics.jsonl`. Answers "what am I spending, on which
-  model."
-- **`claude_observability.py`** — structured request/response logging,
+- **`--metrics-show` / `--metrics-today` / `--metrics-model` /
+  `--metrics-export`** — per-call token counts, cost (against a verified
+  pricing table), and latency, logged to `~/.ai-coder/metrics.jsonl`.
+  Answers "what am I spending, on which model." Implemented in
+  `domain/observability.py` / `application/observability_service.py` /
+  `interfaces/cli/commands/observability_commands.py` with a compatibility
+  shim at `claude_metrics.py`.
+- **`--obs-latency` / `--obs-errors`** — structured request/response logging,
   latency histograms, and AI-assisted error-trend analysis, logged to
   `~/.ai-coder/observability/requests.jsonl`. Answers "is latency/error
-  rate drifting."
+  rate drifting." Implemented in `domain/observability.py` /
+  `infrastructure/local_storage/observability_store.py` /
+  `application/observability_service.py` with a compatibility shim at
+  `claude_observability.py`.
 
 These two answer *product* questions (cost, model comparison, error
 trends over days); `logging_config.py` answers *operational* questions

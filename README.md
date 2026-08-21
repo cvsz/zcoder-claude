@@ -1,5 +1,67 @@
-# AI Model Coder CLI — v1.38.0 "Claude Enterprise User Management API"
+# AI Model Coder CLI — v1.41.0 "Claude 2026-08-21 Upgrade Alignment"
 All Claude API Features + Claude Code / Agent SDK + Cowork + Plugins
+
+## New in v1.41.0 — Claude 2026-08-21 upgrade alignment
+
+Re-audited first-party Anthropic documentation and implemented the newly
+confirmed gaps. Full write-up: `docs/55_upgrade_v1.41.0_claude_2026_08_21.md`.
+
+- **Sonnet 5 pricing:** $2/$10 per MTok is now permanent (scheduled $3/$15
+  increase cancelled Aug 10, 2026). Corrected in `domain/models/catalog.py`,
+  `claude_cost_optimizer.py`, `claude_metrics.py`, `claude_sonnet5.py`.
+- **Compliance API local session transcripts** (`/apps/sessions/local`):
+  `list_local_sessions`, `get_local_session`, `get_local_session_messages`,
+  `iterate_local_session_messages` + 3 CLI flags.
+- **Compliance API remote session transcripts** (`/apps/sessions/remote`):
+  `list_remote_sessions`, `get_remote_session_messages`,
+  `iterate_remote_session_messages` + 3 CLI flags.
+- **`anthropic-workspace-id` response header:** new `claude_response_metadata.py`
+  module + `--whoami` CLI flag + 6 tests.
+- **Agent Skills management API:** new `domain/skills.py` (SKILL.md frontmatter
+  parsing, package validation) + `infrastructure/anthropic_api/
+  skills_management_gateway.py` (create/list/retrieve/delete skills and
+  versions via the `skills-2025-10-02` beta) + `tests/unit/domain/
+  test_skills.py`.
+- **Managed Agents GitHub repository session resources:** new `domain/agents/
+  session_resources.py` (validated GitHub resource, credential redaction) +
+  `infrastructure/anthropic_api/managed_session_resources_gateway.py`
+  (create/list/retrieve/rotate/delete resources) + `tests/unit/domain/
+  test_managed_session_resources.py`.
+- **Opus 4.1 retirement (Aug 5):** moved from `DEPRECATED_MODELS` to `RETIRED_MODELS`.
+- **Backfilled zero-coverage test files:** `tests/test_claude_cost_optimizer.py`
+  (14 tests), `tests/test_claude_metrics.py` (12 tests).
+- 572 tests passing.
+
+## New in v1.40.0 — `--upgrade-all` gains Opus 5 and Sonnet 5 targets
+
+Full detail in `docs/54_bugfix_upgrade_target_opus5_sonnet5.md`.
+
+**Bugfix:** `--upgrade-target` had no way to reach `claude-opus-5` or
+`claude-sonnet-5` — both already correctly listed as `"current"` tier in
+`MODEL_CATALOG`, but absent from `UPGRADE_TARGETS`. Added `opus5` and
+`sonnet5` as new choices; `opus` unchanged (still `claude-opus-4-8`,
+preserving existing script/CI behavior).
+
+## New in v1.39.0 — Managed Agents session budgets, `inference_geo`, advisor roster, and a CLI wiring gap
+
+Full detail in `docs/52_upgrade_v1.39.0_managed_agents_session_budgets.md`.
+
+**New feature:** Managed Agents session budgets (public beta, Aug 7 2026) —
+a hard USD spend cap on a session, pausing at `stop_reason=budget_reached`.
+`--agent-session-budget-usd`, `--agent-session-get`,
+`--agent-session-budget-set`, `--agent-session-budget-remove`.
+
+**New feature:** Managed Agents `inference_geo` (`"us"`/`"global"`) on
+`create_agent`/`update_agent`'s model config.
+
+**New feature:** Advisor roster — `build_multiagent_config(agents,
+advisor_model=...)` appends `{"type": "advisor", "model": ...}`.
+
+**Wiring gap fixed:** `cmd_agent_create`, `cmd_agent_get`, `cmd_agent_list`,
+`cmd_agent_update` were fully implemented but never had CLI flags — added
+`--agent-create/--agent-get/--agent-list/--agent-update`.
+
+33 new tests; 531 tests passing (507 → 531).
 
 ## New in v1.38.0 — Claude Enterprise User Management API
 
@@ -233,243 +295,6 @@ python main.py --agent-env-self-hosted my-ci-sandbox
 python main.py --agent-env-work-stats env_01AbCDefGhIjKlMnOpQrStUv
 ```
 
-## New in v1.37.0 — Opus 4.1 deprecation tracking; usage-tier & Workbench items confirmed non-gaps
-
-Implemented all three items v1.36.0 had deferred. Added a proper
-`DEPRECATED_MODELS` registry (distinct from `RETIRED_MODELS`) so an
-announced-but-not-yet-retired model like Claude Opus 4.1 has somewhere
-correct to live; wired it into `--model-info`, `--check-deprecated`, and
-`--upgrade-all`. Usage-tier consolidation and the Workbench/experimental
-prompt tools retirement were re-verified (not just re-asserted) as
-genuine non-gaps with no code path affected. First dedicated test file
-for `claude_models.py`. Full write-up:
-`docs/49_upgrade_v1.37.0_deferred_items.md`.
-
-## New in v1.36.0 — Mid-system model-gate regression, cross-file doc bookkeeping
-
-**Finding (🔴 P0, regression):** `claude_cache.py`'s `MID_SYSTEM_SUPPORTED_MODELS`
-had been stuck at `{"claude-opus-4-8"}` since the feature's v1.18.0 launch.
-The July 15, 2026 release notes corrected the platform's own earlier
-availability note to add Claude Fable 5 and Claude Mythos 5 — this module
-had baked in exactly the stale note and silently rejected valid Fable 5 /
-Mythos 5 calls ever since. Fixed; set is now `{"claude-fable-5",
-"claude-mythos-5", "claude-opus-4-8"}`, matching current docs (still
-excludes Sonnet 5 and Opus 5, confirmed unchanged).
-
-Also closes out v1.35.0's incomplete cross-file bookkeeping: `pyproject.toml`
-and this README's headline were never bumped past v1.34.0 even though the
-Dreaming audit cycle's code and CHANGELOG entry shipped, and the
-`docs/47_upgrade_v1.35.0_dreaming_audit.md` file its own CHANGELOG entry
-pointed to didn't exist. Backfilled below.
-
-Full write-up: `docs/48_upgrade_v1.36.0_mid_system_gate_fix.md`.
-
-## New in v1.35.0 — Dreaming audit: model-support expansion, missing archive, unreachable cancel
-
-First Dreaming-focused audit cycle since it was originally closed in
-v1.20.0. Fixed a `create_dream()` request-shape bug shipped unnoticed
-since v1.20.0, expanded `DREAMING_SUPPORTED_MODELS` (Fable 5, Sonnet 5),
-added the missing `archive_dream()` and wired up the already-existing but
-CLI-unreachable `cancel_dream()`, and restored `usage`/`session_id`/
-`archived_at` to `get_dream()`'s response. 19 new/changed tests (92 in
-`tests/test_claude_agents_sdk.py`, all passing). Full write-up:
-`docs/47_upgrade_v1.35.0_dreaming_audit.md`.
-
-## New in v1.34.0 — Re-validation: Opus, Sonnet, Haiku, Fable, Mythos
-
-Targeted re-audit of the five per-model modules against a fresh release-
-notes fetch. Model catalog and existing validators re-confirmed correct.
-Two real gaps closed: mid-conversation tool changes beta (Fable 5,
-Mythos 5, Opus 4.8, Opus 5 — `claude_tools.py`, `--mid-conv-tool-check`)
-and Sonnet 5's strict non-default-sampling-parameter rejection
-(`claude_sonnet5.py`'s `validate_sampling_params()`). 10 new tests.
-
-## New in v1.33.0 — Deep per-model modules: Opus 5, Sonnet 5, Haiku 4.5
-
-Dedicated modules for the three current-tier models that previously
-only had a catalog row: `claude_opus5.py` (client-side effort/thinking
-validation, `xhigh` effort budgets, unconfirmed data-residency flag),
-`claude_sonnet5.py` (date-based promo-pricing calculator, service-tier
-unsupported/inference-geo-supported flags), `claude_haiku45.py`
-(extended-thinking-only request shape, dateless model-ID alias
-resolution). `--opus5*`, `--sonnet5*`, `--haiku45*` flag groups. 30 new
-tests.
-
-## New in v1.32.0 — Claude Opus 5, fast-mode enforcement, fallbacks "default"
-
-Claude Opus 5 added to `MODEL_CATALOG`. `validate_fast_mode()` now
-actually gates `--fast-mode` against `FAST_MODE_REMOVED_ERROR`/
-`FAST_MODE_REMOVED_SILENT` instead of sending it unconditionally.
-`fallbacks` gained a `"default"` string mode alongside the existing
-list mode.
-
-## New in v1.31.0 — CLI-to-API wiring audit
-
-Found four fully-built, fully-tested modules whose `cmd_*` functions
-were never reachable from `main.py` (GitHub, Router, Prompt Optimizer,
-Metrics). Wired all of them into argparse; added
-`tests/test_cli_wiring.py` as a standing regression check so a
-fully-built-but-unwired module can't happen silently again.
-
-## New in v1.30.0 — Extended thinking / adaptive-thinking routing fix
-
-`claude_thinking.py` was sending `thinking.type: "enabled"` +
-`budget_tokens` unconditionally, a hard 400 on every model that
-requires adaptive thinking (Opus 4.8, Opus 4.7, Sonnet 5, Fable 5,
-Mythos 5, Mythos Preview). Added per-model routing so each model gets
-the request shape it actually accepts.
-
-## New in v1.29.0 — Textual TUI + web console upgrade
-
-`tui.py` (new): a full Textual-based terminal UI (`--tui`), reusing
-`Coder`, `PersonalityManager`, `SkillManager`, and `MODEL_CATALOG`
-unchanged. Web console (added v1.28.0) gained streaming, session
-persistence, and theme support.
-
-## New in v1.28.0 — Web console + Files-API fix
-
-New `webapp/` (FastAPI backend + frontend) for browser-based access.
-Fixed `claude_code_exec.py`'s `execute()`, which was attaching
-code-execution file inputs with a `document` block instead of the
-`container_upload` block the sandbox's filesystem actually requires.
-
-## New in v1.27.0 — Memory store regression fix + memory/memory-store CRUD
-
-Fixed a P0 regression: `create_memory_store()`/`list_memories()` were
-sending both `managed-agents-2026-04-01` and `agent-memory-2026-07-22`
-beta headers, a combination the platform now rejects with a 400 on
-memory endpoints. Also closed memory store management
-(`retrieve`/`update`/`list`/`archive`/`delete`) and memory CRUD
-(`retrieve`/`create`/`update`/`delete`), left unbuilt since v1.19.0/
-v1.24.0. Memory *versions* (`list`/`retrieve`/`redact`) deliberately
-deferred — no concrete use case yet.
-
-## New in v1.26.0 — Managed Agents self-hosted sandboxes
-
-`client.beta.environments.create(config={"type": "self_hosted"})` plus
-the `EnvironmentWorker` polling pattern, as an alternative to
-Anthropic's cloud sandbox for Managed Agents tool execution.
-`--agent-env-self-hosted`, `--agent-worker-poll`.
-
-## New in v1.25.0 — Extended thinking `display: "omitted"` + CMEK audit
-
-`--thinking-display omitted` skips receiving/streaming thinking content
-a caller doesn't render, while preserving the `signature` for
-multi-turn continuity (billing unchanged). Confirmed CMEK
-`external_keys` Admin API endpoints exist on standard Claude Platform;
-added read-only `--admin-cmek-list`.
-
-## New in v1.24.0 — Server tool version bumps: code_execution, web_search, web_fetch
-
-`claude_tools.py` and `claude_search.py`'s tool-version constants
-bumped to `code_execution_20260521`, `web_search_20260318`,
-`web_fetch_20260318` (the latter three versions behind before this
-cycle in `claude_search.py`). Added the opt-in `response_inclusion`
-parameter.
-
-## New in v1.23.0 — Workload Identity Federation (WIF)
-
-`claude_wif.py` (new): keyless auth via short-lived OIDC JWT exchange
-(`POST /v1/oauth/token`, RFC 7523 jwt-bearer grant) — AWS IAM, Google
-Cloud, GitHub Actions, Kubernetes, Entra ID, Okta, SPIFFE, or any
-standards-compliant OIDC issuer. Auto-detects configuration from the
-five standard `ANTHROPIC_FEDERATION_*`/`ANTHROPIC_IDENTITY_*`
-environment variables. `--wif-info`, `--wif-token`.
-
-## New in v1.22.0 — Session overrides, vault injection location, event deltas
-
-`--agent-override-json`/`--agent-override-model`/`--agent-override-system`,
-`--agent-vault-injection-location`, `--agent-stream-deltas`, and a
-`code_execution` tool version bump to `code_execution_20260120`
-(`--code-exec-version`).
-
-## New in v1.21.0 — Vaults, Scheduled deployments, native Multiagent orchestration
-
-Closes the native Multiagent orchestration item deferred at v1.20.0.
-Also adds Managed Agents Vaults & credentials
-(`--agent-vault-create`/`-add-credential`/`-list`, `--agent-vault`),
-Scheduled deployments (`--agent-schedule-create`/`-list`/`-cancel`),
-and Outcomes' file-based rubric form
-(`--agent-outcome-rubric-upload`/`-file`).
-
-## New in v1.20.0 — Dreaming, Outcomes, Webhooks (Managed Agents)
-
-Three items closed from re-running `ROADMAP.md`'s gap-audit methodology
-against platform.claude.com/docs (checked 2026-07-08); see
-`IMPLEMENTATION_CHECKLIST.md` Form 10 and `docs/33_upgrade_v1.20.0.md`
-for the full write-up. Native Managed Agents Multiagent orchestration
-was found but deliberately deferred — see that doc and `ROADMAP.md`.
-
-```bash
-# P1 -- Dreaming (research preview): curate a memory store by reviewing
-# it alongside past session transcripts, producing a new, cleaned-up
-# output store (duplicates merged, stale entries dropped, patterns
-# promoted). The input store is never modified.
-python main.py --agent-dream project-x-notes-store-id \
-    --agent-dream-sessions sesn_01,sesn_02 \
-    --agent-dream-instructions "Focus on coding-style preferences"
-python main.py --agent-dream-get drm_01AbCDefGhIjKlMnOpQrStUv
-python main.py --agent-dream-list
-
-# P1 -- Outcomes (public beta): define a rubric and let the agent iterate
-# against an independent grader until it's satisfied, instead of a
-# single plain task
-python main.py --agent-managed-run "unused, ignored when --agent-outcome is set" \
-    --agent-outcome "Build a DCF model for Costco in .xlsx" \
-    --agent-outcome-rubric rubric.md --agent-outcome-max-iter 5
-
-# P2 -- Webhooks (public beta): get notified of session/outcome/dream
-# events instead of holding an SSE stream open
-python main.py --agent-webhook-register https://example.com/hooks/agents \
-    --agent-webhook-events session.status_idle,span.outcome_evaluation_end
-```
-
-## New in v1.19.0 — Managed Agents memory stores
-
-One item closed from re-running `ROADMAP.md`'s gap-audit methodology
-against platform.claude.com/docs (checked 2026-07-08); see
-`IMPLEMENTATION_CHECKLIST.md` Form 9 and `docs/32_upgrade_v1.19.0.md`
-for the full write-up.
-
-```bash
-# P1 -- create a persistent, workspace-scoped Managed Agents memory store
-# once, then mount it into a hosted-agent session so its work survives
-# past a single throwaway session (agent-memory-2026-07-22 beta)
-python main.py --agent-memory-store-create --agent-memory-store project-x-notes
-
-python main.py --agent-managed-run "Continue the refactor from last time" \
-    --agent-memory-store project-x-notes
-```
-
-## New in v1.18.0 — Mid-conversation system messages, Cache diagnostics CLI wiring
-
-Two items closed from re-running `ROADMAP.md`'s gap-audit methodology
-against platform.claude.com/docs (checked 2026-07-08); see
-`IMPLEMENTATION_CHECKLIST.md` Forms 7–8 and `docs/31_upgrade_v1.18.0.md`
-for the full write-up.
-
-```bash
-# P1 -- update Claude's instructions partway through an already-cached
-# conversation without invalidating the cached prefix (Opus 4.8 only)
-python main.py --cache --cache-multi-turn "First question" "Follow-up question" \
-    --cache-mid-system "From now on, answer in bullet points." \
-    --cache-mid-system-after 0 --model claude-opus-4-8
-
-# P2 -- Cache diagnostics (beta): report *why* a cache read missed
-# (client-side support existed since ~v1.10.x; this flag was the only
-# missing piece, so it was previously unreachable from the CLI)
-python main.py --cache -p "..." --cache-diagnose
-```
-
-## New in v1.17.0 — Resilience wired into every direct-HTTP module
-
-No new CLI flags — internal only. Every module that talks to the Claude
-API via raw `urllib` (19 of them, not just the ones going through the
-`anthropic` SDK client) now retries transient failures (429/5xx/network)
-with exponential backoff and fails fast via a circuit breaker once a
-downstream is clearly down. External behavior is unchanged — see
-`CHANGELOG.md` for the full module list.
-
 ## New in v1.15.0 — Server-side fallback, context editing, Skills API, Admin API
 
 Five items closed out from `ROADMAP.md`'s gap audit against
@@ -699,7 +524,8 @@ and what's still open after this pass.
 
 ## Quick Start
 ```bash
-unzip ai-coder-cli-v1.9.0.zip && cd ai-coder-cli
+git clone https://github.com/cvsz/zcoder-claude && cd zcoder-claude
+pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
 python main.py -p "Write a Python web scraper"
 ```
@@ -975,7 +801,7 @@ python main.py --rag-query "how does auth work" --rag-index-name docs
 # AI-graded prompt/model evaluation suites
 python main.py --eval-scaffold suite.json
 python main.py --eval-run suite.json
-python main.py --eval-compare claude-sonnet-4-6 claude-haiku-4-5-20251001
+python main.py --eval-compare claude-sonnet-5 claude-haiku-4-5-20251001
 
 # AI-powered git: commit messages, PR descriptions, changelogs, diff review
 python main.py --git-commit --git-commit-write
@@ -1006,9 +832,6 @@ python main.py --perms-add "run_shell" ask
 python main.py --plan "Add rate limiting to the API" --plan-execute
 ```
 
-See `docs/19_upgrade_v1.10.0.md` for what was actually tested (not just
-compiled) and the known limitations of each new module.
-
 ## New in v1.9.1 — Claude Fable 5 / Mythos 5
 
 ```bash
@@ -1021,8 +844,8 @@ python main.py --fable5 "Refactor this 50k-line module for clarity"
 # Disable auto-fallback — just report the refusal and which classifier triggered it
 python main.py --fable5 "..." --fable5-no-fallback
 
-# Use a different fallback target than the default (claude-opus-4-6)
-python main.py --fable5 "..." --fallback-model claude-sonnet-4-6
+# Use a different fallback target than the default (claude-opus-4-8)
+python main.py --fable5 "..." --fallback-model claude-sonnet-5
 ```
 
 > **Confidence note:** Fable 5 / Mythos 5 details come from recent web search
@@ -1098,51 +921,125 @@ python main.py --computer-use "Open browser, go to github.com"
 python main.py --list-models
 ```
 
-## Modules (46 total, 11,050 lines)
+## Modules (67 total flat modules; 23 migrated to Clean Architecture layers)
 
-| Module | Purpose |
-|--------|---------|
-| `claude_skills_api.py` (NEW, v1.15.0) | Platform Agent Skills (`skill_id`-based); base client + `--excel-native`/`--pptx-native` primitives |
-| `claude_admin_api.py` (NEW, v1.15.0) | Admin API: Usage/Cost reporting, API key list/revoke (requires an Admin API key) |
-| `claude_mythos5.py` (NEW) | Claude Mythos 5: limited-access companion to claude_fable5.py, pointed access-gate error handling |
-| `claude_memory.py` (NEW) | Persistent cross-session memory: facts, preferences, events, tasks, retention policy |
-| `claude_sessions.py` (NEW) | Resumable sessions, named checkpoints/rewind, away-summary (repo activity while absent) |
-| `claude_live.py` (NEW) | zai-live: real-time streaming REPL with ambient background context |
-| `claude_research.py` (NEW) | Deep Research: plan sub-questions → gather (URL-grounded) → synthesize a cited report |
-| `claude_rag.py` (NEW) | Local retrieval-augmented generation over a folder, keyword/BM25-style scoring, no vector DB |
-| `claude_eval.py` (NEW) | LLM-judged eval suites; single-run and head-to-head model comparison |
-| `claude_git.py` (NEW) | AI-powered commit messages, PR descriptions, changelogs, diff review, blame explanations |
-| `claude_cost_optimizer.py` (NEW) | Complexity-based model routing (Haiku/Sonnet/Opus) + cumulative spend tracking |
-| `claude_observability.py` (NEW) | Structured request logging, latency histograms, AI-powered error-trend analysis |
-| `claude_workflow.py` (NEW) | Declarative YAML/JSON multi-step pipelines with `{{variable}}` interpolation and dependencies |
-| `claude_hooks_perms_plan.py` (NEW) | Lifecycle hooks, fine-grained tool permissions (allow/deny/ask), Plan Mode (propose→approve→execute) |
+| Legacy module (shim) | Clean Architecture location | Purpose |
+|----------------------|----------------------------|---------|
+| `claude_models.py` → | `domain/models/catalog.py`, `domain/models/pricing.py`, `domain/models/validation.py` | Model catalog, pricing, Computer Use, Adaptive/Interleaved Thinking |
+| `claude_admin_api.py` → | `domain/admin.py`, `infrastructure/anthropic_api/admin_gateway.py`, `application/admin_service.py`, `interfaces/cli/commands/admin_commands.py` | Admin API: Usage/Cost, API keys, Enterprise User Management |
+| `claude_compliance_api.py` → | `domain/compliance/`, `infrastructure/anthropic_api/compliance_gateway.py`, `application/compliance_service.py`, `interfaces/cli/commands/compliance_commands.py` | Compliance API: Activity Feed, chat/file/project CRUD, session transcripts |
+| `claude_agents_sdk.py` → | `domain/agents/`, `infrastructure/anthropic_api/agents_gateway.py`, `application/agents_service.py`, `interfaces/cli/commands/agent_commands.py` | Managed Agents, orchestration, subagents, Dreaming, session budgets |
+| `claude_messaging.py` → | `domain/messaging.py`, `infrastructure/anthropic_api/messaging_gateway.py`, `application/messaging_service.py`, `interfaces/cli/commands/messaging_commands.py` | Core Messages API client |
+| `claude_tools.py` → | `domain/tools.py`, `infrastructure/anthropic_api/tools_gateway.py`, `application/tools_service.py`, `interfaces/cli/commands/tools_commands.py` | Tool use, parallel tools, agentic runner, server tools, mid-conversation tool changes |
+| `claude_code.py` → | `domain/agent_execution.py`, `domain/code_agent.py`, `infrastructure/anthropic_api/code_agent_loop_gateway.py`, `application/code_agent_service.py`, `interfaces/cli/commands/code_agent_commands.py` | Agent SDK: sessions, tools, hooks, MCP, subagents, skills, slash cmds, todos, memory |
+| `claude_files.py` → | `domain/files.py`, `infrastructure/anthropic_api/files_gateway.py`, `application/files_service.py`, `interfaces/cli/commands/files_commands.py` | Files API upload/list/ask/download/delete |
+| `claude_batch.py` → | `domain/batch.py`, `infrastructure/anthropic_api/batch_gateway.py`, `application/batch_service.py`, `interfaces/cli/commands/batch_commands.py` | Batch API, 50% cost discount |
+| `claude_cache.py` → | `domain/cache.py`, `infrastructure/anthropic_api/cache_gateway.py`, `application/cache_service.py`, `interfaces/cli/commands/cache_commands.py` | Prompt caching, pre-warming, cache stats, mid-system messages |
+| `claude_vision.py` → | `domain/vision.py`, `infrastructure/anthropic_api/vision_gateway.py`, `application/vision_service.py`, `interfaces/cli/commands/vision_commands.py` | Images, PDFs, OCR, code from screenshot |
+| `claude_search.py` → | `domain/search.py`, `infrastructure/anthropic_api/search_gateway.py`, `application/search_service.py`, `interfaces/cli/commands/search_commands.py` | Web search, web fetch, citations |
+| `claude_code_exec.py` → | `domain/code_execution.py`, `infrastructure/anthropic_api/code_execution_gateway.py`, `application/code_execution_service.py`, `interfaces/cli/commands/code_execution_commands.py` | Code Execution tool, live debugging |
+| `claude_skills_api.py` → | `domain/skills.py`, `infrastructure/anthropic_api/skills_management_gateway.py`, `application/skills_service.py`, `interfaces/cli/commands/skills_commands.py` | Platform Agent Skills (skill_id-based), Skills management API |
+| `claude_fable5.py` | Legacy flat file (shim) | Claude Fable 5 / Mythos 5: model info, refusal detection, automatic fallback |
+| `claude_opus5.py` | Legacy flat file (shim) | Claude Opus 5: effort/thinking validation, `xhigh` effort budgets |
+| `claude_sonnet5.py` | Legacy flat file (shim) | Claude Sonnet 5: date-based promo-pricing calculator, service-tier flags |
+| `claude_haiku45.py` | Legacy flat file (shim) | Claude Haiku 4.5: extended-thinking-only request shape, alias resolution |
+| `claude_git.py` → | `domain/devtools.py`, `infrastructure/local_storage/devtools_store.py`, `infrastructure/github_api/github_gateway.py`, `infrastructure/anthropic_api/devtools_gateway.py`, `application/devtools_service.py`, `interfaces/cli/commands/devtools_commands.py` | AI-powered commit messages, PR descriptions, changelogs, diff review |
+| `claude_github.py` → | `domain/devtools.py`, `infrastructure/github_api/github_gateway.py` | GitHub API client (repos, issues, PRs) |
+| `claude_chrome.py` → | `domain/devtools.py`, `infrastructure/anthropic_api/devtools_gateway.py` | Browser automation via Chrome |
+| `claude_cost_optimizer.py` → | `domain/observability.py`, `infrastructure/local_storage/observability_store.py`, `application/observability_service.py` | Complexity-based model routing + cumulative spend tracking |
+| `claude_metrics.py` → | `domain/observability.py`, `infrastructure/local_storage/observability_store.py`, `application/observability_service.py` | Request logging, latency histograms |
+| `claude_observability.py` → | `domain/observability.py`, `infrastructure/local_storage/observability_store.py`, `infrastructure/anthropic_api/observability_gateway.py`, `application/observability_service.py` | AI-powered error-trend analysis |
+| `claude_eval.py` | Legacy flat file (shim) | LLM-judged eval suites |
+| `claude_memory.py` | Legacy flat file (shim) | Persistent cross-session memory |
+| `claude_sessions.py` | Legacy flat file (shim) | Resumable sessions, named checkpoints/rewind |
+| `claude_live.py` | Legacy flat file (shim) | zai-live: real-time streaming REPL |
+| `claude_research.py` | Legacy flat file (shim) | Deep Research: plan → gather → synthesize |
+| `claude_rag.py` | Legacy flat file (shim) | Local retrieval-augmented generation |
+| `claude_workflow.py` | Legacy flat file (shim) | Declarative YAML/JSON pipelines |
+| `claude_hooks_perms_plan.py` | Legacy flat file (shim) | Lifecycle hooks, permissions, Plan Mode |
+| `claude_plugins.py` | Legacy flat file (shim) | Plugin system: marketplaces, install/uninstall |
+| `claude_output_styles.py` | Legacy flat file (shim) | Output styles: built-in + custom/plugin |
+| `claude_settings.py` | Legacy flat file (shim) | Layered settings.json precedence |
+| `claude_sandbox.py` | Legacy flat file (shim) | Sandboxed Bash: filesystem + network isolation |
+| `claude_structured.py` | Legacy flat file (shim) | Structured outputs, JSON schema |
+| `claude_citations.py` | Legacy flat file (shim) | Document citations, search result citations |
+| `claude_thinking.py` | Legacy flat file (shim) | Extended thinking, effort levels, streaming thinking |
+| `claude_stream.py` | Legacy flat file (shim) | Real-time streaming |
+| `claude_tokens.py` | Legacy flat file (shim) | Token counting, budget checking |
+| `claude_advisor.py` | Legacy flat file (shim) | Advisor tool: pair fast executor with stronger advisor model |
+| `claude_wif.py` | Legacy flat file (shim) | Workload Identity Federation (WIF) |
+| `claude_interactive.py` | Legacy flat file (shim) | Interactive chat mode |
+| `claude_prompt_optimizer.py` | Legacy flat file (shim) | Prompt optimization |
+| `claude_response_metadata.py` | Legacy flat file | `anthropic-workspace-id` response header capture (`--whoami`) |
+| `claude_sonnet5.py` | Legacy flat file (shim) | Sonnet 5-specific pricing and validation |
+| `cowork.py` | Legacy flat file (shim) | 12 Cowork task types with specialist system prompts |
+| `projects.py` | Legacy flat file (shim) | Feature Projects |
+| `artifacts.py` | Legacy flat file (shim) | Versioned Artifacts |
+| `main.py` | CLI entry point (not migrated) | CLI entry point, all flags, dispatch |
+| `personalities.py` | Legacy flat file | Built-in personality presets |
+| `settings.py` | Legacy flat file | Settings loader |
+| `security.py` | Legacy flat file | Path traversal, secret redaction, URL scheme allow-listing |
+| `logging_config.py` | Legacy flat file | Structured logging, RedactingFilter |
+| `resilience.py` | Legacy flat file | Retry, timeout, circuit-breaker |
+| `utils.py` | Legacy flat file | Shared helpers |
+| `health.py` | Legacy flat file | Health checks |
+| `coder.py` | Legacy flat file | Core `Coder` class |
+| `skills/` | Legacy flat directory | Local .claude/skills/* SKILL.md loader |
+| `mcp.py` | Legacy flat file | MCP server/client |
+| `voyage.py` | Legacy flat file | Voyage AI embeddings (RAG) |
+| `webapp/` | Separate web UI | Browser-based chat UI (FastAPI + static assets) |
 
-| Module | Purpose |
-|--------|---------|
-| `claude_code.py` (1386L) | Agent SDK: sessions, tools, hooks, MCP, subagents, skills, slash cmds, todos, memory |
-| `claude_plugins.py` (NEW) | Plugin system: marketplaces, install/uninstall, skills/commands/agents/hooks/MCP loading |
-| `claude_fable5.py` (219L) | Claude Fable 5 / Mythos 5: model info, refusal detection, automatic fallback |
-| `claude_output_styles.py` (NEW) | Output styles: built-in + custom/plugin .md styles |
-| `claude_settings.py` (NEW) | Layered settings.json precedence, statusLine |
-| `claude_sandbox.py` (NEW) | Sandboxed Bash: filesystem + network isolation |
-| `claude_cache.py` (297L) | Prompt caching, pre-warming, cache stats |
-| `cowork.py` (448L) | 12 Cowork task types with specialist system prompts |
-| `claude_tools.py` (375L) | Tool use, parallel tools, agentic runner, server tools |
-| `claude_agents_sdk.py` (332L) | Managed agents, orchestration, subagents |
-| `claude_models.py` (286L) | Models API, Computer Use, Adaptive/Interleaved Thinking |
-| `claude_files.py` (272L) | Files API upload/list/ask/download/delete |
-| `claude_batch.py` (258L) | Batch API, 50% cost discount |
-| `claude_structured.py` (210L) | Structured outputs, JSON schema, code analysis |
-| `claude_code_exec.py` (210L) | Code Execution tool, live debugging |
-| `claude_citations.py` (202L) | Document citations, search result citations, RAG |
-| `claude_thinking.py` (189L) | Extended thinking, effort levels, streaming thinking |
-| `claude_vision.py` (182L) | Images, PDFs, OCR, code from screenshot |
-| `claude_search.py` (136L) | Web search, web fetch, citations |
-| `claude_stream.py` (117L) | Real-time streaming |
-| `claude_tokens.py` (109L) | Token counting, budget checking |
-| `projects.py` (469L) | Feature Projects |
-| `artifacts.py` (435L) | Versioned Artifacts |
-| `main.py` (521L) | CLI entry point, all flags |
+## Codebase Structure
+
+This project is mid-refactor from 67 flat `claude_*.py` files to **Clean
+Architecture** (4 layers + compatibility shims). Every migrated feature keeps
+its original flat-file name as a shim so existing imports and `python main.py`
+invocations are unaffected.
+
+```
+domain/                    # Pure business rules, no I/O, no print()
+├── models/               #   Catalog, pricing schedules, validation
+├── agents/               #   Agent configs, session resources
+├── compliance/           #   Compliance domain objects
+├── messaging.py          #   Messages API request/response shapes
+├── tools.py              #   Tool-use domain rules
+├── cache.py              #   Prompt-cache domain rules
+├── files.py, batch.py, vision.py, search.py, ...
+└── devtools.py           #   Git, GitHub, browser domain rules
+
+infrastructure/           # I/O adapters (Anthropic SDK, filesystem, subprocess)
+├── anthropic_api/        #   One *_gateway.py per API surface
+├── github_api/           #   Separate-vendor precedent (mirrors voyage_api/)
+├── local_storage/        #   JSON/disk-backed stores (observability, devtools)
+├── voyage_api/           #   Voyage embeddings
+└── ...
+
+application/              # Use-case layer (orchestrates domain + infra)
+├── agents_service.py     #   Managed Agents, Dreaming, session budgets
+├── messaging_service.py  #   Core Messages API
+├── admin_service.py      #   Admin API, User Management
+├── compliance_service.py #   Compliance API
+├── observability_service.py # Cost, metrics, evals
+├── code_agent_service.py #   Agent SDK
+├── tools_service.py      #   Tool Use
+├── files_service.py      #   Files API
+├── batch_service.py      #   Batch API
+├── cache_service.py      #   Prompt caching
+├── skills_service.py     #   Skills management
+├── devtools_service.py   #   Git, GitHub, browser
+└── ...
+
+interfaces/               # Entry points
+├── cli/commands/         #   One *_commands.py per feature (Textual TUI wired in)
+└── web/                  #   Future web UI target
+
+compatibility shims/      # Legacy flat files that re-export from the layers above
+```
+
+**Why:** each flat file mixed HTTP client, business rules, and `print()` in
+one place. That caused real bugs (Sonnet 5's price duplicated across 4 files
+and went stale in 3 simultaneously). The shim layer means `python main.py`
+and all existing scripts keep working while the migration proceeds.
 
 ## Storage
 ```

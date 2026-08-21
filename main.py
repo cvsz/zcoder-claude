@@ -23,7 +23,7 @@ from pathlib import Path
 # second hardcoded list drifting from it.
 from personalities import PERSONALITIES
 
-VERSION = "1.39.0"
+VERSION = "1.41.0"
 BANNER  = f"\033[94mAI Model Coder CLI v{VERSION}\033[0m"
 
 # Named agent roles. Previously these seven names only existed as a

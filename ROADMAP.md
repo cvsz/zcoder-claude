@@ -1,9 +1,9 @@
 # ROADMAP.md
 
-**AI Model Coder CLI (zcoder) — v1.32.0**
-Last audited against `platform.claude.com/docs`: 2026-07-26 (release
-notes overview, full July 14→24 window — see
-`docs/44_upgrade_v1.32.0_release_validation.md`)
+**AI Model Coder CLI (zcoder) — v1.41.0**
+Last audited against `platform.claude.com/docs`: 2026-08-21 (release
+notes overview through Aug 11, 2026 — see
+`docs/55_upgrade_v1.41.0_claude_2026_08_21.md`)
 
 v1.32.0 re-fetched `platform.claude.com/docs/en/release-notes/overview`
 directly and found **Claude Opus 5** (launched 2026-07-24) entirely
@@ -733,9 +733,7 @@ concluding a feature is missing, not just one pattern match.
 
 ## Note on cycles after v1.27.0
 
-Audit cycles from v1.28.0 through v1.36.0 are documented in `CHANGELOG.md`
+Audit cycles from v1.28.0 through v1.41.0 are documented in `CHANGELOG.md`
 (high-level index) and their individual `docs/*_upgrade_*.md` writeups
-rather than as new sections in this file — this file's Part 2 gap-audit
-narrative wasn't kept current past v1.27.0 in practice, matching the same
-pattern `CHECKLIST.md` notes about itself. `CHANGELOG.md` is the
+rather than as new sections in this file. `CHANGELOG.md` is the
 authoritative index of every cycle in order.

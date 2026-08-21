@@ -1,20 +1,19 @@
 # CHECKLIST.md
 
-**zcoder v1.36.0 — Roadmap Execution Checklist**
+**zcoder v1.41.0 — Roadmap Execution Checklist**
 Derived from `ROADMAP.md` Part 2 (Gap Audit vs. `platform.claude.com/docs`,
-originally checked 2026-07-04, kept current through the v1.33.0 cycle
-checked 2026-07-26). Cycles v1.34.0–v1.36.0 aren't backfilled into the
-form-style sections below — see `CHANGELOG.md` and their respective
-`docs/*_upgrade_*.md` writeups instead.
+originally checked 2026-07-04, kept current through the v1.41.0 cycle
+checked 2026-08-21). Cycles v1.34.0–v1.41.0 are backfilled below from
+`CHANGELOG.md` and their respective `docs/*_upgrade_*.md` writeups.
 
-Every gap-audit cycle from v1.15.0 through v1.33.0 is represented below,
+Every gap-audit cycle from v1.15.0 through v1.41.0 is represented below,
 in order. Check off each sub-task as it lands; a priority group is only
 "done" when every box under it is checked **and** the shared Definition
 of Done at the bottom passes.
 
 This file previously stopped being updated after the v1.20.0 cycle even
 though the project kept shipping audit cycles through v1.33.0; the
-sections below for v1.21.0 through v1.33.0 backfill that gap from
+sections below for v1.21.0 through v1.41.0 backfill that gap from
 `ROADMAP.md`, `CHANGELOG.md`, and the corresponding `docs/*` writeups so
 this file is a complete index again, not just current through 2026-07-08.
 
@@ -392,6 +391,61 @@ this file is a complete index again, not just current through 2026-07-08.
 - [x] No regression to existing default behavior — every new capability is opt-in (`context_management=None` default, `fallback_chain` unset falls through to the existing manual-retry path, Admin/Compliance API calls only fire when their flags are passed, every Compliance destructive op is dry-run unless `--compliance-yes` is also passed, `mid_system`/`mid_system_updates` default to `None`/`{}`, `diagnose` defaults to `False`, `memory_store_id` defaults to `None`, and `outcome_description`/`outcome_rubric` default to `None` so existing callers are unaffected)
 - [x] `ROADMAP.md` Part 1 coverage table updated to move the item from Part 2 (gap) into Part 1 (implemented) — confirmed present for all twelve implemented items (native Multiagent orchestration intentionally stays in the gap/defer section, not Part 1)
 
+## 🔴 P0 bug fix + 🟠 P1 — Dreaming audit: model-support expansion, missing archive, unreachable cancel ✅ DONE (v1.35.0)
+
+- [x] `create_dream()` sent `model={"id": model}` instead of plain string — fixed with regression test
+- [x] `DREAMING_SUPPORTED_MODELS` expanded (Fable 5, Sonnet 5)
+- [x] `archive_dream()` added; `cancel_dream()` wired to CLI
+- [x] `get_dream()` restored `usage`/`session_id`/`archived_at`
+- [x] 19 new/changed tests (92 in `tests/test_claude_agents_sdk.py`)
+
+## 🔴 P0 bug fix — Mid-system model-gate regression (Fable 5/Mythos 5 silently rejected) + cross-file doc bookkeeping ✅ DONE (v1.36.0)
+
+- [x] `MID_SYSTEM_SUPPORTED_MODELS` corrected to `{"claude-fable-5", "claude-mythos-5", "claude-opus-4-8"}`
+- [x] Cross-file bookkeeping: `pyproject.toml`, README headline, missing `docs/47_*.md` backfilled
+- [x] 2 net new tests; full suite 477 passed
+
+## 🟠 P1 — Deferred items: Opus 4.1 deprecation registry, usage-tier consolidation, Workbench retirement ✅ DONE (v1.37.0)
+
+- [x] `DEPRECATED_MODELS` registry added (distinct from `RETIRED_MODELS`)
+- [x] Wired into `--model-info`, `--check-deprecated`, `--upgrade-all`
+- [x] Usage-tier consolidation and Workbench retirement re-verified as non-gaps
+- [x] First dedicated test file for `claude_models.py`
+
+## 🟠 P1 — Claude Enterprise User Management API (Members, Invites, Groups, Roles) + wiring gap fix ✅ DONE (v1.38.0)
+
+- [x] 19 new `AdminApiClient` methods in `claude_admin_api.py`
+- [x] 15 new CLI flags (`--members-*`, `--invite-*`, `--group-*`, `--roles-list`, `--role-permissions`)
+- [x] Wiring gap fixed: 15 `cmd_*` functions given CLI flags
+- [x] 30 new tests in `tests/test_claude_admin_api.py`
+
+## 🟠 P1 — Managed Agents session budgets, `inference_geo`, advisor roster + CLI wiring gap (4 unwired functions) ✅ DONE (v1.39.0)
+
+- [x] `--agent-session-budget-usd`, `--agent-session-get`, `--agent-session-budget-set`, `--agent-session-budget-remove`
+- [x] `inference_geo` (`"us"`/`"global"`) on `create_agent`/`update_agent`
+- [x] Advisor roster: `build_multiagent_config(agents, advisor_model=...)`
+- [x] Wiring gap fixed: `--agent-create/--agent-get/--agent-list/--agent-update`
+- [x] 33 new tests; 531 tests passing (507 → 531)
+
+## 🔴 P0 — `--upgrade-all` had no path to `claude-opus-5` or `claude-sonnet-5` ✅ DONE (v1.40.0)
+
+- [x] Added `opus5` and `sonnet5` to `UPGRADE_TARGETS`
+- [x] `--upgrade-target` accepts new choices; `opus` unchanged (`claude-opus-4-8`)
+- [x] 3 regression tests added
+- [x] Full suite 689/689 green
+
+## 🟠 P1 — Sonnet 5 pricing correction ($2/$10 permanent), Compliance API local/remote session transcripts, `anthropic-workspace-id` header (`--whoami`) ✅ DONE (v1.41.0)
+
+- [x] Sonnet 5 pricing corrected: $2/$10 permanent (scheduled $3/$15 cancelled Aug 10)
+- [x] Compliance API local session transcripts: `list_local_sessions`, `get_local_session`, `get_local_session_messages`, `iterate_local_session_messages` + 3 CLI flags
+- [x] Compliance API remote session transcripts: `list_remote_sessions`, `get_remote_session_messages`, `iterate_remote_session_messages` + 3 CLI flags
+- [x] `anthropic-workspace-id` response header: new `claude_response_metadata.py` + `--whoami` CLI flag + 6 tests
+- [x] Agent Skills management API: `domain/skills.py` + `infrastructure/anthropic_api/skills_management_gateway.py` + `tests/unit/domain/test_skills.py`
+- [x] Managed Agents GitHub repository session resources: `domain/agents/session_resources.py` + `infrastructure/anthropic_api/managed_session_resources_gateway.py` + `tests/unit/domain/test_managed_session_resources.py`
+- [x] Opus 4.1 moved from `DEPRECATED_MODELS` to `RETIRED_MODELS`
+- [x] Backfilled `tests/test_claude_cost_optimizer.py` (14 tests), `tests/test_claude_metrics.py` (12 tests)
+- [x] 572 tests passing
+
 ---
 
 ## Priority Summary (for quick reference)
@@ -425,3 +479,10 @@ this file is a complete index again, not just current through 2026-07-08.
 | 🔴 P0 | Claude Opus 5 model-catalog gap + fast-mode enforcement bug + fallbacks "default" | ✅ Done (v1.32.0) |
 | 🟡 P2 | Deep per-model modules: Opus 5, Sonnet 5, Haiku 4.5 | ✅ Done (v1.33.0) |
 | 🟠 P1 / 🟡 P2 | Re-validation: Opus, Sonnet, Haiku, Fable, Mythos (mid-conv tool changes, Sonnet 5 sampling guard) | ✅ Done (v1.34.0) |
+| 🔴 P0 | Dreaming bug: wrong `model` request shape + model-support expansion + missing `archive_dream()` + unreachable `cancel_dream()` | ✅ Done (v1.35.0) |
+| 🔴 P0 | Mid-system model-gate regression (Fable 5/Mythos 5 silently rejected) + cross-file doc bookkeeping | ✅ Done (v1.36.0) |
+| 🟠 P1 | Deferred items: Opus 4.1 deprecation registry, usage-tier consolidation, Workbench retirement | ✅ Done (v1.37.0) |
+| 🟠 P1 | Claude Enterprise User Management API (Members, Invites, Groups, Roles) + wiring gap fix | ✅ Done (v1.38.0) |
+| 🟠 P1 | Managed Agents session budgets, `inference_geo`, advisor roster + CLI wiring gap (4 unwired functions) | ✅ Done (v1.39.0) |
+| 🔴 P0 | `--upgrade-all` had no path to `claude-opus-5` or `claude-sonnet-5` | ✅ Done (v1.40.0) |
+| 🟠 P1 | Sonnet 5 pricing correction ($2/$10 permanent), Compliance API local/remote session transcripts, `anthropic-workspace-id` header (`--whoami`) | ✅ Done (v1.41.0) |

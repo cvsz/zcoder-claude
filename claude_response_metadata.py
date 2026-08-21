@@ -1,6 +1,6 @@
 """
 claude_response_metadata.py — Claude API response header metadata
-AI Model Coder CLI v1.40.0
+AI Model Coder CLI v1.41.0
 
 Why this module exists: the Claude API release notes (2026-08-11) added the
 `anthropic-workspace-id` response header to every Messages API response —

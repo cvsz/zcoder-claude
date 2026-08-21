@@ -6,6 +6,34 @@ high-level index. Two project lineages (`ai-coder-cli-v1`, the modular
 single-`coder.py` CLI with its own PyInstaller packaging) were merged into
 this release; see "v1.12.0" below for exactly what came from where.
 
+## v1.41.0 — Claude 2026-08-21 upgrade alignment
+
+Full detail in `docs/55_upgrade_v1.41.0_claude_2026_08_21.md`.
+
+**Pricing correction:** Sonnet 5's scheduled $3/$15 MTok increase (Oct 2026)
+was cancelled Aug 10, 2026 — the $2/$10 rate is now permanent. Corrected in
+`domain/models/catalog.py`, `claude_cost_optimizer.py`, `claude_metrics.py`,
+`claude_sonnet5.py`.
+
+**New feature:** Compliance API session transcripts — local
+(`/apps/sessions/local`) and remote (`/apps/sessions/remote`) session message
+retrieval. `list_local_sessions`, `get_local_session`,
+`get_local_session_messages`, `iterate_local_session_messages`,
+`list_remote_sessions`, `get_remote_session_messages`,
+`iterate_remote_session_messages` + 6 CLI flags.
+
+**New feature:** `anthropic-workspace-id` response header capture — new
+`claude_response_metadata.py` module + `--whoami` CLI flag + 6 tests.
+
+**Model lifecycle:** Opus 4.1 officially retired Aug 5 2026 — moved from
+`DEPRECATED_MODELS` to `RETIRED_MODELS`.
+
+**Backfills:** `tests/test_claude_cost_optimizer.py` (14 tests),
+`tests/test_claude_metrics.py` (12 tests).
+
+572 tests passing (507 → 572; v1.38.0's 488 + v1.39.0's 33 + v1.40.0's
+backfills + v1.41.0's new tests, 0 failing).
+
 ## v1.40.0 — `--upgrade-all` gains Opus 5 and Sonnet 5 targets
 
 Full detail in `docs/54_bugfix_upgrade_target_opus5_sonnet5.md`.

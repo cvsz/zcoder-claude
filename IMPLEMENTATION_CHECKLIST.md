@@ -1,4 +1,4 @@
-# IMPLEMENTATION CHECKLIST (Form) — zcoder v1.16.0
+# IMPLEMENTATION CHECKLIST (Form) — zcoder v1.41.0
 
 Source: `ROADMAP.md` Part 2 — Gap Audit vs. `platform.claude.com/docs` (checked 2026-07-04)
 One form per gap. All six gaps are now done — Forms 1–5 shipped in
@@ -724,4 +724,195 @@ narrative writeups this form-style tracker summarizes.
   confirming the five model modules still match the live docs, not
   assuming they do because they were correct at v1.33.0. Most of the
   catalog and validators held up; the two gaps found were both real
-  and both defensive/beta-adoption gaps rather than active bugs.
+   and both defensive/beta-adoption gaps rather than active bugs.
+
+---
+
+## Form 17 — 🟠 P1: Dreaming audit — model-support expansion, missing archive, unreachable cancel
+
+| Field | Value |
+|---|---|
+| Priority | 🟠 P1 |
+| Module(s) affected | `claude_agents_sdk.py` |
+| Est. effort | ~260 lines + tests |
+| Owner | zcoder maintainers |
+| Target date | v1.35.0 |
+| Status | ☑ Done |
+
+**Task list**
+- [x] **Bug found:** `create_dream()` sent `model={"id": model}` instead of plain string `model=model` — no test asserted on the kwarg shape, so it shipped in v1.20.0 unnoticed for 15 versions. Fixed with regression test.
+- [x] `DREAMING_SUPPORTED_MODELS` expanded to include Claude Fable 5 and Claude Sonnet 5 (July 10, 2026 release note); added `validate_dreaming_model()`
+- [x] `archive_dream()` entirely missing despite create/get/list/cancel all shipping in v1.20.0 — added `ManagedAgentsClient.archive_dream()`, `cmd_agent_dream_archive()`, `--agent-dream-archive`
+- [x] `cancel_dream()` existed at client layer since v1.20.0 but had zero CLI wiring — added `cmd_agent_dream_cancel()`, `--agent-dream-cancel`
+- [x] `get_dream()` dropped `usage`, `session_id`, `archived_at` from response — all three now surfaced
+- [x] `list_dreams()` gained pagination (`limit`/`page`) plus `--agent-dream-list-limit/-page/-include-archived`
+- [x] `instructions` 4,096-char soft limit via `validate_dreaming_instructions()`
+- [x] 19 new/changed tests in `tests/test_claude_agents_sdk.py` (92 total)
+
+**Sign-off**
+- Reviewed by: zcoder maintainers  Date: v1.35.0 release
+- Notes: This cycle also surfaced the project's own documentation-trail failure mode (code+tests complete but the writeup file, version bump, and README headline silently didn't happen — fixed in v1.36.0).
+
+---
+
+## Form 18 — 🔴 P0 bug fix: Mid-conversation system-message model gate regression
+
+| Field | Value |
+|---|---|
+| Priority | 🔴 P0 |
+| Module(s) affected | `claude_cache.py` |
+| Est. effort | ~20 lines + tests |
+| Owner | zcoder maintainers |
+| Target date | v1.36.0 |
+| Status | ☑ Done |
+
+**Task list**
+- [x] `MID_SYSTEM_SUPPORTED_MODELS` had been `{"claude-opus-4-8"}` since v1.18.0 — July 15, 2026 release notes corrected the platform's own earlier availability note to add Fable 5 and Mythos 5. Module had frozen in the pre-correction state and silently rejected valid calls ever since.
+- [x] Fixed: `MID_SYSTEM_SUPPORTED_MODELS = {"claude-fable-5", "claude-mythos-5", "claude-opus-4-8"}`
+- [x] Updated four stale "Opus 4.8 only" docstring/comment references
+- [x] Rewrote stale test (`test_mid_system_supported_models_is_opus_4_8_only` → `test_mid_system_supported_models_matches_docs`); added parametrized Fable 5/Mythos 5 coverage
+- [x] Cross-file bookkeeping: v1.35.0 had shipped with working code and an accurate CHANGELOG entry, but `pyproject.toml` version, the referenced `docs/47_*.md` writeup, and README headline never landed — all three backfilled
+- [x] 2 net new tests (1 rewritten + 1 regression); full suite 477 passed
+
+**Sign-off**
+- Reviewed by: zcoder maintainers  Date: v1.36.0 release
+- Notes: First cycle where the finding was "previously-correct code broken by a platform change" rather than "code never written."
+
+---
+
+## Form 19 — 🟠 P1: Closing v1.36.0's deferred items
+
+| Field | Value |
+|---|---|
+| Priority | 🟠 P1 |
+| Module(s) affected | `claude_models.py`, `claude_admin_api.py` |
+| Est. effort | ~200 lines + tests |
+| Owner | zcoder maintainers |
+| Target date | v1.37.0 |
+| Status | ☑ Done |
+
+**Task list**
+- [x] **Opus 4.1 deprecation (implemented):** Added `DEPRECATED_MODELS` — a new registry distinct from `RETIRED_MODELS` for "announced retirement, still callable today." Wired into `check_deprecated()`, `cmd_model_info()`, `cmd_check_deprecated()`, and `_upgrade_source_ids()`. New `tests/test_claude_models_deprecation.py` (8 tests) — `claude_models.py`'s first dedicated test file.
+- [x] **Usage tier consolidation (confirmed non-gap):** Re-verified — no hardcoded old tier numbering anywhere in the tree; existing `--rate-limits`/`--rate-limits-workspace` (v1.23.0) read whatever the Rate Limits API returns with no hardcoded values.
+- [x] **Workbench / experimental prompt tools retirement (confirmed non-gap):** zcoder never called `/v1/experimental/{generate,improve,templatize}_prompt` — no client, flag, or test to remove. Deliberately not adding new support three weeks before those endpoints stop working.
+
+**Sign-off**
+- Reviewed by: zcoder maintainers  Date: v1.37.0 release
+- Notes: 485 tests passing, no regressions.
+
+---
+
+## Form 20 — 🟠 P1: Claude Enterprise User Management API + wiring gap
+
+| Field | Value |
+|---|---|
+| Priority | 🟠 P1 |
+| Module(s) affected | `claude_admin_api.py`, `main.py` |
+| Est. effort | ~500 lines + tests |
+| Owner | zcoder maintainers |
+| Target date | v1.38.0 |
+| Status | ☑ Done |
+
+**Task list**
+- [x] Confirmed absent before this cycle — grep for `ce-user-management|rbac_group|rbac_role` across whole tree returned empty
+- [x] 19 new `AdminApiClient` methods: Members (list/get/update/remove), Invites (create/list/get/withdraw), Groups (list/get/create/rename/delete/members/add/remove), Custom Roles (list/get/permissions — read-only)
+- [x] 15 new `cmd_*` functions + CLI flags under new "Claude Enterprise User Management (v1.38.0, beta)" argparse group
+- [x] **Wiring gap found and fixed same cycle:** the 15 new `cmd_*` functions were never given CLI flags in `main.py` — exactly what `tests/test_cli_wiring.py` (v1.31.0) exists to catch. Added full flag set + dispatch + 7 targeted tests.
+- [x] 30 new tests in `tests/test_claude_admin_api.py` (14 → 44 total)
+- [x] Bumped `main.py`'s `VERSION` and `pyproject.toml`'s `version` to `1.38.0`
+- [x] Re-confirmed as already correct: mid-conversation tool changes on Opus 5, server-side fallback "default" mode, API key `expires_at`, `agent-memory-2026-07-22` header, Opus 4.7 fast-mode removal
+
+**Sign-off**
+- Reviewed by: zcoder maintainers  Date: v1.38.0 release
+- Notes: 488 tests passing (excluding two pre-existing environment gaps).
+
+---
+
+## Form 21 — 🟠 P1: Managed Agents session budgets, inference_geo, advisor roster + CLI wiring gap
+
+| Field | Value |
+|---|---|
+| Priority | 🟠 P1 |
+| Module(s) affected | `claude_agents_sdk.py`, `main.py` |
+| Est. effort | ~400 lines + tests |
+| Owner | zcoder maintainers |
+| Target date | v1.39.0 |
+| Status | ☑ Done |
+
+**Task list**
+- [x] Session budgets (public beta, Aug 7 2026): `create_session(..., budget_usd_cents=None)`, `get_session()`, `update_session_budget()` — hard USD spend cap, pauses session at `stop_reason=budget_reached`
+- [x] Managed Agents `inference_geo` (`"us"`/`"global"`) on `create_agent`/`update_agent`'s model config — nested request shape, distinct from Messages API's top-level `inference_geo`
+- [x] Advisor roster: `build_multiagent_config(agents, advisor_model=...)` appends `{"type": "advisor", "model": ...}` roster entry
+- [x] **Wiring gap found and fixed:** `cmd_agent_create`, `cmd_agent_get`, `cmd_agent_list`, `cmd_agent_update` fully implemented but never given CLI flags — caught by `tests/test_cli_wiring.py`. Added `--agent-create/--agent-get/--agent-list/--agent-update` and dispatch.
+- [x] 33 new tests in `tests/test_claude_agents_sdk.py`; 531 tests passing (507 → 531)
+
+**Sign-off**
+- Reviewed by: zcoder maintainers  Date: v1.39.0 release
+- Notes: Scope this cycle was Managed Agents budgets/advisor/inference_geo only — GitHub-repo skill discovery, Enterprise inference hooks, Compliance API remote/local session transcripts, `anthropic-workspace-id` metadata, and model-registry re-sweep were not investigated and remain open.
+
+---
+
+## Form 22 — 🔴 P0 bug fix: `--upgrade-all` had no path to Opus 5 or Sonnet 5
+
+| Field | Value |
+|---|---|
+| Priority | 🔴 P0 |
+| Module(s) affected | `domain/models/catalog.py`, `main.py` |
+| Est. effort | ~30 lines + tests |
+| Owner | zcoder maintainers |
+| Target date | v1.40.0 |
+| Status | ☑ Done |
+
+**Task list**
+- [x] `UPGRADE_TARGETS` only had `fable5` and `opus` (pointing at `claude-opus-4-8`) — `claude-opus-5` and `claude-sonnet-5` were current-tier but unreachable as upgrade targets
+- [x] Added `"opus5": "claude-opus-5"` and `"sonnet5": "claude-sonnet-5"` to `UPGRADE_TARGETS`; left `"opus"` pointing at `claude-opus-4-8` for backward compatibility
+- [x] 3 new tests confirming both new targets rewrite correctly and `opus` is unchanged
+- [x] Full suite: 689/689 green
+
+**Sign-off**
+- Reviewed by: zcoder maintainers  Date: v1.40.0 release
+- Notes: Small, targeted bugfix — not part of the Clean Architecture migration.
+
+---
+
+## Form 23 — 🟠 P1: Claude 2026-08-21 upgrade alignment
+
+| Field | Value |
+|---|---|
+| Priority | 🟠 P1 |
+| Module(s) affected | `domain/models/catalog.py`, `claude_sonnet5.py`, `claude_compliance_api.py`, `claude_response_metadata.py`, `resilience.py`, `main.py` |
+| Est. effort | ~800 lines + tests |
+| Owner | zcoder maintainers |
+| Target date | v1.41.0 |
+| Status | ☑ Done |
+
+**Task list**
+- [x] **Sonnet 5 date-effective pricing:** $2/$10 through 2026-08-31 was cancelled — $2/$10 is now permanent. Corrected in `domain/models/catalog.py`, `claude_cost_optimizer.py`, `claude_metrics.py`, `claude_sonnet5.py` (4 files, one bug pattern). Removed the now-false promo/standard cliff-edge logic from `claude_sonnet5.py`.
+- [x] **Compliance API local session transcripts** (`/apps/sessions/local`): added `list_local_sessions`, `get_local_session`, `get_local_session_messages`, `iterate_local_session_messages` + 3 CLI flags + 6 tests
+- [x] **Compliance API remote session transcripts** (`/apps/sessions/remote`): added `list_remote_sessions`, `get_remote_session_messages`, `iterate_remote_session_messages` + 3 CLI flags + 6 tests
+- [x] **`anthropic-workspace-id` response header:** added `resilience.urlopen_json_with_headers()`; new `claude_response_metadata.py` module + `--whoami` CLI flag + 6 tests. Systemic root cause flagged: `resilience.urlopen_json()` discards headers at ~30 call sites — retrofitting all is a separate, larger pass.
+- [x] **Opus 4.1 retirement (Aug 5):** moved from `DEPRECATED_MODELS` to `RETIRED_MODELS`. Rewrote 6 of 8 tests in `test_claude_models_deprecation.py` to assert retired state.
+- [x] Backfilled zero-coverage test files: `tests/test_claude_cost_optimizer.py` (14 tests), `tests/test_claude_metrics.py` (12 tests)
+- [x] Fixed `datetime.utcnow()` deprecation in `claude_metrics.py` and `claude_admin_api.py`
+- [x] 572 tests passing
+
+**Sign-off**
+- Reviewed by: zcoder maintainers  Date: v1.41.0 release
+- Notes: Release gate PASS — 7/7 Anthropic compatibility items in the Aug 3–11 window have explicit dispositions. The header-preserving retrofit across all ~30 `urlopen_json` call sites is flagged as a separate hardening pass, not a compatibility defect.
+
+---
+
+## Rollup Status (updated)
+
+| # | Item | Priority | Status |
+|---|---|---|---|
+| 1–16 | (previous forms, v1.15.0–v1.34.0) | various | ✅ Done — see above |
+| 17 | Dreaming audit — model expansion, archive, cancel | 🟠 P1 | ✅ Done (v1.35.0) |
+| 18 | Mid-system model-gate regression fix | 🔴 P0 | ✅ Done (v1.36.0) |
+| 19 | Deferred items — Opus 4.1 deprecation, usage tier, Workbench | 🟠 P1 | ✅ Done (v1.37.0) |
+| 20 | Claude Enterprise User Management API + wiring fix | 🟠 P1 | ✅ Done (v1.38.0) |
+| 21 | Managed Agents session budgets, inference_geo, advisor roster | 🟠 P1 | ✅ Done (v1.39.0) |
+| 22 | `--upgrade-all` Opus 5 / Sonnet 5 targets | 🔴 P0 | ✅ Done (v1.40.0) |
+| 23 | Claude 2026-08-21 alignment — pricing, sessions, workspace-id | 🟠 P1 | ✅ Done (v1.41.0) |
+
+Every buildable item raised by an audit cycle to date has been closed.

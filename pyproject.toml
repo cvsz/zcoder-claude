@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zcoder"
-version = "1.41.0"
+version = "1.42.0"
 description = "AI Model Coder CLI — enterprise-grade edition"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -108,8 +108,6 @@ module = [
     "claude_embeddings.*",
     "claude_eval",
     "claude_eval.*",
-    "claude_evals",
-    "claude_evals.*",
     "claude_excel",
     "claude_excel.*",
     "claude_fable5",

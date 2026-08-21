@@ -3,6 +3,15 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 
 Pure data + pure functions for the Skills API (Messages API container.skills).
 No I/O, no print(), no `import anthropic` — those belong to infrastructure/.
+
+Enterprise note (2026-08-15 finding, doc comment added 2026-08-21):
+Anthropic's Enterprise skill/plugin security scanning is a Console/
+organization-settings toggle ("Turn on skill and plugin security scanning
+in organization settings"), applied automatically by Anthropic's backend
+on every skill upload/edit. There is NO API endpoint to trigger a scan or
+poll a scan result — the /v1/skills upload/version endpoints are unchanged
+by the feature. Nothing to wire here; this comment is the documented
+disposition.
 """
 
 from dataclasses import dataclass

@@ -22,3 +22,6 @@ dist/
 build/
 .eggs/
 
+
+# loop-engineering-kit working state — never commit
+.loop/

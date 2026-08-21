@@ -2,7 +2,7 @@ import argparse
 
 from personalities import PERSONALITIES
 
-VERSION = "1.41.0"
+VERSION = "1.42.0"
 
 AGENT_SYSTEM_PROMPTS = {
     "code_generator": "You are a full-project code generation agent. Produce complete, "

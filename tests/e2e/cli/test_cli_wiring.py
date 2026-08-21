@@ -17,20 +17,19 @@ import re
 
 import pytest
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 # Modules intentionally excluded from the "every cmd_* must be wired"
 # sweep, with the reason on file:
-KNOWN_EXCEPTIONS = {
-    # claude_evals.py (plural) is the pre-v1.10 eval harness, superseded
-    # by claude_eval.py (singular) — cmd_eval_run/cmd_eval_list/
-    # cmd_eval_scaffold/cmd_eval_compare in claude_eval.py cover the same
-    # ground with more features (threshold, output file, verbose). Wiring
-    # claude_evals.cmd_eval too would create a second, conflicting
-    # `--eval`-family flag set for the same job. Left unwired on purpose;
-    # a candidate for deletion in a future cycle, not a wiring gap.
-    ("claude_evals.py", "cmd_eval"),
-}
+#
+# Historical note: claude_evals.py (plural, the pre-v1.10 eval harness
+# superseded by claude_eval.py singular) was the sole entry here from
+# v1.30.0 until 2026-08-21, when the dead file was deleted outright
+# (retiring the last KNOWN_EXCEPTIONS entry). The set and its guard test
+# below are kept so future intentional exclusions have a documented home.
+KNOWN_EXCEPTIONS: set = set()
 
 
 def _cmd_functions(path):
@@ -68,6 +67,30 @@ def test_every_cmd_function_is_referenced_in_main(module_path, main_source):
             f"{module_name}.{fn}() is defined but never referenced in "
             f"main.py — add a CLI flag and dispatch line, or add it to "
             f"KNOWN_EXCEPTIONS with a reason if it's intentionally unwired."
+        )
+
+
+def _interfaces_cmd_functions():
+    """cmd_* functions defined in the migrated wrapper command module."""
+    path = os.path.join(REPO_ROOT, "interfaces/cli/commands/wrapper_commands.py")
+    return _cmd_functions(path)
+
+
+def test_every_wrapper_commands_function_is_dispatched(main_source):
+    """The Context #6 fold-in moved the wrappers' cmd_* entry points out of
+    the flat claude_*.py files into interfaces/cli/commands/
+    wrapper_commands.py — this keeps the same no-orphaned-command
+    guarantee for the new home (the claude_* shim scan above can't see
+    functions that no longer originate there)."""
+    dispatcher_path = os.path.join(REPO_ROOT, "interfaces/cli/dispatcher.py")
+    with open(dispatcher_path, encoding="utf-8") as f:
+        dispatcher_source = f.read()
+    for fn in _interfaces_cmd_functions():
+        pattern = r"\b" + re.escape(fn) + r"\b"
+        assert re.search(pattern, dispatcher_source), (
+            f"wrapper_commands.{fn}() is defined but never dispatched by "
+            f"interfaces/cli/dispatcher.py — add a CLI flag and dispatch "
+            f"line, or remove the dead function."
         )
 
 

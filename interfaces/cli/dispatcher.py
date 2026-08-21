@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 
-VERSION = "1.41.0"
+VERSION = "1.42.0"
 
 BANNER = f"\033[94mAI Model Coder CLI v{VERSION}\033[0m"
 
@@ -165,37 +165,37 @@ def dispatch(args):
         return
 
     if args.fable5_info:
-        from claude_fable5 import cmd_fable5_info
+        from interfaces.cli.commands.wrapper_commands import cmd_fable5_info
 
         cmd_fable5_info()
         return
 
     if args.mythos5_info:
-        from claude_mythos5 import cmd_mythos5_info
+        from interfaces.cli.commands.wrapper_commands import cmd_mythos5_info
 
         cmd_mythos5_info()
         return
 
     if args.opus5_info:
-        from claude_opus5 import cmd_opus5_info
+        from interfaces.cli.commands.wrapper_commands import cmd_opus5_info
 
         cmd_opus5_info()
         return
 
     if args.sonnet5_info:
-        from claude_sonnet5 import cmd_sonnet5_info
+        from interfaces.cli.commands.wrapper_commands import cmd_sonnet5_info
 
         cmd_sonnet5_info()
         return
 
     if args.sonnet5_cost:
-        from claude_sonnet5 import cmd_sonnet5_cost
+        from interfaces.cli.commands.wrapper_commands import cmd_sonnet5_cost
 
         cmd_sonnet5_cost(args.sonnet5_cost)
         return
 
     if args.haiku45_info:
-        from claude_haiku45 import cmd_haiku45_info
+        from interfaces.cli.commands.wrapper_commands import cmd_haiku45_info
 
         cmd_haiku45_info()
         return
@@ -691,7 +691,7 @@ def dispatch(args):
             return
 
     if args.whoami:
-        from claude_response_metadata import cmd_whoami
+        from interfaces.cli.commands.wrapper_commands import cmd_whoami
 
         key = args.api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not key:
@@ -1078,7 +1078,8 @@ def dispatch(args):
         cmd_model_info(args.model_info, key)
         return
     if args.fable5:
-        from claude_fable5 import cmd_fable5_call, parse_fallback_chain
+        from domain.model_wrappers import parse_fallback_chain
+        from interfaces.cli.commands.wrapper_commands import cmd_fable5_call
 
         try:
             chain = parse_fallback_chain(getattr(args, "fable5_fallback_chain", None))
@@ -1094,12 +1095,12 @@ def dispatch(args):
         )
         return
     if args.mythos5:
-        from claude_mythos5 import cmd_mythos5_call
+        from interfaces.cli.commands.wrapper_commands import cmd_mythos5_call
 
         cmd_mythos5_call(args.mythos5, key)
         return
     if args.opus5:
-        from claude_opus5 import cmd_opus5_call
+        from interfaces.cli.commands.wrapper_commands import cmd_opus5_call
 
         cmd_opus5_call(
             args.opus5,
@@ -1111,12 +1112,12 @@ def dispatch(args):
         )
         return
     if args.sonnet5:
-        from claude_sonnet5 import cmd_sonnet5_call
+        from interfaces.cli.commands.wrapper_commands import cmd_sonnet5_call
 
         cmd_sonnet5_call(args.sonnet5, key, use_geo=args.sonnet5_geo)
         return
     if args.haiku45:
-        from claude_haiku45 import cmd_haiku45_call
+        from interfaces.cli.commands.wrapper_commands import cmd_haiku45_call
 
         cmd_haiku45_call(args.haiku45, key, thinking_budget=args.haiku45_thinking_budget)
         return

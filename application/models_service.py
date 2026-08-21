@@ -23,6 +23,7 @@ data; this module is the glue between them.
 import os
 import re
 
+from domain.model_wrappers import ResponseMetadata
 from domain.models.catalog import (
     DEPRECATED_MODELS,
     MODEL_CATALOG,
@@ -32,6 +33,14 @@ from domain.models.catalog import (
     _upgrade_source_ids,
     check_deprecated,
     check_retired,
+)
+from infrastructure.anthropic_api.model_wrappers_gateway import (
+    Fable5Client,
+    Haiku45Client,
+    Mythos5Client,
+    Opus5Client,
+    Sonnet5Client,
+    get_response_metadata,
 )
 from infrastructure.anthropic_api.models_gateway import (
     AdaptiveThinkingCoder,
@@ -203,3 +212,93 @@ def run_adaptive_thinking(
 ) -> str:
     atc = AdaptiveThinkingCoder(api_key=api_key, model=model)
     return atc.adaptive(prompt, budget=budget or 8000, effort=effort)
+
+
+# ── Model-specific wrappers (Context #6) ────────────────────────────────
+#
+# Thin use-cases over infrastructure/anthropic_api/
+# model_wrappers_gateway.py's per-model clients. Each returns plain data
+# and lets exceptions (RefusalError, MythosAccessError, ValueError,
+# AICoderError) propagate — the interface layer decides how to render
+# them. The pure info/pricing tables these commands also print live in
+# domain/model_wrappers.py and need no service function.
+
+
+def fable5_call(
+    prompt: str,
+    api_key: str,
+    fallback_model: str = "claude-opus-4-8",
+    allow_fallback: bool = True,
+    system: str | None = None,
+    fallback_chain: list | None = None,
+) -> dict:
+    """One Fable 5 call with refusal/fallback handling. Raises
+    RefusalError when the request is refused and fallback is
+    disabled/exhausted; otherwise returns the result dict documented on
+    Fable5Client.call_with_fallback()."""
+    client = Fable5Client(api_key=api_key, fallback_model=fallback_model, fallback_chain=fallback_chain)
+    return client.call_with_fallback(prompt, system=system, allow_fallback=allow_fallback)
+
+
+def mythos5_call(prompt: str, api_key: str, system: str | None = None) -> str:
+    """One direct Mythos 5 call, returning just the response text. Raises
+    MythosAccessError on a Project Glasswing access-gate rejection."""
+    client = Mythos5Client(api_key=api_key)
+    return client.call_text(prompt, system=system)
+
+
+def opus5_call(
+    prompt: str,
+    api_key: str,
+    effort: str | None = None,
+    disable_thinking: bool = False,
+    fast: bool = False,
+    use_geo: bool = False,
+    system: str | None = None,
+) -> dict:
+    """One Opus 5 call (raises ValueError client-side for combinations the
+    API is documented to reject). Returns the raw response dict, with an
+    '_geo_warning' key attached when inference_geo support is unconfirmed."""
+    client = Opus5Client(api_key=api_key)
+    return client.call(
+        prompt,
+        system=system,
+        effort=effort,
+        disable_thinking=disable_thinking,
+        fast=fast,
+        use_geo=use_geo,
+    )
+
+
+def haiku45_call(
+    prompt: str,
+    api_key: str,
+    thinking_budget: int | None = None,
+    fast: bool = False,
+    use_geo: bool = False,
+    system: str | None = None,
+) -> dict:
+    """One Haiku 4.5 call (raises ValueError for unsupported fast/geo or a
+    below-floor thinking budget). Returns the raw response dict."""
+    client = Haiku45Client(api_key=api_key)
+    return client.call(prompt, system=system, thinking_budget=thinking_budget, fast=fast, use_geo=use_geo)
+
+
+def sonnet5_call(
+    prompt: str,
+    api_key: str,
+    use_geo: bool = False,
+    service_tier: str | None = None,
+    system: str | None = None,
+) -> dict:
+    """One Sonnet 5 call. Returns the raw response dict (an {'error': ...}
+    dict when sampling params were set), with a '_service_tier_warning'
+    key attached when service_tier was requested but unsupported."""
+    client = Sonnet5Client(api_key=api_key)
+    return client.call(prompt, system=system, use_geo=use_geo, service_tier=service_tier)
+
+
+def whoami_metadata(api_key: str) -> ResponseMetadata:
+    """Minimal whoami Messages API call; returns the parsed workspace /
+    organization header metadata. Raises AICoderError on failure."""
+    return get_response_metadata(api_key)

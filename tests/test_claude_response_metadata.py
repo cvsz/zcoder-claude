@@ -6,11 +6,19 @@ anthropic-organization-id response header lookup (release-gate audit,
 resilience.urlopen_json_with_headers rather than a hand-invented mock
 shape, and cover both header-casing variants since urllib doesn't
 guarantee case normalization across platforms.
+
+Clean Architecture note (2026-08-21 migration): the implementation now
+lives in infrastructure/anthropic_api/model_wrappers_gateway.py (the
+claude_response_metadata.py name is a compatibility shim), so module-level
+monkeypatches target the DEFINING module (`gw`) — patching the shim would
+set attributes the real code never reads. Instance-level patches need no
+repointing anywhere in this suite.
 """
 
 import json
 
 import claude_response_metadata as rm
+import infrastructure.anthropic_api.model_wrappers_gateway as gw
 from exceptions import AICoderError
 
 
@@ -18,7 +26,7 @@ def test_get_response_metadata_parses_lowercase_headers(monkeypatch):
     def fake_call(api_key):
         return {"content": []}, {"anthropic-workspace-id": "wrkspc_1", "anthropic-organization-id": "org_1"}
 
-    monkeypatch.setattr(rm, "_call_with_headers", fake_call)
+    monkeypatch.setattr(gw, "_call_with_headers", fake_call)
     meta = rm.get_response_metadata("sk-ant-fake")
     assert meta.workspace_id == "wrkspc_1"
     assert meta.organization_id == "org_1"
@@ -28,14 +36,14 @@ def test_get_response_metadata_parses_titlecase_headers(monkeypatch):
     def fake_call(api_key):
         return {"content": []}, {"Anthropic-Workspace-Id": "wrkspc_2", "Anthropic-Organization-Id": "org_2"}
 
-    monkeypatch.setattr(rm, "_call_with_headers", fake_call)
+    monkeypatch.setattr(gw, "_call_with_headers", fake_call)
     meta = rm.get_response_metadata("sk-ant-fake")
     assert meta.workspace_id == "wrkspc_2"
     assert meta.organization_id == "org_2"
 
 
 def test_get_response_metadata_missing_headers_are_none(monkeypatch):
-    monkeypatch.setattr(rm, "_call_with_headers", lambda api_key: ({"content": []}, {}))
+    monkeypatch.setattr(gw, "_call_with_headers", lambda api_key: ({"content": []}, {}))
     meta = rm.get_response_metadata("sk-ant-fake")
     assert meta.workspace_id is None
     assert meta.organization_id is None
@@ -52,11 +60,11 @@ def test_call_with_headers_sends_minimal_documented_payload(monkeypatch):
         captured["headers"] = dict(req.headers)
         return {"content": []}, {"anthropic-workspace-id": "wrkspc_3"}
 
-    monkeypatch.setattr(rm, "urlopen_json_with_headers", fake_urlopen_json_with_headers)
+    monkeypatch.setattr(gw, "urlopen_json_with_headers", fake_urlopen_json_with_headers)
     meta = rm.get_response_metadata("sk-ant-fake")
 
-    assert captured["url"] == rm.MESSAGES_ENDPOINT
-    assert captured["payload"]["model"] == rm._WHOAMI_MODEL
+    assert captured["url"] == gw.MESSAGES_ENDPOINT
+    assert captured["payload"]["model"] == gw._WHOAMI_MODEL
     assert captured["payload"]["max_tokens"] == 1
     assert captured["headers"]["X-api-key"] == "sk-ant-fake"
     assert meta.workspace_id == "wrkspc_3"
@@ -64,7 +72,7 @@ def test_call_with_headers_sends_minimal_documented_payload(monkeypatch):
 
 def test_cmd_whoami_prints_ids(monkeypatch, capsys):
     monkeypatch.setattr(
-        rm,
+        gw,
         "_call_with_headers",
         lambda api_key: (
             {"content": []},
@@ -81,7 +89,7 @@ def test_cmd_whoami_handles_error(monkeypatch, capsys):
     def raise_error(api_key):
         raise AICoderError("bad key")
 
-    monkeypatch.setattr(rm, "_call_with_headers", raise_error)
+    monkeypatch.setattr(gw, "_call_with_headers", raise_error)
     result = rm.cmd_whoami("sk-ant-bad")
     assert result is None
     assert "ERROR" in capsys.readouterr().out

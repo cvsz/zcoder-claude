@@ -10,12 +10,18 @@ in/data out, no print() capture needed.
 """
 
 from application.models_service import (
+    fable5_call,
     get_model_info,
+    haiku45_call,
     list_models,
+    mythos5_call,
+    opus5_call,
     run_adaptive_thinking,
     run_computer_use,
     scan_for_deprecated_models,
+    sonnet5_call,
     upgrade_all,
+    whoami_metadata,
 )
 
 # ── list_models ──────────────────────────────────────────────────────────
@@ -269,3 +275,107 @@ def test_run_adaptive_thinking_default_budget_when_none(monkeypatch):
 
     monkeypatch.setattr("application.models_service.AdaptiveThinkingCoder", FakeAdaptiveThinkingCoder)
     assert run_adaptive_thinking("x", "k", "claude-sonnet-5", budget=None) == 8000
+
+
+# ── model-specific wrapper use-cases (Context #6) ─────────────────────────
+
+
+def test_fable5_call_delegates_to_gateway_and_returns_result(monkeypatch):
+    captured = {}
+
+    class FakeFable5Client:
+        def __init__(self, api_key, fallback_model, fallback_chain):
+            captured["api_key"] = api_key
+            captured["fallback_model"] = fallback_model
+            captured["fallback_chain"] = fallback_chain
+
+        def call_with_fallback(self, prompt, system, allow_fallback):
+            captured["prompt"] = prompt
+            captured["system"] = system
+            captured["allow_fallback"] = allow_fallback
+            return {"text": "hi", "refused": False}
+
+    monkeypatch.setattr("application.models_service.Fable5Client", FakeFable5Client)
+    result = fable5_call("hello", "k", fallback_chain=["claude-opus-4-8"], system="sys")
+    assert result == {"text": "hi", "refused": False}
+    assert captured == {
+        "api_key": "k",
+        "fallback_model": "claude-opus-4-8",
+        "fallback_chain": ["claude-opus-4-8"],
+        "prompt": "hello",
+        "system": "sys",
+        "allow_fallback": True,
+    }
+
+
+def test_mythos5_call_returns_text(monkeypatch):
+    class FakeMythos5Client:
+        def __init__(self, api_key):
+            pass
+
+        def call_text(self, prompt, system=None):
+            return f"echo:{prompt}"
+
+    monkeypatch.setattr("application.models_service.Mythos5Client", FakeMythos5Client)
+    assert mythos5_call("ping", "k") == "echo:ping"
+
+
+def test_opus5_call_passes_all_options_through(monkeypatch):
+    captured = {}
+
+    class FakeOpus5Client:
+        def __init__(self, api_key):
+            pass
+
+        def call(self, prompt, **kwargs):
+            captured.update(kwargs)
+            return {"content": []}
+
+    monkeypatch.setattr("application.models_service.Opus5Client", FakeOpus5Client)
+    result = opus5_call("p", "k", effort="xhigh", disable_thinking=False, fast=True, use_geo=True, system="s")
+    assert result == {"content": []}
+    assert captured["effort"] == "xhigh"
+    assert captured["fast"] is True
+    assert captured["use_geo"] is True
+    assert captured["system"] == "s"
+
+
+def test_haiku45_call_passes_thinking_budget(monkeypatch):
+    captured = {}
+
+    class FakeHaiku45Client:
+        def __init__(self, api_key):
+            pass
+
+        def call(self, prompt, **kwargs):
+            captured.update(kwargs)
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+    monkeypatch.setattr("application.models_service.Haiku45Client", FakeHaiku45Client)
+    result = haiku45_call("p", "k", thinking_budget=2048)
+    assert result["content"][0]["text"] == "ok"
+    assert captured["thinking_budget"] == 2048
+
+
+def test_sonnet5_call_returns_raw_response_dict(monkeypatch):
+    class FakeSonnet5Client:
+        def __init__(self, api_key):
+            pass
+
+        def call(self, prompt, **kwargs):
+            return {"error": kwargs.get("service_tier"), "status": None}
+
+    monkeypatch.setattr("application.models_service.Sonnet5Client", FakeSonnet5Client)
+    result = sonnet5_call("p", "k", service_tier="standard_only")
+    assert result == {"error": "standard_only", "status": None}
+
+
+def test_whoami_metadata_delegates_to_gateway(monkeypatch):
+    sentinel = object()
+
+    def fake_get_response_metadata(api_key):
+        assert api_key == "sk-ant-fake"
+        return sentinel
+
+    monkeypatch.setattr("application.models_service.get_response_metadata", fake_get_response_metadata)
+    assert whoami_metadata("sk-ant-fake") is sentinel

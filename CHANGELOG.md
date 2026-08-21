@@ -6,6 +6,25 @@ high-level index. Two project lineages (`ai-coder-cli-v1`, the modular
 single-`coder.py` CLI with its own PyInstaller packaging) were merged into
 this release; see "v1.12.0" below for exactly what came from where.
 
+## v1.42.0 — Clean Architecture refactor complete (Context #6 + final gates)
+
+Full detail in `exec-planning.md` §8 history log.
+
+**Migration complete:** all 6 model-specific wrapper modules
+(`claude_fable5.py`, `claude_mythos5.py`, `claude_opus5.py`,
+`claude_haiku45.py`, `claude_sonnet5.py`, `claude_response_metadata.py`)
+folded into the 4-layer architecture (`domain/model_wrappers.py`,
+`infrastructure/anthropic_api/model_wrappers_gateway.py`,
+`application/models_service.py`,
+`interfaces/cli/commands/wrapper_commands.py`) with compatibility shims.
+The original 67-file flat catalogue is fully retired: 66 migrated, 1
+(`claude_evals.py`) deleted as dead code. Test tree reorganized to mirror
+the architecture (`tests/integration/infrastructure/`, `tests/e2e/cli/`).
+
+**Quality gates:** 1059 tests passing; ruff/black/mypy/pyflakes clean;
+`python main.py --help` byte-identical through every step; executed via a
+bounded agent loop with independent verification and review sign-off.
+
 ## v1.41.0 — Claude 2026-08-21 upgrade alignment
 
 Full detail in `docs/55_upgrade_v1.41.0_claude_2026_08_21.md`.

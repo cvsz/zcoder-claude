@@ -26,6 +26,7 @@ def git_repo(tmp_path):
     _run("git init -q", repo)
     _run('git config user.email "t@t.com"', repo)
     _run('git config user.name "t"', repo)
+    _run("git config tag.gpgsign false", repo)
     (repo / "a.txt").write_text("hello\n")
     _run("git add a.txt", repo)
     _run('git commit -q -m "init"', repo)

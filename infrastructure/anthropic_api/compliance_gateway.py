@@ -100,8 +100,7 @@ import time
 import urllib.request
 import urllib.error
 import urllib.parse
-from pathlib import Path
-from typing import Optional, Iterator, Iterable
+from typing import Optional, Iterator
 
 COMPLIANCE_BASE = "https://api.anthropic.com/v1/compliance"
 

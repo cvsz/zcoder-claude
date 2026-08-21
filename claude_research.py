@@ -1,142 +1,33 @@
 """
-claude_research.py — Deep Research: plan sub-questions, gather
-findings (grounded in URLs via the http_get tool when provided),
-then synthesize into a cited Markdown report.
-AI Model Coder CLI v1.10.0
+claude_research.py — Deep Research (compatibility shim)
+AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
+
+This module used to contain the full implementation (142 lines: SubQ, Report,
+DeepResearchAgent, and cmd_research CLI entry point). It has been split into:
+
+  domain/research.py                                   — SYS_PLAN, SYS_ANAL, SYS_SYNTH,
+                                                          SubQ, Report,
+                                                          clean_json_response(),
+                                                          parse_subquestions(),
+                                                          parse_findings()
+  infrastructure/anthropic_api/research_gateway.py     — DeepResearchGateway
+  application/research_service.py                      — use-case layer
+  interfaces/cli/commands/research_commands.py         — print(), cmd_research
+
+This file re-exports every name the old module used to export, so
+existing imports keep working unmodified.
 """
 
-from utils import sampling_kwargs
+from domain.research import (
+    SYS_PLAN, SYS_ANAL, SYS_SYNTH,
+    SubQ, Report, clean_json_response, parse_subquestions, parse_findings,
+)
+from infrastructure.anthropic_api.research_gateway import DeepResearchGateway
+from interfaces.cli.commands.research_commands import cmd_research
 
-import json
-import urllib.request
-import urllib.error
-from typing import List, Optional
-from dataclasses import dataclass, field
-from datetime import datetime
-import anthropic
-
-from exceptions import AICoderError
-from resilience import raise_for_http_error, retry
-
-SYS_PLAN  = "You are a research planning assistant. Output only valid JSON."
-SYS_ANAL  = "You are a careful research analyst. Be precise. Flag uncertainty."
-SYS_SYNTH = "You are a research synthesis expert. Connect ideas, note tensions."
-
-
-@dataclass
-class SubQ:
-    question:  str
-    findings:  List[str] = field(default_factory=list)
-    sources:   List[str] = field(default_factory=list)
-    answered:  bool = False
-
-
-@dataclass
-class Report:
-    topic:        str
-    sub_questions: List[SubQ]
-    synthesis:    str = ""
-    created:      str = field(default_factory=lambda: datetime.now().isoformat())
-
-    def to_markdown(self) -> str:
-        lines = [f"# Research Report: {self.topic}",
-                 f"_Generated: {self.created}_\n",
-                 f"## Summary\n{self.synthesis}\n",
-                 "## Sub-Questions Explored"]
-        for i, sq in enumerate(self.sub_questions, 1):
-            lines.append(f"\n### {i}. {sq.question}")
-            for f in sq.findings: lines.append(f"- {f}")
-            if sq.sources: lines.append("Sources: " + ", ".join(sq.sources))
-        return "\n".join(lines)
-
-
-class DeepResearchAgent:
-    def __init__(self, api_key: str, model: str = "claude-sonnet-5"):
-        self.client = anthropic.Anthropic(api_key=api_key)
-        self.model  = model
-
-    def _call(self, system: str, user: str, max_tokens: int = 2048) -> str:
-        r = self.client.messages.create(
-            model=self.model, max_tokens=max_tokens,
-            **sampling_kwargs(self.model, temperature=0.35),
-            system=system, messages=[{"role": "user", "content": user}])
-        return r.content[0].text
-
-    def _fetch(self, url: str) -> str:
-        try:
-            return self._fetch_retrying(url)
-        except Exception as e:
-            return f"[fetch failed: {e}]"
-
-    # No CircuitBreaker here deliberately: each call targets a different,
-    # unrelated third-party URL supplied by the caller, not one fixed
-    # downstream dependency — a shared breaker would trip on unrelated dead
-    # links and start short-circuiting fetches to sites that are fine.
-    @retry(max_attempts=2, base_delay=1.0, max_delay=5.0)
-    def _fetch_retrying(self, url: str) -> str:
-        req = urllib.request.Request(url, headers={"User-Agent": "ai-coder-research/1.0"})
-        try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                return resp.read().decode("utf-8", errors="replace")[:4000]
-        except (urllib.error.HTTPError, TimeoutError, ConnectionError, OSError) as e:
-            raise_for_http_error(e)
-
-    def plan(self, topic: str, depth: int = 4) -> List[SubQ]:
-        raw = self._call(SYS_PLAN,
-            f"Break '{topic}' into exactly {depth} focused, non-overlapping research "
-            "sub-questions. Return ONLY a JSON array of strings, nothing else.")
-        cleaned = raw.strip()
-        if cleaned.startswith("```"): cleaned = "\n".join(cleaned.split("\n")[1:-1])
-        try:
-            qs = json.loads(cleaned)
-        except json.JSONDecodeError:
-            qs = [l.lstrip("-· ").strip() for l in raw.splitlines() if l.strip()][:depth]
-        return [SubQ(question=q) for q in qs[:depth]]
-
-    def gather(self, sq: SubQ, source_urls: Optional[List[str]] = None) -> SubQ:
-        ctx_parts = []
-        for url in (source_urls or []):
-            body = self._fetch(url)
-            ctx_parts.append(f"[{url}]\n{body}")
-            sq.sources.append(url)
-        ctx = "\n\n".join(ctx_parts)
-        raw = self._call(SYS_ANAL,
-            f"Answer this research sub-question thoroughly.\n"
-            f"Sub-question: {sq.question}\n\n"
-            + (f"Source material:\n{ctx}\n\n" if ctx else
-               "(No sources — answer from knowledge; flag claims that need verification.)\n\n")
-            + "Return 3–6 concise bullet-point findings.")
-        sq.findings = [l.lstrip("-· ").strip() for l in raw.splitlines() if l.strip()]
-        sq.answered = True
-        return sq
-
-    def synthesize(self, topic: str, sqs: List[SubQ]) -> str:
-        block = "\n\n".join(
-            f"Q: {sq.question}\n" + "\n".join(f"- {f}" for f in sq.findings)
-            for sq in sqs)
-        return self._call(SYS_SYNTH,
-            f'Synthesize these findings on "{topic}" into 4–8 coherent sentences '
-            "that connect sub-questions rather than list them. Note tensions or gaps.\n\n"
-            + block, max_tokens=1024)
-
-    def run(self, topic: str, depth: int = 4,
-            source_urls: Optional[List[str]] = None) -> Report:
-        sqs = self.plan(topic, depth)
-        for sq in sqs: self.gather(sq, source_urls)
-        synthesis = self.synthesize(topic, sqs)
-        return Report(topic=topic, sub_questions=sqs, synthesis=synthesis)
-
-
-def cmd_research(topic: str, api_key: str, model: str,
-                 depth: int = 4, source_urls: Optional[List[str]] = None,
-                 output: Optional[str] = None):
-    print(f"🔎 Deep Research: {topic!r}  (depth={depth})\n")
-    agent  = DeepResearchAgent(api_key=api_key, model=model)
-    report = agent.run(topic, depth=depth, source_urls=source_urls)
-    md     = report.to_markdown()
-    if output:
-        from pathlib import Path
-        Path(output).write_text(md)
-        print(f"✓ Report saved to {output}")
-    else:
-        print(md)
+__all__ = [
+    "SYS_PLAN", "SYS_ANAL", "SYS_SYNTH",
+    "SubQ", "Report", "clean_json_response", "parse_subquestions", "parse_findings",
+    "DeepResearchGateway",
+    "cmd_research",
+]

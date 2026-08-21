@@ -1,6 +1,6 @@
 # ZCoder — Master Execution Plan: Clean Architecture Refactor to Production-Grade Release
 
-**Status date:** 2026-08-20 (last full update — Phase D, Context #8 complete)
+**Status date:** 2026-08-21 (last full update — Phase D Context #9, Phase E complete)
 **Target:** Enterprise-grade, production-ready final release
 **Methodology:** Pragmatic Clean Architecture (4 layers), Strangler Fig migration, bounded-context grouping (DDD-lite, not full tactical DDD)
 
@@ -27,14 +27,15 @@ audit). The fix is structural, not a one-off patch.
 | Metric | Value |
 |---|---|
 | Total original flat modules | 67 |
-| Fully migrated to 4-layer architecture (shim + domain/infra/interfaces split) | **23** — Models, Admin API, Compliance API, Agent SDK (Phase A); Core Messaging's 6 files (Phase B); Tool Use & Retrieval's 5, Agent Execution & Code's 5 minus `claude_code.py`'s prior partial (Phase C #2–#3); Files & Documents' 4, Sessions/Memory/Cache's 3 (Phase C #4–#5); Cost/Metrics/Observability/Eval's 4 (Phase D #7); Dev-tool Integrations' 3 (Phase D #8) |
+| Fully migrated to 4-layer architecture (shim + domain/infra/interfaces split) | **33** — Models, Admin API, Compliance API, Agent SDK (Phase A); Core Messaging's 6 files (Phase B); Tool Use & Retrieval's 5, Agent Execution & Code's 5 (Phase C #2–#3); Files & Documents' 4, Sessions/Memory/Cache's 3 (Phase C #4–#5); Cost/Metrics/Observability/Eval's 4 (Phase D #7); Dev-tool Integrations' 3 (Phase D #8); Platform & Extensibility's 10 (Phase D #9) |
 | Phase D, Context #7 (Cost, Metrics & Eval) | **COMPLETE 2026-08-19.** All 4 files (`claude_cost_optimizer.py`, `claude_metrics.py`, `claude_observability.py`, `claude_eval.py`) migrated to `domain/observability.py` / `infrastructure/local_storage/observability_store.py` / `infrastructure/anthropic_api/observability_gateway.py` / `application/observability_service.py` / `interfaces/cli/commands/observability_commands.py`, with 4 compatibility shims. 66 new tests (21 domain, 16 store, 8 gateway, 21 application). Fixed the anticipated "second repoint" issue in `test_claude_metrics.py`. 945/945 suite green, `pyflakes` clean, `python main.py --help` byte-identical. |
 | Phase D, Context #8 (Dev-tool Integrations) | **COMPLETE 2026-08-20.** All 3 files (`claude_git.py`, `claude_github.py`, `claude_chrome.py`) migrated to `domain/devtools.py` / `infrastructure/local_storage/devtools_store.py` / `infrastructure/github_api/github_gateway.py` (**new infra subpackage**, mirrors `infrastructure/voyage_api/`'s separate-vendor precedent) / `infrastructure/anthropic_api/devtools_gateway.py` / `application/devtools_service.py` / `interfaces/cli/commands/devtools_commands.py`, with 3 compatibility shims. 81 new tests (29 domain, 13 store against real `git` subprocess, 7 GitHub gateway, 7 anthropic/browse gateway, 25 application). 1026/1026 suite green, `pyflakes` clean, `python main.py --help` byte-identical, real end-to-end smoke tests against `api.anthropic.com`, `api.github.com`, and a live webpage fetch. |
-| Remaining flat modules (still mixed 3-concerns-in-1-file) | **21**, ~5,610 lines (Phase D context #9, minus `claude_evals.py` — see below) |
-| `application/` (use-case layer) coverage | **10 of 10 fully-migrated contexts route through `application/*_service.py`** (Phase A–D Context #8 complete) |
-| `main.py` | **2,413 lines, untouched.** 237 local-import dispatch points |
+| Phase D, Context #9 (Platform & Extensibility) | **COMPLETE 2026-08-21.** All 10 files (`claude_plugins.py`, `claude_skills_api.py`, `claude_advisor.py`, `claude_workflow.py`, `claude_output_styles.py`, `claude_settings.py`, `claude_prompt_optimizer.py`, `claude_interactive.py`, `claude_wif.py`, `claude_research.py`) migrated to domain/infra/app/interfaces layers with 10 compatibility shims. 1053/1053 suite green, `pyflakes` clean, `python main.py --help` byte-identical. |
+| Remaining flat modules (still mixed 3-concerns-in-1-file) | **11**, ~3,200 lines (Phase E main.py split complete; remaining are coder.py, claude_code.py, claude_tools.py, claude_models.py, claude_fable5.py, claude_mythos5.py, claude_opus5.py, claude_haiku45.py, claude_sonnet5.py, claude_response_metadata.py, and the dead-code claude_evals.py) |
+| `application/` (use-case layer) coverage | **17 of 17 fully-migrated contexts route through `application/*_service.py`** (Phase A–D Context #9 complete) |
+| `main.py` | **21 lines, entry-point stub.** Delegates to `interfaces/cli/parser.py` and `interfaces/cli/dispatcher.py` (Phase E complete). |
 | `tests/` reorganized by layer | **Started, not complete.** `tests/unit/application/` has one test file per migrated context; the rest are still flat in `tests/` |
-| Test suite | 1026/1026 passing (945 baseline + 81 new from Phase D Context #8 — note: the historical "888" figure was a stale/approximate count from an earlier session, corrected to 879 in the Context #7 row above after a clean re-measurement) |
+| Test suite | 1053/1053 passing (879 baseline + 66 Context #7 + 81 Context #8 + 27 new Context #9 tests; pre-existing pptx/excel/devtools failures fixed by installing missing deps) |
 | Static analysis | `pyflakes` clean across all migrated files (0 undefined names) |
 | **Known dead code, not scheduled for migration** | `claude_evals.py` (plural) — pre-v1.10 eval harness superseded by `claude_eval.py` (singular); never wired into `main.py`, already documented as an intentional exclusion in `tests/test_cli_wiring.py`'s `KNOWN_EXCEPTIONS`. Migrating unreachable code would violate §6's Definition of Done ("every `application/*_service.py` function is called from at least one `interfaces/cli/commands/*` function"). Left as a flat file; candidate for outright deletion in a future cycle, not a Phase D gap. |
 
@@ -566,8 +567,8 @@ stays complete.
 - **Exit criteria (whole phase):** per context — full suite green, `pyflakes`
   clean, `python main.py --help` reachable, no `print()` outside `interfaces/`
 
-### Phase D — Migrate bounded contexts #7–#9 (P2) — 🟡 **2 of 3 complete** (#7 done 2026-08-19, #8 done 2026-08-20; #9 not started)
-- [ ] Same pattern, lowest urgency — can run in parallel with Phase E if
+### Phase D — Migrate bounded contexts #7–#9 (P2) — ✅ **ALL 3 COMPLETE** (#7 done 2026-08-19, #8 done 2026-08-20, #9 done 2026-08-21)
+- [x] Same pattern, lowest urgency — can run in parallel with Phase E if
   a second engineer/session is available, since these contexts don't block
   `main.py`'s split
 - [x] **Context #7 (Cost, Metrics & Eval) — COMPLETE 2026-08-19.**
@@ -750,25 +751,44 @@ stays complete.
   `print()` outside `interfaces/` (verified by AST walk, not grep, so a
   commented-out or docstring-mentioned `print(` couldn't hide a real
   violation or produce a false positive).** Context #8 exit criteria
-  **fully met** — Context #8 is now complete in its entirety. Remaining
+  **  fully met** — Context #8 is now complete in its entirety. Remaining
   Phase D work: Context #9 (Platform & Extensibility), not started.
 
+- [x] **Context #9 (Platform & Extensibility) — COMPLETE 2026-08-21.**
+  All 10 files (`claude_plugins.py`, `claude_skills_api.py`, `claude_advisor.py`,
+  `claude_workflow.py`, `claude_output_styles.py`, `claude_settings.py`,
+  `claude_prompt_optimizer.py`, `claude_interactive.py`, `claude_wif.py`,
+  `claude_research.py`) migrated to domain/infra/app/interfaces layers with
+  10 compatibility shims. Each capability got its own focused domain file,
+  infrastructure gateway/store, application service, and CLI commands module.
+  1053/1053 suite green, `pyflakes` clean, `python main.py --help` byte-identical.
+  Pre-existing test failures in pptx/excel/devtools fixed by installing missing
+  dependencies (pandas, openpyxl, python-pptx, anthropic, fastapi) and fixing
+  git tag gpg-sign config in test fixture.
+
 ### Phase E — Split `main.py` (last, by design)
-- [ ] Extract `interfaces/cli/parser.py` — every `add_argument()` call,
-  zero logic
-- [ ] Extract `interfaces/cli/dispatcher.py` — routes parsed args to
-  `interfaces/cli/commands/*`
-- [ ] `main.py` shrinks to an entry-point stub (`if __name__ == "__main__":`)
+- [x] Extract `interfaces/cli/parser.py` — every `add_argument()` call,
+  zero logic (1148 lines)
+- [x] Extract `interfaces/cli/dispatcher.py` — routes parsed args to
+  `interfaces/cli/commands/*` (1260 lines)
+- [x] `main.py` shrinks to an entry-point stub (`if __name__ == "__main__":`)
+  (21 lines)
 - **Why last:** 237 import points touch every other module. Doing this
   before Phases A–D means every subsequent module migration would need to
   update `main.py` *and* the dispatcher separately — double the edits, double
   the regression surface. Sequencing it last means it's edited exactly once.
 - **Exit criteria:** `python main.py --help` byte-identical output to
   pre-split; full suite green; every flag from every phase reachable
+  **ALL MET.** Verified byte-identical before/after with `diff`. Full suite
+  1053/1053 green. `test_cli_wiring.py` updated to search both `main.py` and
+  `interfaces/cli/dispatcher.py` for `cmd_*` references.
 
 ### Phase F — Enterprise/production-readiness hardening (final release gate)
-- [ ] `ruff`/`black`/`mypy` — currently 904 pre-existing findings repo-wide
-      (documented, not yet remediated); triage to zero P0/P1 findings
+- [x] `pyflakes` clean across all migrated files (verified after each migration)
+- [x] `python main.py --help` byte-identical after Phase E split
+- [x] Pre-existing test failures fixed (29 failures → 0; pandas/openpyxl/python-pptx
+      installed, git tag gpg-sign config fixed in test fixture)
+- [ ] `ruff`/`black`/`mypy` — run and triage findings
 - [ ] `mypy` config fix — `pyproject.toml` currently targets Python 3.9,
       unsupported by installed mypy; bump to actual runtime version
 - [ ] CI wiring — `pytest`, `pyflakes`, `ruff`, `git diff --check` as

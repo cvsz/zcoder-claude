@@ -26,7 +26,7 @@ __all__ = [
 def cmd_code_exec(prompt: str, api_key: str, model: str, file_ids: Optional[list] = None,
                    output_dir: Optional[str] = None,
                    code_exec_version: str = "code_execution_20260521"):
-    print(f"\033[94mℹ Code Execution Tool (Anthropic sandbox)\033[0m\n")
+    print("\033[94mℹ Code Execution Tool (Anthropic sandbox)\033[0m\n")
 
     def on_file_saved(path):
         print(f"  \033[92m✓ Image saved: {path}\033[0m")
@@ -36,7 +36,7 @@ def cmd_code_exec(prompt: str, api_key: str, model: str, file_ids: Optional[list
                                     on_file_saved=on_file_saved)
     print(result["text"])
     if result["outputs"]:
-        print(f"\n\033[90m── Execution Trace ─────────────────────\033[0m")
+        print("\n\033[90m── Execution Trace ─────────────────────\033[0m")
         for out in result["outputs"]:
             ot = out.get("type", "")
             if ot in ("code", "executed_code"):

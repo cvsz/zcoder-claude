@@ -38,7 +38,7 @@ def cmd_compliance_activities(api_key: str, since: Optional[str] = None,
                               until: Optional[str] = None,
                               activity_types: Optional[list] = None,
                               limit: int = 100, all_pages: bool = False):
-    print(f"\n\033[94mActivity Feed\033[0m" + (" (all matching pages)" if all_pages else f" (up to {limit})") + "\n")
+    print("\n\033[94mActivity Feed\033[0m" + (" (all matching pages)" if all_pages else f" (up to {limit})") + "\n")
     try:
         count = 0
         if all_pages:

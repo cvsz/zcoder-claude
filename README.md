@@ -925,7 +925,7 @@ python main.py --list-models
 
 | Legacy module (shim) | Clean Architecture location | Purpose |
 |----------------------|----------------------------|---------|
-| `claude_models.py` → | `domain/models/catalog.py`, `domain/models/pricing.py`, `domain/models/validation.py` | Model catalog, pricing, Computer Use, Adaptive/Interleaved Thinking |
+| `claude_models.py` → | `domain/models/catalog.py` | Model catalog, Computer Use, Adaptive/Interleaved Thinking |
 | `claude_admin_api.py` → | `domain/admin.py`, `infrastructure/anthropic_api/admin_gateway.py`, `application/admin_service.py`, `interfaces/cli/commands/admin_commands.py` | Admin API: Usage/Cost, API keys, Enterprise User Management |
 | `claude_compliance_api.py` → | `domain/compliance/`, `infrastructure/anthropic_api/compliance_gateway.py`, `application/compliance_service.py`, `interfaces/cli/commands/compliance_commands.py` | Compliance API: Activity Feed, chat/file/project CRUD, session transcripts |
 | `claude_agents_sdk.py` → | `domain/agents/`, `infrastructure/anthropic_api/agents_gateway.py`, `application/agents_service.py`, `interfaces/cli/commands/agent_commands.py` | Managed Agents, orchestration, subagents, Dreaming, session budgets |
@@ -935,10 +935,10 @@ python main.py --list-models
 | `claude_files.py` → | `domain/files.py`, `infrastructure/anthropic_api/files_gateway.py`, `application/files_service.py`, `interfaces/cli/commands/files_commands.py` | Files API upload/list/ask/download/delete |
 | `claude_batch.py` → | `domain/batch.py`, `infrastructure/anthropic_api/batch_gateway.py`, `application/batch_service.py`, `interfaces/cli/commands/batch_commands.py` | Batch API, 50% cost discount |
 | `claude_cache.py` → | `domain/cache.py`, `infrastructure/anthropic_api/cache_gateway.py`, `application/cache_service.py`, `interfaces/cli/commands/cache_commands.py` | Prompt caching, pre-warming, cache stats, mid-system messages |
-| `claude_vision.py` → | `domain/vision.py`, `infrastructure/anthropic_api/vision_gateway.py`, `application/vision_service.py`, `interfaces/cli/commands/vision_commands.py` | Images, PDFs, OCR, code from screenshot |
-| `claude_search.py` → | `domain/search.py`, `infrastructure/anthropic_api/search_gateway.py`, `application/search_service.py`, `interfaces/cli/commands/search_commands.py` | Web search, web fetch, citations |
-| `claude_code_exec.py` → | `domain/code_execution.py`, `infrastructure/anthropic_api/code_execution_gateway.py`, `application/code_execution_service.py`, `interfaces/cli/commands/code_execution_commands.py` | Code Execution tool, live debugging |
-| `claude_skills_api.py` → | `domain/skills.py`, `infrastructure/anthropic_api/skills_management_gateway.py`, `application/skills_service.py`, `interfaces/cli/commands/skills_commands.py` | Platform Agent Skills (skill_id-based), Skills management API |
+| `claude_vision.py` → | `domain/vision.py` (planned), `infrastructure/anthropic_api/vision_gateway.py`, `application/vision_service.py` (planned), `interfaces/cli/commands/vision_commands.py` (planned) | Images, PDFs, OCR, code from screenshot |
+| `claude_search.py` → | `domain/search.py` (planned), `infrastructure/anthropic_api/search_gateway.py`, `application/search_service.py` (planned), `interfaces/cli/commands/search_commands.py` (planned) | Web search, web fetch, citations |
+| `claude_code_exec.py` → | `domain/code_execution.py` (planned), `infrastructure/anthropic_api/code_agent_gateway.py`, `application/code_agent_loop_service.py`, `interfaces/cli/commands/code_agent_loop_commands.py` | Code Execution tool, live debugging |
+| `claude_skills_api.py` → | `domain/skills.py`, `infrastructure/anthropic_api/skills_management_gateway.py`, `application/observability_service.py` (Skills pending), `interfaces/cli/commands/` (Skills pending) | Platform Agent Skills (skill_id-based), Skills management API |
 | `claude_fable5.py` | Legacy flat file (shim) | Claude Fable 5 / Mythos 5: model info, refusal detection, automatic fallback |
 | `claude_opus5.py` | Legacy flat file (shim) | Claude Opus 5: effort/thinking validation, `xhigh` effort budgets |
 | `claude_sonnet5.py` | Legacy flat file (shim) | Claude Sonnet 5: date-based promo-pricing calculator, service-tier flags |
@@ -998,39 +998,79 @@ invocations are unaffected.
 
 ```
 domain/                    # Pure business rules, no I/O, no print()
-├── models/               #   Catalog, pricing schedules, validation
+├── models/
+│   └── catalog.py         #   Model catalog, pricing, aliases, validation
 ├── agents/               #   Agent configs, session resources
 ├── compliance/           #   Compliance domain objects
 ├── messaging.py          #   Messages API request/response shapes
 ├── tools.py              #   Tool-use domain rules
 ├── cache.py              #   Prompt-cache domain rules
-├── files.py, batch.py, vision.py, search.py, ...
-└── devtools.py           #   Git, GitHub, browser domain rules
+├── files.py, batch.py, excel.py, powerpoint.py, sessions.py, memory.py, observability.py, devtools.py, ...
+└── ...
 
 infrastructure/           # I/O adapters (Anthropic SDK, filesystem, subprocess)
 ├── anthropic_api/        #   One *_gateway.py per API surface
+│   ├── admin_gateway.py
+│   ├── agents_gateway.py
+│   ├── batch_gateway.py
+│   ├── cache_gateway.py
+│   ├── code_agent_gateway.py
+│   ├── code_agent_loop_gateway.py
+│   ├── compliance_gateway.py
+│   ├── devtools_gateway.py
+│   ├── enterprise_analytics_gateway.py
+│   ├── files_gateway.py
+│   ├── managed_session_resources_gateway.py
+│   ├── messaging_gateway.py
+│   ├── models_gateway.py
+│   ├── observability_gateway.py
+│   ├── rag_gateway.py
+│   ├── search_gateway.py
+│   ├── skills_management_gateway.py
+│   ├── tools_gateway.py
+│   └── vision_gateway.py
 ├── github_api/           #   Separate-vendor precedent (mirrors voyage_api/)
 ├── local_storage/        #   JSON/disk-backed stores (observability, devtools)
-├── voyage_api/           #   Voyage embeddings
-└── ...
+└── voyage_api/           #   Voyage embeddings
 
 application/              # Use-case layer (orchestrates domain + infra)
-├── agents_service.py     #   Managed Agents, Dreaming, session budgets
-├── messaging_service.py  #   Core Messages API
 ├── admin_service.py      #   Admin API, User Management
-├── compliance_service.py #   Compliance API
-├── observability_service.py # Cost, metrics, evals
-├── code_agent_service.py #   Agent SDK
-├── tools_service.py      #   Tool Use
-├── files_service.py      #   Files API
+├── agents_service.py     #   Managed Agents, Dreaming, session budgets
 ├── batch_service.py      #   Batch API
 ├── cache_service.py      #   Prompt caching
-├── skills_service.py     #   Skills management
+├── code_agent_loop_service.py # Agent SDK loop
+├── code_agent_service.py #   Agent SDK
+├── compliance_service.py #   Compliance API
 ├── devtools_service.py   #   Git, GitHub, browser
-└── ...
+├── excel_service.py      #   Excel/CSV
+├── files_service.py      #   Files API
+├── memory_service.py     #   Memory CRUD
+├── messaging_service.py  #   Core Messages API
+├── models_service.py     #   Models API
+├── observability_service.py # Cost, metrics, evals
+├── pptx_service.py       #   PowerPoint
+├── sessions_service.py   #   Sessions
+└── tools_service.py      #   Tool Use
 
 interfaces/               # Entry points
 ├── cli/commands/         #   One *_commands.py per feature (Textual TUI wired in)
+│   ├── admin_commands.py
+│   ├── agent_commands.py
+│   ├── batch_commands.py
+│   ├── cache_commands.py
+│   ├── code_agent_commands.py
+│   ├── code_agent_loop_commands.py
+│   ├── compliance_commands.py
+│   ├── devtools_commands.py
+│   ├── excel_commands.py
+│   ├── files_commands.py
+│   ├── memory_commands.py
+│   ├── messaging_commands.py
+│   ├── model_commands.py
+│   ├── observability_commands.py
+│   ├── pptx_commands.py
+│   ├── sessions_commands.py
+│   └── tools_commands.py
 └── web/                  #   Future web UI target
 
 compatibility shims/      # Legacy flat files that re-export from the layers above

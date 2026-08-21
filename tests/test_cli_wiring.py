@@ -45,8 +45,12 @@ def _all_claude_modules():
 
 @pytest.fixture(scope="module")
 def main_source():
-    with open(os.path.join(REPO_ROOT, "main.py"), encoding="utf-8") as f:
-        return f.read()
+    sources = []
+    for name in ("main.py", "interfaces/cli/dispatcher.py"):
+        path = os.path.join(REPO_ROOT, name)
+        with open(path, encoding="utf-8") as f:
+            sources.append(f.read())
+    return "\n".join(sources)
 
 
 @pytest.mark.parametrize("module_path", _all_claude_modules(),

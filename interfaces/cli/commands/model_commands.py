@@ -9,10 +9,7 @@ grow any new business rules, only formatting.
 """
 
 import json
-import os
-import sys
 
-from domain.models.catalog import MODEL_CATALOG
 from application.models_service import (
     list_models, get_model_info, scan_for_deprecated_models,
     upgrade_all, run_computer_use, run_adaptive_thinking,
@@ -63,9 +60,9 @@ def cmd_model_info(model_id: str, api_key: str):
         print(f"    Was:         {retired['display_name']}")
         print(f"    Migrate to:  {retired['replacement']}")
         print(f"    Notes:       {retired['notes']}")
-        print(f"\n  API calls to this ID will fail — this isn't a live lookup, "
-              f"just the local retirement record. Continuing to check the live "
-              f"API and local catalog below in case the record above is stale:\n")
+        print("\n  API calls to this ID will fail — this isn't a live lookup, "
+              "just the local retirement record. Continuing to check the live "
+              "API and local catalog below in case the record above is stale:\n")
 
     if deprecated:
         print(f"\n  \033[93m⚠ {model_id} is deprecated, retiring "
@@ -74,8 +71,8 @@ def cmd_model_info(model_id: str, api_key: str):
         print(f"    Announced:      {deprecated['deprecation_announced']}")
         print(f"    Migrate to:     {deprecated['replacement']}")
         print(f"    Notes:          {deprecated['notes']}")
-        print(f"\n  Still works today — this is an early warning, not a failure. "
-              f"Continuing below:\n")
+        print("\n  Still works today — this is an early warning, not a failure. "
+              "Continuing below:\n")
 
     if result["live"]:
         m = result["live"]
@@ -85,7 +82,7 @@ def cmd_model_info(model_id: str, api_key: str):
         print(f"  Created:        {m.get('created_at','')[:10]}")
         caps = m.get("capabilities")
         if caps:
-            print(f"  Capabilities:")
+            print("  Capabilities:")
             print(f"    Vision:              {caps.get('image_input', {}).get('supported')}")
             think = caps.get("thinking", {})
             types = think.get("types", {})
@@ -105,7 +102,7 @@ def cmd_model_info(model_id: str, api_key: str):
 
     if result["local_fallback"]:
         info = result["local_fallback"]
-        print(f"\n  \033[93m⚠ Live API unreachable — showing local catalog entry\033[0m")
+        print("\n  \033[93m⚠ Live API unreachable — showing local catalog entry\033[0m")
         print(f"  ID:              {info['id']}")
         print(f"  Display name:    {info['display_name']}")
         print(f"  Tier:            {info['tier']}")
@@ -189,19 +186,19 @@ def cmd_upgrade_all(path: str, target: str = "fable5", apply: bool = False,
         backup_note = "" if no_backup else " (.bak backup written alongside each changed file)"
         print(f"\n\033[92m✓ {result['files_changed']} file(s) updated{backup_note}\033[0m")
     else:
-        print(f"\n\033[93m⚠ Dry run — no files were changed. Re-run with --upgrade-yes to "
-              f"apply (add --upgrade-no-backup to skip .bak files).\033[0m")
+        print("\n\033[93m⚠ Dry run — no files were changed. Re-run with --upgrade-yes to "
+              "apply (add --upgrade-no-backup to skip .bak files).\033[0m")
 
 
 # ── Computer Use ───────────────────────────────────────────────────────────
 
 def cmd_computer_use(task: str, api_key: str, model: str):
-    print(f"\033[94mℹ Computer Use mode\033[0m")
-    print(f"\033[93m⚠ Note: Actual execution requires a virtual display environment.\033[0m\n")
+    print("\033[94mℹ Computer Use mode\033[0m")
+    print("\033[93m⚠ Note: Actual execution requires a virtual display environment.\033[0m\n")
     result = run_computer_use(task, api_key, model)
     print(result["text"])
     if result["tool_calls"]:
-        print(f"\n\033[90m── Tool calls planned ─────────────────\033[0m")
+        print("\n\033[90m── Tool calls planned ─────────────────\033[0m")
         for tc in result["tool_calls"]:
             print(f"  {tc['name']}: {json.dumps(tc['input'])[:120]}")
     return result

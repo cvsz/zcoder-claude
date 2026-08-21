@@ -7,7 +7,7 @@ the Anthropic Skills Management API.
 
 from dataclasses import dataclass, field
 import re
-from typing import Iterable, Optional
+from typing import Iterable
 
 _NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 

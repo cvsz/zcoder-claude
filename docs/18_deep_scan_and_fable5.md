@@ -87,7 +87,7 @@ Given that, here's how I scoped the work:
 python main.py --fable5-info
 python main.py --fable5 "your prompt"
 python main.py --fable5 "your prompt" --fable5-no-fallback
-python main.py --fable5 "your prompt" --fallback-model claude-sonnet-4-6
+python main.py --fable5 "your prompt" --fallback-model claude-sonnet-5
 ```
 
 `--fable5-info` needs no API key or network call — it just prints the

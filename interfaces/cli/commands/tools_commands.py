@@ -85,16 +85,16 @@ def cmd_list_server_tools():
             tag += f" [note: newer version {row['retired']['replacement']} available — {row['retired']['notes']}]"
         print(f"  {row['name']:<18} — {row['description']}{tag}")
     from domain.tools import ADVANCED_TOOL_USE_BETA, COMPACTION_BETA, TASK_BUDGET_BETA, TASK_BUDGET_MODELS
-    print(f"\n  Also available on custom tool definitions (--tool-file), not server tools:")
-    print(f"    input_examples   — Tool Use Examples, worked examples of a correct call.")
+    print("\n  Also available on custom tool definitions (--tool-file), not server tools:")
+    print("    input_examples   — Tool Use Examples, worked examples of a correct call.")
     print(f"                       Use with_input_examples(). [beta: {ADVANCED_TOOL_USE_BETA}]")
-    print(f"    allowed_callers  — Programmatic Tool Calling: callable from code_execution")
-    print(f"                       instead of one round-trip per call. Use")
+    print("    allowed_callers  — Programmatic Tool Calling: callable from code_execution")
+    print("                       instead of one round-trip per call. Use")
     print(f"                       with_allowed_callers(). [beta: {ADVANCED_TOOL_USE_BETA}]")
-    print(f"\n  Context/budget controls, not tools but combine with any of the above:")
-    print(f"    context_management compact edit — server-side conversation summarization.")
+    print("\n  Context/budget controls, not tools but combine with any of the above:")
+    print("    context_management compact edit — server-side conversation summarization.")
     print(f"                       Use build_context_management(compact=True). [beta: {COMPACTION_BETA}]")
-    print(f"    task_budget        — advisory token countdown for a full agentic loop.")
+    print("    task_budget        — advisory token countdown for a full agentic loop.")
     print(f"                       Use build_task_budget(). [beta: {TASK_BUDGET_BETA}, "
           f"models: {sorted(TASK_BUDGET_MODELS)}]")
 

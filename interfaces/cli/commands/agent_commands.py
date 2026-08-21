@@ -367,7 +367,7 @@ def cmd_agent_get(agent_id: str, api_key: str, version: Optional[int] = None) ->
 
 def cmd_agent_list(api_key: str, limit: int = 50) -> dict:
     result = svc.list_agents(api_key, limit=limit)
-    print(f"\033[92m✓ agents\033[0m")
+    print("\033[92m✓ agents\033[0m")
     for a in result["raw"]:
         print(f"  id={getattr(a, 'id', '?')}  name={getattr(a, 'name', '?')}")
     return result
@@ -441,7 +441,7 @@ def cmd_agent_orchestrate(goal: str, api_key: str, model: str, session_id: str =
             print(f"  → Step {data['step']}: {data['task'][:60]}")
 
     result = svc.local_agent_orchestrate(goal, api_key, model, session_id=session_id, on_step=on_step)
-    print(f"\n\033[92m✓ Orchestration complete\033[0m\n")
+    print("\n\033[92m✓ Orchestration complete\033[0m\n")
     print(result["final"])
     return result
 

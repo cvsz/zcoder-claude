@@ -16,7 +16,6 @@ Dependency Rule points inward only.
 import json
 import urllib.request
 import urllib.error
-from typing import Optional
 
 from exceptions import AICoderError
 from resilience import CircuitBreaker, retry, urlopen_json

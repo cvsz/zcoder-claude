@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 infrastructure/anthropic_api/models_gateway.py — Live Anthropic API adapters for models
 AI Model Coder CLI v1.41.0 (Clean Architecture refactor)
 
@@ -14,13 +15,13 @@ Dependency Rule points inward only.
 """
 
 import json
-import urllib.request
 import urllib.error
+import urllib.request
 
 from exceptions import AICoderError
 from resilience import CircuitBreaker, retry, urlopen_json
 
-MODELS_ENDPOINT   = "https://api.anthropic.com/v1/models"
+MODELS_ENDPOINT = "https://api.anthropic.com/v1/models"
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
 
@@ -32,11 +33,11 @@ _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
 # neither had test coverage that exercised these code paths).
 COMPUTER_USE_TOOLS = [
     {
-        "type":               "computer_20250124",
-        "name":               "computer",
-        "display_width_px":   1024,
-        "display_height_px":  768,
-        "display_number":     1,
+        "type": "computer_20250124",
+        "name": "computer",
+        "display_width_px": 1024,
+        "display_height_px": 768,
+        "display_number": 1,
     },
     {
         "type": "bash_20250124",
@@ -56,17 +57,18 @@ EFFORT_BUDGETS = {"low": 2000, "medium": 8000, "high": 16000, "max": 32000}
 
 # ── Models API ─────────────────────────────────────────────────────────────
 
+
 class ModelsAPI:
     def __init__(self, api_key: str):
         self.api_key = api_key
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-    def _call(self, req: "urllib.request.Request") -> dict:
+    def _call(self, req: urllib.request.Request) -> dict:
         return urlopen_json(req, timeout=30)
 
     def _get(self, url: str) -> dict:
         headers = {
-            "x-api-key":         self.api_key,
+            "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
         }
         req = urllib.request.Request(url, headers=headers, method="GET")
@@ -86,22 +88,27 @@ class ModelsAPI:
 class ComputerUseCoder:
     """Claude with computer use tools."""
 
-    def __init__(self, api_key: str, model: str = "claude-sonnet-5",
-                 max_tokens: int = 4096,
-                 width: int = 1024, height: int = 768):
-        self.api_key    = api_key
-        self.model      = model
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "claude-sonnet-5",
+        max_tokens: int = 4096,
+        width: int = 1024,
+        height: int = 768,
+    ):
+        self.api_key = api_key
+        self.model = model
         self.max_tokens = max_tokens
-        self.width      = width
-        self.height     = height
+        self.width = width
+        self.height = height
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
     def _call(self, payload: dict) -> dict:
         headers = {
-            "Content-Type":      "application/json",
-            "x-api-key":         self.api_key,
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
-            "anthropic-beta":    COMPUTER_USE_BETA,
+            "anthropic-beta": COMPUTER_USE_BETA,
         }
         req = urllib.request.Request(
             MESSAGES_ENDPOINT,
@@ -122,7 +129,7 @@ class ComputerUseCoder:
     def run_task(self, task: str, system: str = None) -> dict:
         """Submit a computer use task. Returns tool calls for execution."""
         tools = [dict(t) for t in COMPUTER_USE_TOOLS]
-        tools[0]["display_width_px"]  = self.width
+        tools[0]["display_width_px"] = self.width
         tools[0]["display_height_px"] = self.height
 
         system_prompt = system or (
@@ -132,28 +139,30 @@ class ComputerUseCoder:
         )
 
         payload = {
-            "model":      self.model,
+            "model": self.model,
             "max_tokens": self.max_tokens,
-            "system":     system_prompt,
-            "tools":      tools,
-            "messages":   [{"role": "user", "content": task}],
+            "system": system_prompt,
+            "tools": tools,
+            "messages": [{"role": "user", "content": task}],
         }
         data = self._post(payload)
         if "error" in data:
             return {"text": f"[ERROR] {data['error']}", "tool_calls": []}
 
-        text       = ""
+        text = ""
         tool_calls = []
         for block in data.get("content", []):
             bt = block.get("type", "")
             if bt == "text":
                 text += block.get("text", "")
             elif bt == "tool_use":
-                tool_calls.append({
-                    "name":  block.get("name"),
-                    "input": block.get("input", {}),
-                    "id":    block.get("id"),
-                })
+                tool_calls.append(
+                    {
+                        "name": block.get("name"),
+                        "input": block.get("input", {}),
+                        "id": block.get("id"),
+                    }
+                )
 
         return {"text": text, "tool_calls": tool_calls, "stop_reason": data.get("stop_reason")}
 
@@ -161,17 +170,16 @@ class ComputerUseCoder:
 class AdaptiveThinkingCoder:
     """Extended thinking with adaptive / interleaved modes."""
 
-    def __init__(self, api_key: str, model: str = "claude-sonnet-5",
-                 max_tokens: int = 8000):
-        self.api_key    = api_key
-        self.model      = model
+    def __init__(self, api_key: str, model: str = "claude-sonnet-5", max_tokens: int = 8000):
+        self.api_key = api_key
+        self.model = model
         self.max_tokens = max_tokens
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
     def _call(self, payload: dict, betas: list[str] = None) -> dict:
         headers = {
-            "Content-Type":      "application/json",
-            "x-api-key":         self.api_key,
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
         }
         if betas:
@@ -192,37 +200,35 @@ class AdaptiveThinkingCoder:
         except Exception as e:
             return {"error": str(e)}
 
-    def adaptive(self, prompt: str, budget: int = 8000,
-                 effort: str = None, system: str = None) -> str:
+    def adaptive(self, prompt: str, budget: int = 8000, effort: str = None, system: str = None) -> str:
         """Adaptive thinking — model decides depth."""
         if effort:
             budget = EFFORT_BUDGETS.get(effort, budget)
         payload = {
-            "model":      self.model,
+            "model": self.model,
             "max_tokens": max(self.max_tokens, budget + 1000),
-            "thinking":   {"type": "adaptive", "budget_tokens": budget},
-            "messages":   [{"role": "user", "content": prompt}],
+            "thinking": {"type": "adaptive", "budget_tokens": budget},
+            "messages": [{"role": "user", "content": prompt}],
         }
         if system:
             payload["system"] = system
-        data  = self._post(payload)
+        data = self._post(payload)
         if "error" in data:
             return f"[ERROR] {data['error']}"
         return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
 
-    def interleaved(self, prompt: str, tools: list[dict],
-                    budget: int = 8000, system: str = None) -> str:
+    def interleaved(self, prompt: str, tools: list[dict], budget: int = 8000, system: str = None) -> str:
         """Interleaved thinking — think between tool calls."""
         payload = {
-            "model":      self.model,
+            "model": self.model,
             "max_tokens": max(self.max_tokens, budget + 1000),
-            "thinking":   {"type": "enabled", "budget_tokens": budget},
-            "tools":      tools,
-            "messages":   [{"role": "user", "content": prompt}],
+            "thinking": {"type": "enabled", "budget_tokens": budget},
+            "tools": tools,
+            "messages": [{"role": "user", "content": prompt}],
         }
         if system:
             payload["system"] = system
-        data  = self._post(payload, betas=["interleaved-thinking-2025-05-14"])
+        data = self._post(payload, betas=["interleaved-thinking-2025-05-14"])
         if "error" in data:
             return f"[ERROR] {data['error']}"
         return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")

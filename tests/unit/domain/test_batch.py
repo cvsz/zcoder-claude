@@ -4,7 +4,7 @@ Covers domain/batch.py — pure feature-flag constants for the Messages
 Batch API bounded context, extracted 2026-08-18 (Phase C, Context #4).
 """
 
-from domain.batch import OUTPUT_300K_BETA, OUTPUT_300K_MODELS, OUTPUT_300K_MAX_TOKENS
+from domain.batch import OUTPUT_300K_BETA, OUTPUT_300K_MAX_TOKENS, OUTPUT_300K_MODELS
 
 
 def test_beta_header_unchanged():

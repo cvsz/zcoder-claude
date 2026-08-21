@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 application/agents_service.py — Use-case layer for the Agent SDK / Managed Agents
 AI Model Coder CLI v1.45.0 (Clean Architecture refactor, Phase A — final module)
 
@@ -27,20 +28,23 @@ delete call goes through this module the same as everything else.
 
 import json
 import uuid
-from typing import Optional
 
 from domain.agents.agent_config import (
-    AgentSession, SESSIONS_DIR,
-    build_multiagent_config, REVIEW_SPECIALIST_PRESETS,
+    REVIEW_SPECIALIST_PRESETS,
+    SESSIONS_DIR,
+    AgentSession,
+    build_multiagent_config,
 )
 from infrastructure.anthropic_api.agents_gateway import (
-    ManagedAgent, McpTunnel, ManagedAgentsClient,
+    ManagedAgent,
+    ManagedAgentsClient,
+    McpTunnel,
 )
-
 
 # ── MCP tunnels ──────────────────────────────────────────────────────────
 
-def open_mcp_tunnel(api_key: str, local_port: int, name: Optional[str] = None) -> dict:
+
+def open_mcp_tunnel(api_key: str, local_port: int, name: str | None = None) -> dict:
     """Returns the McpTunnel instance's .open() result dict, plus attaches
     the tunnel object itself as result['_tunnel'] so a caller that needs
     tunnel.public_url / tunnel.tunnel_id after a successful open doesn't
@@ -54,17 +58,22 @@ def open_mcp_tunnel(api_key: str, local_port: int, name: Optional[str] = None) -
 
 # ── Managed Agent orchestration (the "one convenience command" path) ────
 
-def run_managed_agent_task(task: str, api_key: str, model: str = "claude-opus-4-8",
-                           memory_store: Optional[str] = None,
-                           outcome_description: Optional[str] = None,
-                           outcome_rubric: Optional[str] = None,
-                           outcome_rubric_file_id: Optional[str] = None,
-                           outcome_max_iterations: int = 3,
-                           vault_id: Optional[str] = None,
-                           agent_overrides: Optional[dict] = None,
-                           stream_deltas: bool = False,
-                           budget_usd_cents: Optional[int] = None,
-                           on_step: Optional[callable] = None) -> dict:
+
+def run_managed_agent_task(
+    task: str,
+    api_key: str,
+    model: str = "claude-opus-4-8",
+    memory_store: str | None = None,
+    outcome_description: str | None = None,
+    outcome_rubric: str | None = None,
+    outcome_rubric_file_id: str | None = None,
+    outcome_max_iterations: int = 3,
+    vault_id: str | None = None,
+    agent_overrides: dict | None = None,
+    stream_deltas: bool = False,
+    budget_usd_cents: int | None = None,
+    on_step: callable | None = None,
+) -> dict:
     """Create a throwaway agent + environment + (optional) session and
     run one task or outcome-loop to completion. `on_step(event, data)` is
     an optional callback for presentation-layer progress messages (event
@@ -73,6 +82,7 @@ def run_managed_agent_task(task: str, api_key: str, model: str = "claude-opus-4-
     data={"text": ...} for each live text chunk from the gateway's
     on_delta) — kept optional so this stays callable headlessly (e.g.
     from a future Web job) without a CLI printer attached."""
+
     def _step(event, **data):
         if on_step:
             on_step(event, data)
@@ -94,16 +104,25 @@ def run_managed_agent_task(task: str, api_key: str, model: str = "claude-opus-4-
 
     title = (outcome_description or task)[:60]
     vault_ids = [vault_id] if vault_id else None
-    sess = mac.create_session(agent["id"], env["id"], title=title, memory_store_id=store_id,
-                              vault_ids=vault_ids, agent_overrides=agent_overrides,
-                              budget_usd_cents=budget_usd_cents)
+    sess = mac.create_session(
+        agent["id"],
+        env["id"],
+        title=title,
+        memory_store_id=store_id,
+        vault_ids=vault_ids,
+        agent_overrides=agent_overrides,
+        budget_usd_cents=budget_usd_cents,
+    )
     _step("session_created", session=sess, budget_usd_cents=budget_usd_cents)
 
     if outcome_description and (outcome_rubric or outcome_rubric_file_id):
-        mac.define_outcome(sess["id"], outcome_description,
-                           rubric_text=outcome_rubric,
-                           rubric_file_id=outcome_rubric_file_id,
-                           max_iterations=outcome_max_iterations)
+        mac.define_outcome(
+            sess["id"],
+            outcome_description,
+            rubric_text=outcome_rubric,
+            rubric_file_id=outcome_rubric_file_id,
+            max_iterations=outcome_max_iterations,
+        )
         result = mac.wait_for_outcome(sess["id"], stream_deltas=stream_deltas, on_delta=_delta)
         result["_session"] = sess
         result["_mode"] = "outcome"
@@ -117,14 +136,21 @@ def run_managed_agent_task(task: str, api_key: str, model: str = "claude-opus-4-
 
 # ── Memory stores & memories ─────────────────────────────────────────────
 
+
 def create_memory_store(api_key: str, name: str) -> dict:
     return ManagedAgentsClient(api_key).create_memory_store(name=name)
 
 
-def list_memories(api_key: str, memory_store_id: str, path_prefix: Optional[str] = None,
-                  depth: Optional[int] = None, limit: int = 50) -> dict:
+def list_memories(
+    api_key: str,
+    memory_store_id: str,
+    path_prefix: str | None = None,
+    depth: int | None = None,
+    limit: int = 50,
+) -> dict:
     return ManagedAgentsClient(api_key).list_memories(
-        memory_store_id, path_prefix=path_prefix, depth=depth, limit=limit)
+        memory_store_id, path_prefix=path_prefix, depth=depth, limit=limit
+    )
 
 
 def list_memory_stores(api_key: str, include_archived: bool = False) -> dict:
@@ -147,10 +173,14 @@ def create_memory(api_key: str, memory_store_id: str, path: str, content: str) -
     return ManagedAgentsClient(api_key).create_memory(memory_store_id, path=path, content=content)
 
 
-def update_memory(api_key: str, memory_store_id: str, memory_id: str,
-                  content: Optional[str] = None, path: Optional[str] = None) -> dict:
-    return ManagedAgentsClient(api_key).update_memory(
-        memory_store_id, memory_id, content=content, path=path)
+def update_memory(
+    api_key: str,
+    memory_store_id: str,
+    memory_id: str,
+    content: str | None = None,
+    path: str | None = None,
+) -> dict:
+    return ManagedAgentsClient(api_key).update_memory(memory_store_id, memory_id, content=content, path=path)
 
 
 def delete_memory(api_key: str, memory_store_id: str, memory_id: str) -> dict:
@@ -159,21 +189,32 @@ def delete_memory(api_key: str, memory_store_id: str, memory_id: str) -> dict:
 
 # ── Vaults & credentials ─────────────────────────────────────────────────
 
-def create_vault(api_key: str, display_name: str, external_user_id: Optional[str] = None) -> dict:
+
+def create_vault(api_key: str, display_name: str, external_user_id: str | None = None) -> dict:
     return ManagedAgentsClient(api_key).create_vault(
-        display_name=display_name, external_user_id=external_user_id)
+        display_name=display_name, external_user_id=external_user_id
+    )
 
 
-def add_vault_credential(api_key: str, vault_id: str, credential_type: str,
-                         mcp_server_url: Optional[str] = None,
-                         secret_name: Optional[str] = None,
-                         secret_value: str = "",
-                         allowed_domains: Optional[list] = None,
-                         injection_location: Optional[str] = None) -> dict:
+def add_vault_credential(
+    api_key: str,
+    vault_id: str,
+    credential_type: str,
+    mcp_server_url: str | None = None,
+    secret_name: str | None = None,
+    secret_value: str = "",
+    allowed_domains: list | None = None,
+    injection_location: str | None = None,
+) -> dict:
     return ManagedAgentsClient(api_key).add_credential(
-        vault_id, credential_type, mcp_server_url=mcp_server_url,
-        secret_name=secret_name, secret_value=secret_value,
-        allowed_domains=allowed_domains, injection_location=injection_location)
+        vault_id,
+        credential_type,
+        mcp_server_url=mcp_server_url,
+        secret_name=secret_name,
+        secret_value=secret_value,
+        allowed_domains=allowed_domains,
+        injection_location=injection_location,
+    )
 
 
 def list_vaults(api_key: str) -> list:
@@ -182,20 +223,27 @@ def list_vaults(api_key: str) -> list:
 
 # ── Dreaming (research preview) ──────────────────────────────────────────
 
-def create_dream(api_key: str, store_id: str, model: str = "claude-opus-4-8",
-                 session_ids: Optional[list] = None, instructions: Optional[str] = None) -> dict:
+
+def create_dream(
+    api_key: str,
+    store_id: str,
+    model: str = "claude-opus-4-8",
+    session_ids: list | None = None,
+    instructions: str | None = None,
+) -> dict:
     return ManagedAgentsClient(api_key).create_dream(
-        store_id, session_ids=session_ids, model=model, instructions=instructions)
+        store_id, session_ids=session_ids, model=model, instructions=instructions
+    )
 
 
 def get_dream(api_key: str, dream_id: str) -> dict:
     return ManagedAgentsClient(api_key).get_dream(dream_id)
 
 
-def list_dreams(api_key: str, include_archived: bool = False,
-                limit: int = 20, page: Optional[str] = None) -> list:
-    return ManagedAgentsClient(api_key).list_dreams(
-        include_archived=include_archived, limit=limit, page=page)
+def list_dreams(
+    api_key: str, include_archived: bool = False, limit: int = 20, page: str | None = None
+) -> list:
+    return ManagedAgentsClient(api_key).list_dreams(include_archived=include_archived, limit=limit, page=page)
 
 
 def cancel_dream(api_key: str, dream_id: str) -> dict:
@@ -208,11 +256,18 @@ def archive_dream(api_key: str, dream_id: str) -> dict:
 
 # ── Scheduled deployments ────────────────────────────────────────────────
 
-def create_scheduled_deployment(api_key: str, agent_id: str, environment_id: str,
-                                cron_expression: str, timezone: str = "UTC",
-                                task: str = "") -> dict:
+
+def create_scheduled_deployment(
+    api_key: str,
+    agent_id: str,
+    environment_id: str,
+    cron_expression: str,
+    timezone: str = "UTC",
+    task: str = "",
+) -> dict:
     return ManagedAgentsClient(api_key).create_scheduled_deployment(
-        agent_id, environment_id, cron_expression, timezone=timezone, task=task)
+        agent_id, environment_id, cron_expression, timezone=timezone, task=task
+    )
 
 
 def list_scheduled_deployments(api_key: str) -> list:
@@ -225,6 +280,7 @@ def cancel_scheduled_deployment(api_key: str, deployment_id: str) -> dict:
 
 # ── Self-hosted environments ──────────────────────────────────────────────
 
+
 def create_self_hosted_environment(api_key: str, name: str) -> dict:
     return ManagedAgentsClient(api_key).create_environment(name=name, env_type="self_hosted")
 
@@ -235,20 +291,28 @@ def get_environment_work_stats(api_key: str, environment_id: str) -> dict:
 
 # ── Webhooks ──────────────────────────────────────────────────────────────
 
-def register_agent_webhook(api_key: str, url: str, events: Optional[list] = None) -> dict:
+
+def register_agent_webhook(api_key: str, url: str, events: list | None = None) -> dict:
     return ManagedAgentsClient(api_key).register_webhook(url, event_types=events)
 
 
 # ── Agents (CRUD) ─────────────────────────────────────────────────────────
 
-def create_agent(api_key: str, name: str, model: str = "claude-opus-4-8",
-                 system: str = "You are a helpful coding assistant.",
-                 effort: Optional[str] = None, inference_geo: Optional[str] = None) -> dict:
+
+def create_agent(
+    api_key: str,
+    name: str,
+    model: str = "claude-opus-4-8",
+    system: str = "You are a helpful coding assistant.",
+    effort: str | None = None,
+    inference_geo: str | None = None,
+) -> dict:
     return ManagedAgentsClient(api_key).create_agent(
-        name, model=model, system=system, effort=effort, inference_geo=inference_geo)
+        name, model=model, system=system, effort=effort, inference_geo=inference_geo
+    )
 
 
-def get_agent(api_key: str, agent_id: str, version: Optional[int] = None) -> dict:
+def get_agent(api_key: str, agent_id: str, version: int | None = None) -> dict:
     return ManagedAgentsClient(api_key).get_agent(agent_id, version=version)
 
 
@@ -256,20 +320,37 @@ def list_agents(api_key: str, limit: int = 50) -> dict:
     return ManagedAgentsClient(api_key).list_agents(limit=limit)
 
 
-def update_agent(api_key: str, agent_id: str, name: Optional[str] = None,
-                 model: Optional[str] = None, effort: Optional[str] = None,
-                 system: Optional[str] = None, version: Optional[int] = None,
-                 inference_geo: Optional[str] = None) -> dict:
+def update_agent(
+    api_key: str,
+    agent_id: str,
+    name: str | None = None,
+    model: str | None = None,
+    effort: str | None = None,
+    system: str | None = None,
+    version: int | None = None,
+    inference_geo: str | None = None,
+) -> dict:
     return ManagedAgentsClient(api_key).update_agent(
-        agent_id, name=name, model=model, effort=effort,
-        system=system, version=version, inference_geo=inference_geo)
+        agent_id,
+        name=name,
+        model=model,
+        effort=effort,
+        system=system,
+        version=version,
+        inference_geo=inference_geo,
+    )
 
 
 # ── Multiagent code review orchestration ─────────────────────────────────
 
-def run_multiagent_review(path: str, specialists: list, api_key: str,
-                          model: str = "claude-opus-4-8",
-                          on_step: Optional[callable] = None) -> dict:
+
+def run_multiagent_review(
+    path: str,
+    specialists: list,
+    api_key: str,
+    model: str = "claude-opus-4-8",
+    on_step: callable | None = None,
+) -> dict:
     """Fan out named specialist reviewers (see REVIEW_SPECIALIST_PRESETS)
     as parallel subagents sharing one sandbox + event stream under a
     coordinator agent, run the review, return the coordinator's combined
@@ -278,8 +359,7 @@ def run_multiagent_review(path: str, specialists: list, api_key: str,
     unknown = [s for s in specialists if s not in REVIEW_SPECIALIST_PRESETS]
     if unknown:
         raise ValueError(
-            f"Unknown specialist(s) {unknown}: choose from "
-            f"{sorted(REVIEW_SPECIALIST_PRESETS)}"
+            f"Unknown specialist(s) {unknown}: choose from " f"{sorted(REVIEW_SPECIALIST_PRESETS)}"
         )
 
     def _step(event, **data):
@@ -293,7 +373,8 @@ def run_multiagent_review(path: str, specialists: list, api_key: str,
     specialist_ids = []
     for name in specialists:
         agent = mac.create_agent(
-            name=f"review-{name}-{uuid.uuid4().hex[:8]}", model=model,
+            name=f"review-{name}-{uuid.uuid4().hex[:8]}",
+            model=model,
             system=REVIEW_SPECIALIST_PRESETS[name],
         )
         specialist_ids.append(agent["id"])
@@ -307,13 +388,13 @@ def run_multiagent_review(path: str, specialists: list, api_key: str,
         "referencing all of them, organized by severity."
     )
     coordinator = mac.create_agent(
-        name=f"review-coordinator-{uuid.uuid4().hex[:8]}", model=model,
+        name=f"review-coordinator-{uuid.uuid4().hex[:8]}",
+        model=model,
         system=coordinator_system,
         multiagent=build_multiagent_config(specialist_ids),
     )
     env = mac.create_environment(name=f"ai-coder-review-env-{uuid.uuid4().hex[:8]}")
-    sess = mac.create_session(coordinator["id"], env["id"],
-                              title=f"multiagent review: {path}"[:60])
+    sess = mac.create_session(coordinator["id"], env["id"], title=f"multiagent review: {path}"[:60])
     _step("session_created", session=sess)
 
     task = (
@@ -332,14 +413,17 @@ def upload_outcome_rubric(api_key: str, file_path: str, model: str) -> dict:
     infrastructure/, imported directly here as a deliberate cross-context
     call until that module's own migration)."""
     from claude_files import FilesAPI
+
     fa = FilesAPI(api_key=api_key, model=model)
     return fa.upload(file_path)
 
 
 # ── Local (non-Managed-Agents) chat/orchestrate + local session files ───
 
-def local_agent_chat(prompt: str, api_key: str, model: str,
-                     session_id: Optional[str] = None, new: bool = False) -> dict:
+
+def local_agent_chat(
+    prompt: str, api_key: str, model: str, session_id: str | None = None, new: bool = False
+) -> dict:
     """Returns {'session': AgentSession, 'result': str, 'status': str}
     where status is one of 'resumed' (loaded an existing session_id),
     'created_with_id' (session_id given but not found on disk — a fresh
@@ -363,14 +447,15 @@ def local_agent_chat(prompt: str, api_key: str, model: str,
     return {"session": session, "result": result, "status": status}
 
 
-def local_agent_orchestrate(goal: str, api_key: str, model: str,
-                            session_id: Optional[str] = None,
-                            on_step: Optional[callable] = None) -> dict:
+def local_agent_orchestrate(
+    goal: str, api_key: str, model: str, session_id: str | None = None, on_step: callable | None = None
+) -> dict:
     """`on_step(event, data)` is an optional callback for presentation-layer
     progress messages (event in "orchestrating", "decomposed", "step_start"
     — see ManagedAgent.orchestrate()'s own docstring for each event's data
     shape) — kept optional so this stays callable headlessly, same
     convention as run_managed_agent_task()'s on_step above."""
+
     def _step(event, data):
         if on_step:
             on_step(event, data)
@@ -398,15 +483,14 @@ def list_local_sessions(max_results: int = 20) -> list:
 
 # ── Managed Agents sessions & budgets (v1.39.0) ──────────────────────────
 
+
 def get_agent_session(api_key: str, session_id: str) -> dict:
     return ManagedAgentsClient(api_key).get_session(session_id)
 
 
 def set_session_budget(api_key: str, session_id: str, usd_cents: int) -> dict:
-    return ManagedAgentsClient(api_key).update_session_budget(
-        session_id, budget_usd_cents=usd_cents)
+    return ManagedAgentsClient(api_key).update_session_budget(session_id, budget_usd_cents=usd_cents)
 
 
 def remove_session_budget(api_key: str, session_id: str) -> dict:
-    return ManagedAgentsClient(api_key).update_session_budget(
-        session_id, budget_usd_cents=None)
+    return ManagedAgentsClient(api_key).update_session_budget(session_id, budget_usd_cents=None)

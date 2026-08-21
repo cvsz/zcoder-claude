@@ -20,21 +20,33 @@ existing imports keep working unmodified.
 """
 
 from domain.settings import (
-    USER_SETTINGS, PROJECT_SETTINGS, LOCAL_SETTINGS,
     DEFAULT_STATUS_LINE_TEMPLATE,
-    _read_json, _deep_merge,
-    load_settings, load_settings_with_provenance, render_status_line,
+    LOCAL_SETTINGS,
+    PROJECT_SETTINGS,
+    USER_SETTINGS,
+    _deep_merge,
+    _read_json,
+    load_settings,
+    load_settings_with_provenance,
+    render_status_line,
 )
 from infrastructure.local_storage.settings_store import write_setting
 from interfaces.cli.commands.settings_commands import (
-    cmd_settings_show, cmd_status_line,
+    cmd_settings_show,
+    cmd_status_line,
 )
 
 __all__ = [
-    "USER_SETTINGS", "PROJECT_SETTINGS", "LOCAL_SETTINGS",
+    "USER_SETTINGS",
+    "PROJECT_SETTINGS",
+    "LOCAL_SETTINGS",
     "DEFAULT_STATUS_LINE_TEMPLATE",
-    "_read_json", "_deep_merge",
-    "load_settings", "load_settings_with_provenance", "render_status_line",
+    "_read_json",
+    "_deep_merge",
+    "load_settings",
+    "load_settings_with_provenance",
+    "render_status_line",
     "write_setting",
-    "cmd_settings_show", "cmd_status_line",
+    "cmd_settings_show",
+    "cmd_status_line",
 ]

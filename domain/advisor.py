@@ -5,23 +5,28 @@ Pure data + pure functions for the advisor tool. No I/O, no print(), no
 `import anthropic` — those belong to infrastructure/.
 """
 
-from typing import Optional
 
 ADVISOR_TOOL_TYPE = "advisor_20260301"
 ADVISOR_TOOL_BETA = "advisor-tool-2026-03-01"
 
 ADVISOR_EXECUTOR_MODELS = {
-    "claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6",
-    "claude-sonnet-5", "claude-sonnet-4-6",
-    "claude-haiku-4-5", "claude-haiku-4-5-20251001",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
+    "claude-opus-4-6",
+    "claude-sonnet-5",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5",
+    "claude-haiku-4-5-20251001",
     "claude-fable-5",
 }
 
 
-def build_advisor_tool(advisor_model: str = "claude-opus-4-8",
-                       max_uses: Optional[int] = None,
-                       max_tokens: Optional[int] = None,
-                       cache_ttl: Optional[str] = "5m") -> dict:
+def build_advisor_tool(
+    advisor_model: str = "claude-opus-4-8",
+    max_uses: int | None = None,
+    max_tokens: int | None = None,
+    cache_ttl: str | None = "5m",
+) -> dict:
     tool = {
         "type": ADVISOR_TOOL_TYPE,
         "name": "advisor",
@@ -42,11 +47,15 @@ def strip_advisor_blocks(messages: list) -> list:
         content = m.get("content")
         if isinstance(content, list):
             content = [
-                b for b in content
-                if not (isinstance(b, dict) and (
-                    (b.get("type") == "server_tool_use" and b.get("name") == "advisor")
-                    or b.get("type") == "advisor_tool_result"
-                ))
+                b
+                for b in content
+                if not (
+                    isinstance(b, dict)
+                    and (
+                        (b.get("type") == "server_tool_use" and b.get("name") == "advisor")
+                        or b.get("type") == "advisor_tool_result"
+                    )
+                )
             ]
         cleaned.append({**m, "content": content})
     return cleaned

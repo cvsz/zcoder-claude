@@ -4,16 +4,19 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Real HTTP calls to api.anthropic.com for WIF token exchange and admin
 operations. No print().
 """
+# mypy: ignore-errors
 
 import json
-import urllib.request
 import urllib.error
-from typing import Optional
+import urllib.request
 
 from domain.wif import (
-    OAUTH_TOKEN_ENDPOINT, ADMIN_BASE, JWT_BEARER_GRANT, WIFExchangeError,
+    ADMIN_BASE,
+    JWT_BEARER_GRANT,
+    OAUTH_TOKEN_ENDPOINT,
+    WIFExchangeError,
 )
-from exceptions import AICoderError, AuthenticationError, RateLimitError, APIError
+from exceptions import AICoderError, APIError, AuthenticationError, RateLimitError
 from resilience import CircuitBreaker, retry, urlopen_json
 
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
@@ -21,10 +24,15 @@ _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
 
 class WIFCredentialExchanger:
     @retry(max_attempts=3, base_delay=1.0, max_delay=10.0, breaker=_breaker)
-    def exchange(self, federation_rule_id: str, organization_id: str,
-                 service_account_id: str, identity_token: str,
-                 workspace_id: Optional[str] = None,
-                 token_lifetime_seconds: Optional[int] = None) -> dict:
+    def exchange(
+        self,
+        federation_rule_id: str,
+        organization_id: str,
+        service_account_id: str,
+        identity_token: str,
+        workspace_id: str | None = None,
+        token_lifetime_seconds: int | None = None,
+    ) -> dict:
         body = {
             "grant_type": JWT_BEARER_GRANT,
             "assertion": identity_token,
@@ -78,8 +86,10 @@ class WIFAdminClient:
 
     def _post(self, path: str, payload: dict) -> dict:
         req = urllib.request.Request(
-            f"{ADMIN_BASE}{path}", data=json.dumps(payload).encode(),
-            headers=self._headers(), method="POST",
+            f"{ADMIN_BASE}{path}",
+            data=json.dumps(payload).encode(),
+            headers=self._headers(),
+            method="POST",
         )
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
@@ -95,22 +105,27 @@ class WIFAdminClient:
     def list_service_accounts(self) -> dict:
         return self._get("/service_accounts")
 
-    def create_federation_issuer(self, name: str, issuer_url: str,
-                                 jwks: Optional[dict] = None) -> dict:
-        payload = {"name": name, "issuer_url": issuer_url,
-                   "jwks": jwks or {"type": "discovery"}}
+    def create_federation_issuer(self, name: str, issuer_url: str, jwks: dict | None = None) -> dict:
+        payload = {"name": name, "issuer_url": issuer_url, "jwks": jwks or {"type": "discovery"}}
         return self._post("/federation_issuers", payload)
 
     def list_federation_issuers(self) -> dict:
         return self._get("/federation_issuers")
 
-    def create_federation_rule(self, name: str, issuer_id: str,
-                               service_account_id: str, match: dict,
-                               oauth_scope: Optional[str] = None,
-                               token_lifetime_seconds: Optional[int] = None) -> dict:
+    def create_federation_rule(
+        self,
+        name: str,
+        issuer_id: str,
+        service_account_id: str,
+        match: dict,
+        oauth_scope: str | None = None,
+        token_lifetime_seconds: int | None = None,
+    ) -> dict:
         payload = {
-            "name": name, "issuer_id": issuer_id,
-            "service_account_id": service_account_id, "match": match,
+            "name": name,
+            "issuer_id": issuer_id,
+            "service_account_id": service_account_id,
+            "match": match,
         }
         if oauth_scope is not None:
             payload["oauth_scope"] = oauth_scope

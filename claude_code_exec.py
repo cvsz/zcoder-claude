@@ -13,13 +13,20 @@ this shim.
 """
 
 from infrastructure.anthropic_api.code_agent_gateway import (
-    CodeExecutionCoder, CODE_EXEC_TOOL, LEGACY_BETA_HEADER,
-    LEGACY_CODE_EXEC_VERSION, DEFAULT_CODE_EXEC_VERSION,
+    CODE_EXEC_TOOL,
+    DEFAULT_CODE_EXEC_VERSION,
+    LEGACY_BETA_HEADER,
+    LEGACY_CODE_EXEC_VERSION,
+    CodeExecutionCoder,
 )
-from interfaces.cli.commands.code_agent_commands import cmd_code_exec, cmd_code_debug
+from interfaces.cli.commands.code_agent_commands import cmd_code_debug, cmd_code_exec
 
 __all__ = [
-    "CodeExecutionCoder", "CODE_EXEC_TOOL", "LEGACY_BETA_HEADER",
-    "LEGACY_CODE_EXEC_VERSION", "DEFAULT_CODE_EXEC_VERSION",
-    "cmd_code_exec", "cmd_code_debug",
+    "CodeExecutionCoder",
+    "CODE_EXEC_TOOL",
+    "LEGACY_BETA_HEADER",
+    "LEGACY_CODE_EXEC_VERSION",
+    "DEFAULT_CODE_EXEC_VERSION",
+    "cmd_code_exec",
+    "cmd_code_debug",
 ]

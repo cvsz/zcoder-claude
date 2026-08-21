@@ -23,20 +23,33 @@ unmodified. See exec-planning.md §5 (migration playbook).
 """
 
 from domain.files import (
-    BETA_HEADER, MAX_FILE_SIZE_BYTES, _FORBIDDEN_FILENAME_CHARS,
+    _FORBIDDEN_FILENAME_CHARS,
+    BETA_HEADER,
+    MAX_FILE_SIZE_BYTES,
     _validate_filename,
 )
-from infrastructure.local_storage.files_registry_store import LOCAL_REGISTRY
 from infrastructure.anthropic_api.files_gateway import FILES_BASE, MESSAGES_BASE, FilesAPI
+from infrastructure.local_storage.files_registry_store import LOCAL_REGISTRY
 from interfaces.cli.commands.files_commands import (
-    cmd_file_upload, cmd_file_list, cmd_file_delete, cmd_file_ask,
+    cmd_file_ask,
+    cmd_file_delete,
     cmd_file_download,
+    cmd_file_list,
+    cmd_file_upload,
 )
 
 __all__ = [
-    "BETA_HEADER", "MAX_FILE_SIZE_BYTES", "_FORBIDDEN_FILENAME_CHARS",
-    "_validate_filename", "LOCAL_REGISTRY", "FILES_BASE", "MESSAGES_BASE",
+    "BETA_HEADER",
+    "MAX_FILE_SIZE_BYTES",
+    "_FORBIDDEN_FILENAME_CHARS",
+    "_validate_filename",
+    "LOCAL_REGISTRY",
+    "FILES_BASE",
+    "MESSAGES_BASE",
     "FilesAPI",
-    "cmd_file_upload", "cmd_file_list", "cmd_file_delete", "cmd_file_ask",
+    "cmd_file_upload",
+    "cmd_file_list",
+    "cmd_file_delete",
+    "cmd_file_ask",
     "cmd_file_download",
 ]

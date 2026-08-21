@@ -14,10 +14,16 @@ this shim.
 """
 
 from domain.tools import cosine_similarity
-from infrastructure.voyage_api.embeddings_gateway import embed, EmbeddingIndex, DEFAULT_MODEL, CODE_MODEL
+from infrastructure.voyage_api.embeddings_gateway import CODE_MODEL, DEFAULT_MODEL, EmbeddingIndex, embed
 from interfaces.cli.commands.tools_commands import cmd_embed, cmd_embed_file, cmd_embed_similarity
 
 __all__ = [
-    "embed", "cosine_similarity", "EmbeddingIndex", "DEFAULT_MODEL", "CODE_MODEL",
-    "cmd_embed", "cmd_embed_file", "cmd_embed_similarity",
+    "embed",
+    "cosine_similarity",
+    "EmbeddingIndex",
+    "DEFAULT_MODEL",
+    "CODE_MODEL",
+    "cmd_embed",
+    "cmd_embed_file",
+    "cmd_embed_similarity",
 ]

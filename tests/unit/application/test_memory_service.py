@@ -5,7 +5,7 @@ Context #5). Fake MemoryStore substituted in.
 """
 
 import application.memory_service as service
-from domain.memory import MemType, MemEntry
+from domain.memory import MemEntry, MemType
 
 
 class FakeMemoryStore:
@@ -43,8 +43,7 @@ def setup_function(_):
 
 def test_add_memory_delegates(monkeypatch):
     monkeypatch.setattr(service, "MemoryStore", FakeMemoryStore)
-    entry = service.add_memory("likes tea", mtype="preference", tags=["drink"],
-                               importance=7, ns="alice")
+    entry = service.add_memory("likes tea", mtype="preference", tags=["drink"], importance=7, ns="alice")
     assert entry.content == "likes tea"
     assert entry.mtype == MemType.PREFERENCE
     assert FakeMemoryStore.instances[0].ns == "alice"

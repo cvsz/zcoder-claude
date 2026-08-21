@@ -34,10 +34,9 @@ CLI flags:
 
 import json
 import urllib.request
-from typing import Optional
 
-from resilience import CircuitBreaker, retry, urlopen_json_with_headers
 from exceptions import AICoderError
+from resilience import CircuitBreaker, retry, urlopen_json_with_headers
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
 # Cheapest current-tier model with no special sampling/thinking gating —
@@ -52,7 +51,7 @@ class ResponseMetadata:
     """Parsed subset of response headers this module cares about.
     `raw` keeps the full header dict for callers who want more."""
 
-    def __init__(self, workspace_id: Optional[str], organization_id: Optional[str], raw: dict):
+    def __init__(self, workspace_id: str | None, organization_id: str | None, raw: dict):
         self.workspace_id = workspace_id
         self.organization_id = organization_id
         self.raw = raw
@@ -71,8 +70,10 @@ def _call_with_headers(api_key: str) -> tuple:
         "messages": [{"role": "user", "content": "hi"}],
     }
     req = urllib.request.Request(
-        MESSAGES_ENDPOINT, data=json.dumps(payload).encode(),
-        headers=headers, method="POST",
+        MESSAGES_ENDPOINT,
+        data=json.dumps(payload).encode(),
+        headers=headers,
+        method="POST",
     )
     return urlopen_json_with_headers(req, timeout=60)
 
@@ -85,10 +86,12 @@ def get_response_metadata(api_key: str) -> ResponseMetadata:
     _body, response_headers = _call_with_headers(api_key)
     # Header names arrive case-normalized inconsistently across urllib
     # versions/platforms; check both cases explicitly rather than assuming.
-    workspace_id = response_headers.get("anthropic-workspace-id") or \
-        response_headers.get("Anthropic-Workspace-Id")
-    organization_id = response_headers.get("anthropic-organization-id") or \
-        response_headers.get("Anthropic-Organization-Id")
+    workspace_id = response_headers.get("anthropic-workspace-id") or response_headers.get(
+        "Anthropic-Workspace-Id"
+    )
+    organization_id = response_headers.get("anthropic-organization-id") or response_headers.get(
+        "Anthropic-Organization-Id"
+    )
     return ResponseMetadata(workspace_id, organization_id, response_headers)
 
 
@@ -102,7 +105,9 @@ def cmd_whoami(api_key: str):
     print(f"  Workspace ID:     {meta.workspace_id or '(none returned)'}")
     print(f"  Organization ID:  {meta.organization_id or '(none returned)'}")
     if not meta.workspace_id:
-        print("\033[90m  No anthropic-workspace-id header — this key/token may predate the "
-             "2026-08-11 rollout, or you're hitting a non-Claude-API endpoint.\033[0m")
+        print(
+            "\033[90m  No anthropic-workspace-id header — this key/token may predate the "
+            "2026-08-11 rollout, or you're hitting a non-Claude-API endpoint.\033[0m"
+        )
     print()
     return meta

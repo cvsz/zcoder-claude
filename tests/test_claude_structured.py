@@ -5,6 +5,7 @@ v1.30.0 fix that removed the unconditional (and, since GA, unnecessary)
 structured-outputs-2025-11-13 beta header and the dead, unused
 StructuredCoder.BETA attribute — see docs/42_upgrade_v1.30.0.md.
 """
+
 import json
 from unittest.mock import patch
 
@@ -14,6 +15,7 @@ import claude_structured as mod
 def _fake_urlopen_json(payload_text):
     def _fake(req, timeout=120):
         return {"content": [{"type": "text", "text": payload_text}]}
+
     return _fake
 
 
@@ -80,6 +82,6 @@ def test_json_schema_mode_raises_on_missing_required_field():
     with patch("infrastructure.anthropic_api.messaging_gateway.urlopen_json", _fake_urlopen_json):
         try:
             sc.json_schema("extract the name", schema)
-            assert False, "expected ValueError for missing required field"
+            raise AssertionError("expected ValueError for missing required field")
         except ValueError as e:
             assert "name" in str(e)

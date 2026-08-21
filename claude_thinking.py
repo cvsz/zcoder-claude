@@ -14,14 +14,23 @@ this shim.
 """
 
 from domain.messaging import (
-    EFFORT_BUDGETS, ADAPTIVE_THINKING_MODELS, BUDGET_TOKENS_UNSUPPORTED_MODELS,
-    supports_adaptive_thinking, supports_manual_budget_tokens, ThinkingModeError,
+    ADAPTIVE_THINKING_MODELS,
+    BUDGET_TOKENS_UNSUPPORTED_MODELS,
+    EFFORT_BUDGETS,
+    ThinkingModeError,
+    supports_adaptive_thinking,
+    supports_manual_budget_tokens,
 )
 from infrastructure.anthropic_api.messaging_gateway import ThinkingCoder
 from interfaces.cli.commands.messaging_commands import cmd_thinking
 
 __all__ = [
-    "EFFORT_BUDGETS", "ADAPTIVE_THINKING_MODELS", "BUDGET_TOKENS_UNSUPPORTED_MODELS",
-    "supports_adaptive_thinking", "supports_manual_budget_tokens", "ThinkingModeError",
-    "ThinkingCoder", "cmd_thinking",
+    "EFFORT_BUDGETS",
+    "ADAPTIVE_THINKING_MODELS",
+    "BUDGET_TOKENS_UNSUPPORTED_MODELS",
+    "supports_adaptive_thinking",
+    "supports_manual_budget_tokens",
+    "ThinkingModeError",
+    "ThinkingCoder",
+    "cmd_thinking",
 ]

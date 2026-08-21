@@ -46,24 +46,43 @@ describes; the test fixture was updated to patch the store module
 directly instead. See exec-planning.md §5 (migration playbook).
 """
 
-from domain.models.catalog import PRICE as _CATALOG_PRICE, DEFAULT_PRICE as _CATALOG_DEFAULT
-from domain.observability import summarise_metrics as summarise, price_lookup as _price
+from domain.models.catalog import DEFAULT_PRICE as _CATALOG_DEFAULT
+from domain.models.catalog import PRICE as _CATALOG_PRICE
+from domain.observability import price_lookup as _price
+from domain.observability import summarise_metrics as summarise
 from infrastructure.local_storage.observability_store import (
     METRICS_LOG_PATH as LOG_PATH,
-    record_metric as record,
-    load_metrics_log as load_log,
+)
+from infrastructure.local_storage.observability_store import (
     clear_metrics_log,
     write_metrics_export,
 )
+from infrastructure.local_storage.observability_store import (
+    load_metrics_log as load_log,
+)
+from infrastructure.local_storage.observability_store import (
+    record_metric as record,
+)
 from interfaces.cli.commands.observability_commands import (
-    cmd_metrics_show, cmd_metrics_clear, cmd_metrics_export,
+    cmd_metrics_clear,
+    cmd_metrics_export,
+    cmd_metrics_show,
 )
 
 PRICE_TABLE = {model_id: (p["in"], p["out"]) for model_id, p in _CATALOG_PRICE.items()}
 DEFAULT_PRICE = (_CATALOG_DEFAULT["in"], _CATALOG_DEFAULT["out"])
 
 __all__ = [
-    "LOG_PATH", "PRICE_TABLE", "DEFAULT_PRICE", "_price", "record",
-    "load_log", "summarise", "clear_metrics_log", "write_metrics_export",
-    "cmd_metrics_show", "cmd_metrics_clear", "cmd_metrics_export",
+    "LOG_PATH",
+    "PRICE_TABLE",
+    "DEFAULT_PRICE",
+    "_price",
+    "record",
+    "load_log",
+    "summarise",
+    "clear_metrics_log",
+    "write_metrics_export",
+    "cmd_metrics_show",
+    "cmd_metrics_clear",
+    "cmd_metrics_export",
 ]

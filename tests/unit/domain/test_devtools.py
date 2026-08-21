@@ -6,18 +6,33 @@ claude_git.py, claude_github.py, and claude_chrome.py had zero test
 coverage before this migration; this closes that gap for the pure-logic
 half of all three.
 """
+
 from domain.devtools import (
-    GIT_SYSTEM_PROMPT, commit_message_prompt, pr_description_prompt,
-    changelog_prompt, diff_review_prompt, blame_explain_prompt,
-    GITHUB_REVIEW_SYSTEM_PROMPT, GITHUB_TRIAGE_SYSTEM_PROMPT,
-    GITHUB_SUMMARISE_SYSTEM_PROMPT, GITHUB_PR_DESCRIPTION_SYSTEM_PROMPT,
-    review_pr_context, triage_context, commits_context, pr_description_gh_prompt,
-    MAX_PAGE_CHARS, BROWSE_SYSTEM_PROMPT, extract_page_text,
-    domain_allowed, parse_json_action, browse_turn_prompt, BrowseStep,
+    BROWSE_SYSTEM_PROMPT,
+    GIT_SYSTEM_PROMPT,
+    GITHUB_PR_DESCRIPTION_SYSTEM_PROMPT,
+    GITHUB_REVIEW_SYSTEM_PROMPT,
+    GITHUB_SUMMARISE_SYSTEM_PROMPT,
+    GITHUB_TRIAGE_SYSTEM_PROMPT,
+    MAX_PAGE_CHARS,
+    BrowseStep,
+    blame_explain_prompt,
+    browse_turn_prompt,
+    changelog_prompt,
+    commit_message_prompt,
+    commits_context,
+    diff_review_prompt,
+    domain_allowed,
+    extract_page_text,
+    parse_json_action,
+    pr_description_gh_prompt,
+    pr_description_prompt,
+    review_pr_context,
+    triage_context,
 )
 
-
 # ── git ───────────────────────────────────────────────────────────────
+
 
 def test_git_system_prompt_mentions_conventions():
     assert "senior software engineer" in GIT_SYSTEM_PROMPT
@@ -57,15 +72,25 @@ def test_blame_explain_prompt_includes_all_fields():
 
 # ── github ────────────────────────────────────────────────────────────
 
+
 def test_github_system_prompts_are_distinct():
-    prompts = {GITHUB_REVIEW_SYSTEM_PROMPT, GITHUB_TRIAGE_SYSTEM_PROMPT,
-              GITHUB_SUMMARISE_SYSTEM_PROMPT, GITHUB_PR_DESCRIPTION_SYSTEM_PROMPT}
+    prompts = {
+        GITHUB_REVIEW_SYSTEM_PROMPT,
+        GITHUB_TRIAGE_SYSTEM_PROMPT,
+        GITHUB_SUMMARISE_SYSTEM_PROMPT,
+        GITHUB_PR_DESCRIPTION_SYSTEM_PROMPT,
+    }
     assert len(prompts) == 4
 
 
 def test_review_pr_context_shapes_pr_metadata():
-    pr = {"title": "Fix bug", "user": {"login": "alice"},
-          "head": {"ref": "fix"}, "base": {"ref": "main"}, "body": "desc"}
+    pr = {
+        "title": "Fix bug",
+        "user": {"login": "alice"},
+        "head": {"ref": "fix"},
+        "base": {"ref": "main"},
+        "body": "desc",
+    }
     ctx = review_pr_context(42, pr, "the diff")
     assert "PR #42: Fix bug" in ctx
     assert "alice" in ctx and "fix" in ctx and "main" in ctx
@@ -87,8 +112,15 @@ def test_commits_context_none_on_unexpected_shape():
 
 
 def test_commits_context_formats_commit_list():
-    commits = [{"sha": "abcdef1234", "commit": {
-        "message": "Fix thing\n\nmore detail", "author": {"name": "Bob", "date": "2026-08-19T00:00:00Z"}}}]
+    commits = [
+        {
+            "sha": "abcdef1234",
+            "commit": {
+                "message": "Fix thing\n\nmore detail",
+                "author": {"name": "Bob", "date": "2026-08-19T00:00:00Z"},
+            },
+        }
+    ]
     ctx = commits_context("r/r", commits)
     assert "[abcdef1] Fix thing (Bob, 2026-08-19)" in ctx
 
@@ -99,6 +131,7 @@ def test_pr_description_gh_prompt_includes_title_and_diff():
 
 
 # ── chrome / browse ───────────────────────────────────────────────────
+
 
 def test_max_page_chars_reasonable():
     assert MAX_PAGE_CHARS == 8000

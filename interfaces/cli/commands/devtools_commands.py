@@ -12,23 +12,30 @@ claude_chrome.py's cmd_browse (its print()-per-loop-step body converted
 to an on_step callback that reproduces every original message exactly).
 """
 
-from typing import List, Optional
 
 from application import devtools_service as service
 from domain.devtools import BrowseStep
 
 __all__ = [
-    "cmd_git_commit", "cmd_git_pr", "cmd_git_changelog", "cmd_git_review",
+    "cmd_git_commit",
+    "cmd_git_pr",
+    "cmd_git_changelog",
+    "cmd_git_review",
     "cmd_git_blame_explain",
-    "cmd_gh_review_pr", "cmd_gh_triage", "cmd_gh_commits", "cmd_gh_pr_description",
+    "cmd_gh_review_pr",
+    "cmd_gh_triage",
+    "cmd_gh_commits",
+    "cmd_gh_pr_description",
     "cmd_browse",
 ]
 
 
 # ── git ───────────────────────────────────────────────────────────────
 
-def cmd_git_commit(api_key: str, model: str, style: str = "conventional",
-                   cwd: str = ".", write: bool = False):
+
+def cmd_git_commit(
+    api_key: str, model: str, style: str = "conventional", cwd: str = ".", write: bool = False
+):
     diff = service.staged_diff(cwd)
     msg = service.commit_message(diff, api_key, model, style)
     print(msg)
@@ -44,8 +51,7 @@ def cmd_git_pr(base: str, head: str, api_key: str, model: str, cwd: str = "."):
     print(service.pr_description(base, head, cwd, api_key, model))
 
 
-def cmd_git_changelog(since_tag: str, api_key: str, model: str,
-                      cwd: str = ".", output: Optional[str] = None):
+def cmd_git_changelog(since_tag: str, api_key: str, model: str, cwd: str = ".", output: str | None = None):
     md = service.changelog(since_tag, cwd, api_key, model)
     if output:
         service.save_text(output, md)
@@ -59,37 +65,35 @@ def cmd_git_review(api_key: str, model: str, cwd: str = "."):
     print(service.diff_review(diff, api_key, model))
 
 
-def cmd_git_blame_explain(file: str, line_start: int, line_end: int,
-                          api_key: str, model: str, cwd: str = "."):
+def cmd_git_blame_explain(
+    file: str, line_start: int, line_end: int, api_key: str, model: str, cwd: str = "."
+):
     print(service.explain_blame(file, line_start, line_end, cwd, api_key, model))
 
 
 # ── github ────────────────────────────────────────────────────────────
 
-def cmd_gh_review_pr(repo_pr: str, gh_token_explicit: Optional[str],
-                     api_key: str, model: str):
+
+def cmd_gh_review_pr(repo_pr: str, gh_token_explicit: str | None, api_key: str, model: str):
     repo, _, num = repo_pr.rpartition("/")
     token = service.resolve_github_token(gh_token_explicit)
     print(f"\n\033[94mReviewing PR #{num} in {repo}\033[0m\n")
     print(service.review_pr(repo, int(num), token, api_key, model))
 
 
-def cmd_gh_triage(repo: str, max_items: int, gh_token_explicit: Optional[str],
-                  api_key: str, model: str):
+def cmd_gh_triage(repo: str, max_items: int, gh_token_explicit: str | None, api_key: str, model: str):
     token = service.resolve_github_token(gh_token_explicit)
     print(f"\n\033[94mTriaging open issues in {repo}\033[0m\n")
     print(service.triage_issues(repo, max_items, token, api_key, model))
 
 
-def cmd_gh_commits(repo: str, max_items: int, gh_token_explicit: Optional[str],
-                   api_key: str, model: str):
+def cmd_gh_commits(repo: str, max_items: int, gh_token_explicit: str | None, api_key: str, model: str):
     token = service.resolve_github_token(gh_token_explicit)
     print(f"\n\033[94mCommit summary for {repo}\033[0m\n")
     print(service.summarise_commits(repo, max_items, token, api_key, model))
 
 
-def cmd_gh_pr_description(repo_pr: str, gh_token_explicit: Optional[str],
-                          api_key: str, model: str):
+def cmd_gh_pr_description(repo_pr: str, gh_token_explicit: str | None, api_key: str, model: str):
     repo, _, num = repo_pr.rpartition("/")
     token = service.resolve_github_token(gh_token_explicit)
     print(f"\n\033[94mGenerating PR description for #{num} in {repo}\033[0m\n")
@@ -97,6 +101,7 @@ def cmd_gh_pr_description(repo_pr: str, gh_token_explicit: Optional[str],
 
 
 # ── browse ────────────────────────────────────────────────────────────
+
 
 def _print_browse_step(task: str, start_url: str, s: BrowseStep):
     if s.action == "start":
@@ -123,10 +128,24 @@ def _print_browse_step(task: str, start_url: str, s: BrowseStep):
         print("\033[93m[max steps reached without a final answer]\033[0m")
 
 
-def cmd_browse(api_key: str, model: str, start_url: str, task: str,
-               max_steps: int = 6, allowed_domains: Optional[List[str]] = None,
-               temperature: float = 0.0, max_tokens: int = 1024):
+def cmd_browse(
+    api_key: str,
+    model: str,
+    start_url: str,
+    task: str,
+    max_steps: int = 6,
+    allowed_domains: list[str] | None = None,
+    temperature: float = 0.0,
+    max_tokens: int = 1024,
+):
     return service.browse_session(
-        api_key, model, start_url, task, max_steps=max_steps,
-        allowed_domains=allowed_domains, temperature=temperature, max_tokens=max_tokens,
-        on_step=lambda s: _print_browse_step(task, start_url, s))
+        api_key,
+        model,
+        start_url,
+        task,
+        max_steps=max_steps,
+        allowed_domains=allowed_domains,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        on_step=lambda s: _print_browse_step(task, start_url, s),
+    )

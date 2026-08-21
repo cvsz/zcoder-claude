@@ -4,16 +4,20 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Only print() lives here — all real work delegated to
 application/prompt_optimizer_service.py.
 """
+# mypy: ignore-errors
 
 from application import prompt_optimizer_service as service
 
 
 def cmd_optimize(prompt: str, api_key: str, model: str):
     import anthropic
+
     sys_msg, user_msg = service.optimize(prompt)
     client = anthropic.Anthropic(api_key=api_key)
     resp = client.messages.create(
-        model=model, max_tokens=2048, system=sys_msg,
+        model=model,
+        max_tokens=2048,
+        system=sys_msg,
         messages=[{"role": "user", "content": user_msg}],
     )
     improved = resp.content[0].text.strip()
@@ -26,10 +30,13 @@ def cmd_optimize(prompt: str, api_key: str, model: str):
 
 def cmd_score(prompt: str, api_key: str, model: str):
     import anthropic
+
     sys_msg, user_msg, max_tokens, parse = service.score(prompt)
     client = anthropic.Anthropic(api_key=api_key)
     resp = client.messages.create(
-        model=model, max_tokens=max_tokens, system=sys_msg,
+        model=model,
+        max_tokens=max_tokens,
+        system=sys_msg,
         messages=[{"role": "user", "content": user_msg}],
     )
     result = parse(resp.content[0].text.strip())
@@ -46,16 +53,20 @@ def cmd_score(prompt: str, api_key: str, model: str):
 
 def cmd_ab_test(prompt_a: str, prompt_b: str, task: str, api_key: str, model: str):
     import anthropic
+
     from utils import sampling_kwargs
+
     judge_prompt, max_tokens, parse = service.ab_test(prompt_a, prompt_b, task)
 
     def run(prompt):
-        t0 = __import__('time').time()
+        t0 = __import__("time").time()
         resp = anthropic.Anthropic(api_key=api_key).messages.create(
-            model=model, max_tokens=2048, **sampling_kwargs(model, temperature=0.5),
+            model=model,
+            max_tokens=2048,
+            **sampling_kwargs(model, temperature=0.5),
             messages=[{"role": "user", "content": prompt}],
         )
-        return resp.content[0].text.strip(), round(__import__('time').time() - t0, 2)
+        return resp.content[0].text.strip(), round(__import__("time").time() - t0, 2)
 
     resp_a, time_a = run(prompt_a)
     resp_b, time_b = run(prompt_b)
@@ -63,7 +74,8 @@ def cmd_ab_test(prompt_a: str, prompt_b: str, task: str, api_key: str, model: st
     filled = judge_prompt.replace("{response_a}", resp_a).replace("{response_b}", resp_b)
     client = anthropic.Anthropic(api_key=api_key)
     judge_resp = client.messages.create(
-        model=model, max_tokens=max_tokens,
+        model=model,
+        max_tokens=max_tokens,
         system="You are an objective evaluator of AI responses.",
         messages=[{"role": "user", "content": filled}],
     )

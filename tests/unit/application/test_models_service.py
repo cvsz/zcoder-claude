@@ -8,19 +8,24 @@ reachable through cmd_* (and captured via stdout in
 tests/test_claude_models_deprecation.py) — now testable as plain data
 in/data out, no print() capture needed.
 """
-import pytest
 
 from application.models_service import (
-    list_models, get_model_info, scan_for_deprecated_models,
-    upgrade_all, run_computer_use, run_adaptive_thinking,
+    get_model_info,
+    list_models,
+    run_adaptive_thinking,
+    run_computer_use,
+    scan_for_deprecated_models,
+    upgrade_all,
 )
-
 
 # ── list_models ──────────────────────────────────────────────────────────
 
+
 def test_list_models_live_source(monkeypatch):
     class FakeModelsAPI:
-        def __init__(self, api_key): pass
+        def __init__(self, api_key):
+            pass
+
         def list_models(self):
             return [{"id": "claude-sonnet-5", "display_name": "Sonnet 5", "context_window": 1_000_000}]
 
@@ -32,7 +37,9 @@ def test_list_models_live_source(monkeypatch):
 
 def test_list_models_falls_back_to_local_catalog_on_runtime_error(monkeypatch):
     class FakeModelsAPI:
-        def __init__(self, api_key): pass
+        def __init__(self, api_key):
+            pass
+
         def list_models(self):
             raise RuntimeError("network unreachable")
 
@@ -46,7 +53,9 @@ def test_list_models_falls_back_to_local_catalog_on_runtime_error(monkeypatch):
 
 def test_list_models_local_fallback_excludes_legacy_by_default(monkeypatch):
     class FakeModelsAPI:
-        def __init__(self, api_key): pass
+        def __init__(self, api_key):
+            pass
+
         def list_models(self):
             raise RuntimeError("offline")
 
@@ -57,9 +66,12 @@ def test_list_models_local_fallback_excludes_legacy_by_default(monkeypatch):
 
 # ── get_model_info ───────────────────────────────────────────────────────
 
+
 def test_get_model_info_live_success(monkeypatch):
     class FakeModelsAPI:
-        def __init__(self, api_key): pass
+        def __init__(self, api_key):
+            pass
+
         def get_model(self, model_id):
             return {"id": model_id, "display_name": "Sonnet 5"}
 
@@ -78,7 +90,9 @@ def test_get_model_info_retired_model_flagged():
 
 def test_get_model_info_falls_back_to_local_catalog(monkeypatch):
     class FakeModelsAPI:
-        def __init__(self, api_key): pass
+        def __init__(self, api_key):
+            pass
+
         def get_model(self, model_id):
             raise RuntimeError("offline")
 
@@ -91,7 +105,9 @@ def test_get_model_info_falls_back_to_local_catalog(monkeypatch):
 
 def test_get_model_info_unknown_model_surfaces_error(monkeypatch):
     class FakeModelsAPI:
-        def __init__(self, api_key): pass
+        def __init__(self, api_key):
+            pass
+
         def get_model(self, model_id):
             raise RuntimeError("404 not found")
 
@@ -103,7 +119,9 @@ def test_get_model_info_unknown_model_surfaces_error(monkeypatch):
 
 def test_get_model_info_retired_and_unknown_to_live_api_is_not_an_error(monkeypatch):
     class FakeModelsAPI:
-        def __init__(self, api_key): pass
+        def __init__(self, api_key):
+            pass
+
         def get_model(self, model_id):
             raise RuntimeError("400 model retired")
 
@@ -115,6 +133,7 @@ def test_get_model_info_retired_and_unknown_to_live_api_is_not_an_error(monkeypa
 
 
 # ── scan_for_deprecated_models ──────────────────────────────────────────
+
 
 def test_scan_finds_retired_model_id(tmp_path):
     f = tmp_path / "config.py"
@@ -140,6 +159,7 @@ def test_scan_single_file_path(tmp_path):
 
 
 # ── upgrade_all ──────────────────────────────────────────────────────────
+
 
 def test_upgrade_all_unknown_target_returns_error():
     result = upgrade_all("/tmp", target="not-a-real-target")
@@ -212,9 +232,12 @@ def test_upgrade_all_opus_target_unchanged_for_backward_compat(tmp_path):
 
 # ── run_computer_use / run_adaptive_thinking ────────────────────────────
 
+
 def test_run_computer_use_delegates_to_gateway(monkeypatch):
     class FakeComputerUseCoder:
-        def __init__(self, api_key, model): pass
+        def __init__(self, api_key, model):
+            pass
+
         def run_task(self, task):
             return {"text": f"did {task}", "tool_calls": []}
 
@@ -225,7 +248,9 @@ def test_run_computer_use_delegates_to_gateway(monkeypatch):
 
 def test_run_adaptive_thinking_delegates_to_gateway(monkeypatch):
     class FakeAdaptiveThinkingCoder:
-        def __init__(self, api_key, model): pass
+        def __init__(self, api_key, model):
+            pass
+
         def adaptive(self, prompt, budget, effort):
             return f"[{effort}/{budget}] {prompt}"
 
@@ -236,7 +261,9 @@ def test_run_adaptive_thinking_delegates_to_gateway(monkeypatch):
 
 def test_run_adaptive_thinking_default_budget_when_none(monkeypatch):
     class FakeAdaptiveThinkingCoder:
-        def __init__(self, api_key, model): pass
+        def __init__(self, api_key, model):
+            pass
+
         def adaptive(self, prompt, budget, effort):
             return budget
 

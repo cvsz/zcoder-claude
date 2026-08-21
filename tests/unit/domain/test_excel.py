@@ -4,14 +4,14 @@ Covers domain/excel.py — pure constants for the Excel chat bounded
 context, extracted 2026-08-18 (Phase C, Context #4).
 """
 
-from domain.excel import SYSTEM_PROMPT, _CODE_BLOCK, _DENYLIST, HELP_TEXT
+from domain.excel import _CODE_BLOCK, _DENYLIST, HELP_TEXT, SYSTEM_PROMPT
 
 
 def test_code_block_extracts_python_fence():
     reply = 'Sure:\n```python\nsheets["Sheet1"] = sheets["Sheet1"].dropna()\n```\n'
     match = _CODE_BLOCK.search(reply)
     assert match is not None
-    assert 'dropna()' in match.group(1)
+    assert "dropna()" in match.group(1)
 
 
 def test_code_block_no_match_for_plain_text():

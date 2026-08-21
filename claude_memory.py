@@ -25,15 +25,24 @@ used by main.py) keep working unmodified. See exec-planning.md §5
 (migration playbook).
 """
 
-from domain.memory import MemType, MemEntry
+from domain.memory import MemEntry, MemType
 from infrastructure.local_storage.memory_store import MEMORY_DIR, MemoryStore
 from interfaces.cli.commands.memory_commands import (
-    cmd_memory_add, cmd_memory_recall, cmd_memory_forget, cmd_memory_stats,
+    cmd_memory_add,
+    cmd_memory_forget,
+    cmd_memory_recall,
     cmd_memory_retention,
+    cmd_memory_stats,
 )
 
 __all__ = [
-    "MemType", "MemEntry", "MEMORY_DIR", "MemoryStore",
-    "cmd_memory_add", "cmd_memory_recall", "cmd_memory_forget",
-    "cmd_memory_stats", "cmd_memory_retention",
+    "MemType",
+    "MemEntry",
+    "MEMORY_DIR",
+    "MemoryStore",
+    "cmd_memory_add",
+    "cmd_memory_recall",
+    "cmd_memory_forget",
+    "cmd_memory_stats",
+    "cmd_memory_retention",
 ]

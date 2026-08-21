@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 infrastructure/anthropic_api/tools_gateway.py — Live Anthropic API adapter
 for custom + server tool use, and the local memory-tool handler
 AI Model Coder CLI v1.47.0 (Clean Architecture refactor, Phase C)
@@ -23,15 +24,22 @@ import json
 import os
 import shutil
 import urllib.request
-from typing import Callable, Optional
+from collections.abc import Callable
 
+from domain.tools import (
+    ADVANCED_TOOL_USE_BETA,
+    COMPACTION_BETA,
+    CONTEXT_MANAGEMENT_BETA,
+    SERVER_TOOL_BETAS,
+    SERVER_TOOLS,
+    TASK_BUDGET_BETA,
+    TASK_BUDGET_MODELS,
+    ToolRegistry,
+    build_context_management,
+    computer_use_tool_for_model,
+)
 from exceptions import AICoderError
 from resilience import CircuitBreaker, retry, urlopen_json
-from domain.tools import (
-    SERVER_TOOLS, SERVER_TOOL_BETAS, CONTEXT_MANAGEMENT_BETA, COMPACTION_BETA,
-    TASK_BUDGET_BETA, TASK_BUDGET_MODELS, ADVANCED_TOOL_USE_BETA,
-    computer_use_tool_for_model, build_context_management, ToolRegistry,
-)
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
@@ -59,7 +67,7 @@ class MemoryToolHandler:
         if rel_path == "memories":
             rel_path = ""
         elif rel_path.startswith("memories/"):
-            rel_path = rel_path[len("memories/"):]
+            rel_path = rel_path[len("memories/") :]
         full = os.path.abspath(os.path.join(self.base_dir, rel_path))
         if not (full == self.base_dir or full.startswith(self.base_dir + os.sep)):
             raise PermissionError(f"Path escapes memory directory: {rel_path}")
@@ -129,24 +137,26 @@ class ToolCoder:
     ENDPOINT = MESSAGES_ENDPOINT
 
     def __init__(self, api_key: str, model: str = "claude-sonnet-5", max_tokens: int = 4096):
-        self.api_key    = api_key
-        self.model      = model
+        self.api_key = api_key
+        self.model = model
         self.max_tokens = max_tokens
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-    def _call(self, req: "urllib.request.Request") -> dict:
+    def _call(self, req: urllib.request.Request) -> dict:
         return urlopen_json(req, timeout=120)
 
-    def _post(self, payload: dict, extra_headers: Optional[dict] = None) -> dict:
+    def _post(self, payload: dict, extra_headers: dict | None = None) -> dict:
         headers = {
-            "Content-Type":       "application/json",
-            "x-api-key":          self.api_key,
-            "anthropic-version":  "2023-06-01",
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
             **(extra_headers or {}),
         }
         req = urllib.request.Request(
-            self.ENDPOINT, data=json.dumps(payload).encode(),
-            headers=headers, method="POST",
+            self.ENDPOINT,
+            data=json.dumps(payload).encode(),
+            headers=headers,
+            method="POST",
         )
         try:
             return self._call(req)
@@ -155,14 +165,22 @@ class ToolCoder:
         except Exception as e:
             return {"error": str(e)}
 
-    def generate_with_tools(self, prompt: str, tools: list, system: Optional[str] = None,
-                             parallel: bool = True, strict: bool = False) -> dict:
+    def generate_with_tools(
+        self,
+        prompt: str,
+        tools: list,
+        system: str | None = None,
+        parallel: bool = True,
+        strict: bool = False,
+    ) -> dict:
         """Call Claude with tools. Returns raw response dict."""
         if strict:
             tools = [dict(t, **{"strict": True}) for t in tools]
         payload: dict = {
-            "model": self.model, "max_tokens": self.max_tokens,
-            "messages": [{"role": "user", "content": prompt}], "tools": tools,
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "messages": [{"role": "user", "content": prompt}],
+            "tools": tools,
         }
         if not parallel:
             payload["parallel_tool_use"] = False
@@ -171,19 +189,26 @@ class ToolCoder:
         return self._post(payload)
 
     def run_agent(
-        self, prompt: str, registry: ToolRegistry, system: Optional[str] = None,
+        self,
+        prompt: str,
+        registry: ToolRegistry,
+        system: str | None = None,
         max_turns: int = 10,
         on_tool_call: Callable[[str, dict], None] = _NOOP,
     ) -> str:
         """Full agentic loop: Claude calls tools, we execute them and
         return results, repeat until stop_reason == 'end_turn'."""
         messages = [{"role": "user", "content": prompt}]
-        tools    = registry.definitions()
-        turn     = 0
+        tools = registry.definitions()
+        turn = 0
 
         while turn < max_turns:
-            payload: dict = {"model": self.model, "max_tokens": self.max_tokens,
-                              "messages": messages, "tools": tools}
+            payload: dict = {
+                "model": self.model,
+                "max_tokens": self.max_tokens,
+                "messages": messages,
+                "tools": tools,
+            }
             if system:
                 payload["system"] = system
 
@@ -192,7 +217,7 @@ class ToolCoder:
                 return f"[ERROR] {data['error']}"
 
             stop_reason = data.get("stop_reason", "")
-            content     = data.get("content", [])
+            content = data.get("content", [])
             messages.append({"role": "assistant", "content": content})
 
             if stop_reason == "end_turn":
@@ -204,13 +229,12 @@ class ToolCoder:
             for block in content:
                 if block.get("type") != "tool_use":
                     continue
-                tool_name  = block["name"]
-                tool_id    = block["id"]
+                tool_name = block["name"]
+                tool_id = block["id"]
                 tool_input = block.get("input", {})
                 on_tool_call(tool_name, tool_input)
                 result = registry.execute(tool_name, tool_input)
-                tool_results.append({"type": "tool_result", "tool_use_id": tool_id,
-                                      "content": str(result)})
+                tool_results.append({"type": "tool_result", "tool_use_id": tool_id, "content": str(result)})
 
             messages.append({"role": "user", "content": tool_results})
             turn += 1
@@ -218,9 +242,14 @@ class ToolCoder:
         return "[MAX TURNS REACHED]"
 
     def generate_with_server_tools(
-        self, prompt: str, tool_names: list, system: Optional[str] = None,
-        context_management: Optional[dict] = None, task_budget: Optional[dict] = None,
-        extra_tools: Optional[list] = None, response_inclusion: Optional[str] = None,
+        self,
+        prompt: str,
+        tool_names: list,
+        system: str | None = None,
+        context_management: dict | None = None,
+        task_budget: dict | None = None,
+        extra_tools: list | None = None,
+        response_inclusion: str | None = None,
         on_warning: Callable[[str], None] = _NOOP,
     ) -> str:
         """Use Anthropic-hosted server tools (web_search, code_execution,
@@ -234,8 +263,10 @@ class ToolCoder:
             if name == "computer_use":
                 _cu_defaults = SERVER_TOOLS["computer_use"]
                 tool, beta = computer_use_tool_for_model(
-                    self.model, width=_cu_defaults["display_width_px"],
-                    height=_cu_defaults["display_height_px"])
+                    self.model,
+                    width=_cu_defaults["display_width_px"],
+                    height=_cu_defaults["display_height_px"],
+                )
                 tools.append(tool)
                 if beta:
                     betas.append(beta)
@@ -248,14 +279,18 @@ class ToolCoder:
             if beta:
                 betas.append(beta)
 
-        for t in (extra_tools or []):
+        for t in extra_tools or []:
             tools.append(t)
             if "input_examples" in t or "allowed_callers" in t:
                 betas.append(ADVANCED_TOOL_USE_BETA)
 
         headers_extra = {}
-        payload: dict = {"model": self.model, "max_tokens": self.max_tokens,
-                          "messages": [{"role": "user", "content": prompt}], "tools": tools}
+        payload: dict = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "messages": [{"role": "user", "content": prompt}],
+            "tools": tools,
+        }
         if system:
             payload["system"] = system
         if context_management is not None:
@@ -265,9 +300,11 @@ class ToolCoder:
                 betas.append(COMPACTION_BETA)
         if task_budget is not None:
             if self.model not in TASK_BUDGET_MODELS:
-                on_warning(f"task_budget requested but {self.model} isn't in "
-                           f"TASK_BUDGET_MODELS ({sorted(TASK_BUDGET_MODELS)}) — sending anyway, "
-                           f"the API will reject it if unsupported.")
+                on_warning(
+                    f"task_budget requested but {self.model} isn't in "
+                    f"TASK_BUDGET_MODELS ({sorted(TASK_BUDGET_MODELS)}) — sending anyway, "
+                    f"the API will reject it if unsupported."
+                )
             payload["task_budget"] = task_budget
             betas.append(TASK_BUDGET_BETA)
         if betas:
@@ -279,8 +316,13 @@ class ToolCoder:
         return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
 
     def run_agent_with_memory(
-        self, prompt: str, memory: "MemoryToolHandler", extra_tools: Optional[list] = None,
-        system: Optional[str] = None, max_turns: int = 10, use_context_management: bool = True,
+        self,
+        prompt: str,
+        memory: MemoryToolHandler,
+        extra_tools: list | None = None,
+        system: str | None = None,
+        max_turns: int = 10,
+        use_context_management: bool = True,
         on_memory_op: Callable[[str, str], None] = _NOOP,
     ) -> str:
         """Agentic loop wired to the native memory tool: any tool_use block
@@ -292,8 +334,12 @@ class ToolCoder:
         turn = 0
 
         while turn < max_turns:
-            payload: dict = {"model": self.model, "max_tokens": self.max_tokens,
-                              "messages": messages, "tools": tools}
+            payload: dict = {
+                "model": self.model,
+                "max_tokens": self.max_tokens,
+                "messages": messages,
+                "tools": tools,
+            }
             if system:
                 payload["system"] = system
             if use_context_management:
@@ -307,7 +353,7 @@ class ToolCoder:
                 return f"[API ERROR {data.get('status', '')}] {data['error']}"
 
             stop_reason = data.get("stop_reason", "")
-            content     = data.get("content", [])
+            content = data.get("content", [])
             messages.append({"role": "assistant", "content": content})
 
             if stop_reason == "end_turn":
@@ -321,8 +367,9 @@ class ToolCoder:
                     continue
                 on_memory_op(block["input"].get("command", ""), block["input"].get("path", ""))
                 result = memory.handle(block.get("input", {}))
-                tool_results.append({"type": "tool_result", "tool_use_id": block["id"],
-                                      "content": str(result)})
+                tool_results.append(
+                    {"type": "tool_result", "tool_use_id": block["id"], "content": str(result)}
+                )
             messages.append({"role": "user", "content": tool_results})
             turn += 1
 

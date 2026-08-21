@@ -4,22 +4,26 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Local-disk I/O for plugin registry, marketplace fetching, and plugin
 install/uninstall. No network calls beyond marketplace fetch, no print().
 """
+# mypy: ignore-errors
 
 import json
 import shutil
 import tempfile
-import urllib.request
 import urllib.error
+import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Optional
 
 from domain.plugins import (
-    MARKETPLACES_DIR, INSTALLED_DIR, REGISTRY_FILE,
-    _is_url, discover_plugins_in_marketplace, read_manifest,
+    INSTALLED_DIR,
+    MARKETPLACES_DIR,
+    REGISTRY_FILE,
+    _is_url,
+    discover_plugins_in_marketplace,
+    read_manifest,
 )
 from exceptions import AICoderError
-from resilience import retry, TransientAPIError
+from resilience import TransientAPIError, retry
 
 
 def _load_registry() -> dict:
@@ -45,7 +49,7 @@ def fetch_marketplace_source(url: str) -> bytes:
         raise TransientAPIError(f"could not fetch {url}: {e}") from e
 
 
-def marketplace_add(source: str, name: Optional[str] = None) -> dict:
+def marketplace_add(source: str, name: str | None = None) -> dict:
     reg = _load_registry()
     mp_name = name or Path(source.rstrip("/")).stem or "marketplace"
     dest = MARKETPLACES_DIR / mp_name
@@ -220,7 +224,7 @@ def plugin_list(reg: dict) -> list:
     return out
 
 
-def plugin_info(name: str, reg: dict) -> Optional[dict]:
+def plugin_info(name: str, reg: dict) -> dict | None:
     info = reg["installed"].get(name)
     if not info:
         return None

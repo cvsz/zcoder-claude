@@ -10,8 +10,8 @@ PptxSession (in-memory only, no save() called in these tests).
 import application.pptx_service as service
 from infrastructure.local_storage.pptx_deck_store import PptxSession
 
-
 # ── resolve_output_path ──────────────────────────────────────────────────
+
 
 def test_resolve_output_path_explicit_wins():
     assert service.resolve_output_path("in.pptx", "out.pptx") == "out.pptx"
@@ -26,6 +26,7 @@ def test_resolve_output_path_defaults_when_neither_given():
 
 
 # ── run_turn ──────────────────────────────────────────────────────────────
+
 
 class FakeCoder:
     def __init__(self, reply):
@@ -84,6 +85,7 @@ def test_run_turn_denylisted_code_does_not_save(tmp_path, monkeypatch):
 
 # ── upload_input_deck ────────────────────────────────────────────────────
 
+
 class FakeFilesAPI:
     def __init__(self, upload_result=None, raise_exc=None):
         self.upload_result = upload_result
@@ -108,7 +110,7 @@ def test_upload_input_deck_raises_on_api_error():
     fa = FakeFilesAPI(raise_exc=RuntimeError("boom"))
     try:
         service.upload_input_deck(fa, "deck.pptx")
-        assert False, "expected RuntimeError"
+        raise AssertionError("expected RuntimeError")
     except RuntimeError as e:
         assert "Could not upload" in str(e)
         assert "boom" in str(e)
@@ -118,12 +120,13 @@ def test_upload_input_deck_raises_when_no_file_id_returned():
     fa = FakeFilesAPI(upload_result={"filename": "deck.pptx"})  # no "id" key
     try:
         service.upload_input_deck(fa, "deck.pptx")
-        assert False, "expected RuntimeError"
+        raise AssertionError("expected RuntimeError")
     except RuntimeError as e:
         assert "returned no file id" in str(e)
 
 
 # ── run_native_turn ──────────────────────────────────────────────────────
+
 
 class FakeSkillsClient:
     def __init__(self, response):
@@ -136,16 +139,18 @@ class FakeSkillsClient:
 
 
 def test_run_native_turn_success_with_text():
-    client = FakeSkillsClient({
-        "container": {"id": "cont_1"},
-        "content": [{"type": "text", "text": "Done!"}],
-    })
+    client = FakeSkillsClient(
+        {
+            "container": {"id": "cont_1"},
+            "content": [{"type": "text", "text": "Done!"}],
+        }
+    )
     fa = FakeFilesAPI()
     messages = []
 
-    result = service.run_native_turn(client, fa, messages, "make a deck",
-                                      pending_file_ids=[], container_id=None,
-                                      output_path="out.pptx")
+    result = service.run_native_turn(
+        client, fa, messages, "make a deck", pending_file_ids=[], container_id=None, output_path="out.pptx"
+    )
 
     assert result["error"] is None
     assert result["text"] == "Done!"
@@ -156,10 +161,12 @@ def test_run_native_turn_success_with_text():
 
 
 def test_run_native_turn_downloads_generated_file(monkeypatch):
-    client = FakeSkillsClient({
-        "container": {"id": "cont_1"},
-        "content": [{"type": "text", "text": "Here's your deck."}],
-    })
+    client = FakeSkillsClient(
+        {
+            "container": {"id": "cont_1"},
+            "content": [{"type": "text", "text": "Here's your deck."}],
+        }
+    )
     fa = FakeFilesAPI()
 
     # extract_output_file_ids is imported inside the function from
@@ -167,11 +174,12 @@ def test_run_native_turn_downloads_generated_file(monkeypatch):
     # the local `from claude_skills_api import ...` re-resolves the
     # attribute at call time, so this takes effect.
     import claude_skills_api
+
     monkeypatch.setattr(claude_skills_api, "extract_output_file_ids", lambda data: ["file_out"])
 
-    result = service.run_native_turn(client, fa, [], "make a deck",
-                                      pending_file_ids=[], container_id=None,
-                                      output_path="out.pptx")
+    result = service.run_native_turn(
+        client, fa, [], "make a deck", pending_file_ids=[], container_id=None, output_path="out.pptx"
+    )
     assert result["downloaded"] is True
     assert fa.downloaded == ("file_out", "out.pptx")
 
@@ -181,9 +189,9 @@ def test_run_native_turn_error_pops_user_message():
     fa = FakeFilesAPI()
     messages = []
 
-    result = service.run_native_turn(client, fa, messages, "make a deck",
-                                      pending_file_ids=[], container_id=None,
-                                      output_path="out.pptx")
+    result = service.run_native_turn(
+        client, fa, messages, "make a deck", pending_file_ids=[], container_id=None, output_path="out.pptx"
+    )
 
     assert result["error"] == "container failed"
     # user message appended then popped back off on error

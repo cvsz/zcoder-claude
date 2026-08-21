@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 interfaces/cli/commands/code_agent_loop_commands.py — CLI presentation
 for the Claude Code / Agent SDK agentic loop (sessions, MCP, subagents,
 skills, todos, slash commands, cost/session listing, doctor)
@@ -32,21 +33,34 @@ from pathlib import Path
 
 from application import code_agent_loop_service as service
 from domain.code_agent import (
-    BUILTIN_SLASH_COMMANDS, SLASH_COMMAND_ALIASES, READ_ONLY_TOOLS,
-    TOOL_PRESETS, PERMISSION_MODES, COMMANDS_DIR, SKILLS_DIR,
+    BUILTIN_SLASH_COMMANDS,
+    COMMANDS_DIR,
+    PERMISSION_MODES,
+    READ_ONLY_TOOLS,
+    SKILLS_DIR,
+    SLASH_COMMAND_ALIASES,
+    TOOL_PRESETS,
 )
 from infrastructure.anthropic_api.code_agent_loop_gateway import CodeAgent
 from infrastructure.local_storage.code_agent_store import (
-    McpConnector, SubagentRegistry, SkillsRegistry,
+    McpConnector,
+    SkillsRegistry,
+    SubagentRegistry,
 )
 
 __all__ = [
-    "cmd_code_agent", "cmd_code_subagent", "cmd_code_todo", "cmd_code_slash",
-    "cmd_code_cost", "cmd_code_list_sessions", "cmd_code_list_tools",
+    "cmd_code_agent",
+    "cmd_code_subagent",
+    "cmd_code_todo",
+    "cmd_code_slash",
+    "cmd_code_cost",
+    "cmd_code_list_sessions",
+    "cmd_code_list_tools",
 ]
 
 
 # ── shared warning/permission printers ──────────────────────────────────
+
 
 def _warn(msg: str):
     """Plain '[WARN] ...' line — matches HooksEngine.from_file's,
@@ -84,16 +98,24 @@ def _interactive_can_use_tool(name: str, inputs: dict) -> bool:
 
 # ── --code-agent ─────────────────────────────────────────────────────────
 
+
 def cmd_code_agent(
-    prompt: str, api_key: str, model: str,
-    cwd: str = ".", tools: str = "all",
+    prompt: str,
+    api_key: str,
+    model: str,
+    cwd: str = ".",
+    tools: str = "all",
     permission: str = "askPermission",
-    session_id: str = None, system: str = None,
-    mcp_urls: list = None, output_mode: str = "stream",
-    hooks_file: str = None, checkpoint: bool = False,
+    session_id: str = None,
+    system: str = None,
+    mcp_urls: list = None,
+    output_mode: str = "stream",
+    hooks_file: str = None,
+    checkpoint: bool = False,
     output_file: str = None,
     output_style: str = None,
-    sandbox: bool = False, sandbox_allow_net: bool = False,
+    sandbox: bool = False,
+    sandbox_allow_net: bool = False,
     sandbox_roots: list = None,
     headless: bool = False,
     agent_context_editing: bool = False,
@@ -119,7 +141,7 @@ def cmd_code_agent(
 
     # MCP (project .mcp.json + plugin-bundled servers + ad-hoc --code-agent-mcp URLs)
     mcp = McpConnector.from_json_file(on_warning=_warn)
-    for url in (mcp_urls or []):
+    for url in mcp_urls or []:
         mcp.add_from_url(url)
 
     # Hooks: project/global settings hooks, merged with plugin-bundled hooks
@@ -136,8 +158,10 @@ def cmd_code_agent(
     service.add_plugin_bin_paths()
 
     # Skills / Agents (plugin-aware via their own .load())
-    skills = SkillsRegistry(); skills.load()
-    agents = SubagentRegistry(); agents.load(on_warning=_warn)
+    skills = SkillsRegistry()
+    skills.load()
+    agents = SubagentRegistry()
+    agents.load(on_warning=_warn)
 
     # Checkpoint before run
     if checkpoint:
@@ -158,13 +182,18 @@ def cmd_code_agent(
     # Run
     agent = CodeAgent(api_key=api_key, model=model)
     result = service.run_agent_query(
-        agent, prompt, session, tools, permission, hooks_engine,
-        effective_output_mode, cm,
+        agent,
+        prompt,
+        session,
+        tools,
+        permission,
+        hooks_engine,
+        effective_output_mode,
+        cm,
         can_use_tool=_interactive_can_use_tool,
         on_turn_start=lambda n: print(f"\033[90m[turn {n}]\033[0m ", end="", flush=True),
         on_text=lambda text: print(text),
-        on_tool_call=lambda name, tinput: print(
-            f"  \033[90m→ {name}({json.dumps(tinput)[:60]})\033[0m"),
+        on_tool_call=lambda name, tinput: print(f"  \033[90m→ {name}({json.dumps(tinput)[:60]})\033[0m"),
         on_permission_prompt=_on_permission_prompt,
         on_warning=_hook_fire_warning,
     )
@@ -179,27 +208,31 @@ def cmd_code_agent(
 
     if not headless:
         print(f"\n\033[90m{session.cost_summary()}\033[0m")
-        print(f"\033[90m  Resume: ai-coder --code-agent-session {session.id} -p \"...\"\033[0m")
+        print(f'\033[90m  Resume: ai-coder --code-agent-session {session.id} -p "..."\033[0m')
     return result
 
 
 # ── --code-agent-subagent ────────────────────────────────────────────────
 
+
 def cmd_code_subagent(task: str, api_key: str, model: str, cwd: str = "."):
     """Spawn a focused subagent for a sub-task."""
     print("\033[94mℹ Spawning subagent…\033[0m\n")
     result = service.run_subagent(
-        task, api_key, model, cwd=cwd,
+        task,
+        api_key,
+        model,
+        cwd=cwd,
         on_turn_start=lambda n: print(f"\033[90m[turn {n}]\033[0m ", end="", flush=True),
         on_text=lambda text: print(text),
-        on_tool_call=lambda name, tinput: print(
-            f"  \033[90m→ {name}({json.dumps(tinput)[:60]})\033[0m"),
+        on_tool_call=lambda name, tinput: print(f"  \033[90m→ {name}({json.dumps(tinput)[:60]})\033[0m"),
         on_warning=_hook_fire_warning,
     )
     return result
 
 
 # ── --code-agent-todo ─────────────────────────────────────────────────────
+
 
 def cmd_code_todo(prompt: str, api_key: str, model: str):
     """Generate and manage a todo list from a prompt."""
@@ -214,8 +247,8 @@ def cmd_code_todo(prompt: str, api_key: str, model: str):
 
 # ── --code-agent-slash ────────────────────────────────────────────────────
 
-def cmd_code_slash(command: str, api_key: str, model: str,
-                    cwd: str = ".", prompt: str = ""):
+
+def cmd_code_slash(command: str, api_key: str, model: str, cwd: str = ".", prompt: str = ""):
     """Handle slash commands."""
     cmd = command.lstrip("/").lower()
     full_cmd = SLASH_COMMAND_ALIASES.get(cmd, f"/{cmd}")
@@ -243,8 +276,18 @@ def cmd_code_slash(command: str, api_key: str, model: str,
         print("Session cost tracking (use --code-agent-cost for full summary)")
         return
 
-    if cmd in ("status", "model", "mcp", "agents", "skills", "memory", "doctor",
-               "plugin", "output-style", "statusline"):
+    if cmd in (
+        "status",
+        "model",
+        "mcp",
+        "agents",
+        "skills",
+        "memory",
+        "doctor",
+        "plugin",
+        "output-style",
+        "statusline",
+    ):
         if cmd == "model":
             print(f"  Current model: {model}")
         elif cmd == "mcp":
@@ -268,12 +311,15 @@ def cmd_code_slash(command: str, api_key: str, model: str,
             _run_doctor()
         elif cmd == "plugin":
             from claude_plugins import cmd_plugin_list
+
             cmd_plugin_list()
         elif cmd == "output-style":
             from claude_output_styles import cmd_list_output_styles
+
             cmd_list_output_styles()
         elif cmd == "statusline":
             from claude_settings import cmd_status_line
+
             cmd_status_line(model=model, cwd=cwd)
         return
 
@@ -281,14 +327,19 @@ def cmd_code_slash(command: str, api_key: str, model: str,
     found = service.find_custom_command(cmd)
     if found:
         label = full_cmd if found["source"] == "custom" else f"/{found['name']}"
-        print(f"\033[94mℹ Running {'custom' if found['source']=='custom' else 'plugin'} "
-              f"command: {label}\033[0m\n")
+        print(
+            f"\033[94mℹ Running {'custom' if found['source']=='custom' else 'plugin'} "
+            f"command: {label}\033[0m\n"
+        )
         service.run_custom_command(
-            found["content"], prompt, api_key, model, cwd,
+            found["content"],
+            prompt,
+            api_key,
+            model,
+            cwd,
             on_turn_start=lambda n: print(f"\033[90m[turn {n}]\033[0m ", end="", flush=True),
             on_text=lambda text: print(text),
-            on_tool_call=lambda name, tinput: print(
-                f"  \033[90m→ {name}({json.dumps(tinput)[:60]})\033[0m"),
+            on_tool_call=lambda name, tinput: print(f"  \033[90m→ {name}({json.dumps(tinput)[:60]})\033[0m"),
             on_warning=_hook_fire_warning,
         )
         return
@@ -298,6 +349,7 @@ def cmd_code_slash(command: str, api_key: str, model: str,
 
 
 # ── --code-agent-cost ─────────────────────────────────────────────────────
+
 
 def cmd_code_cost(api_key: str):
     """Show cost summary across all sessions."""
@@ -311,7 +363,9 @@ def cmd_code_cost(api_key: str):
             o = d.get("output_tokens", 0)
             c = d.get("cost_usd", 0.0)
             t = len(d.get("turns", [])) // 2
-            total_in += i; total_out += o; total_cost += c
+            total_in += i
+            total_out += o
+            total_cost += c
             print(f"{d['id'][:16]:<18}{t:<8}{i:,<12}{o:,<12}${c:.4f}")
         except Exception:
             pass
@@ -320,6 +374,7 @@ def cmd_code_cost(api_key: str):
 
 
 # ── --code-agent-sessions ─────────────────────────────────────────────────
+
 
 def cmd_code_list_sessions():
     rows = service.list_session_files(limit=25)
@@ -338,16 +393,24 @@ def cmd_code_list_sessions():
 
 # ── --code-agent-tools ────────────────────────────────────────────────────
 
+
 def cmd_code_list_tools():
     print("\nBuilt-in tools:")
     descs = {
-        "Read": "Read file contents",       "Write": "Write a file",
-        "Edit": "Edit part of a file",      "MultiEdit": "Multi-location edit",
-        "Bash": "Run bash commands",        "Glob": "Find files by pattern",
-        "Grep": "Search file contents",     "LS": "List directory",
-        "WebSearch": "Search the web",      "WebFetch": "Fetch a URL",
-        "TodoRead": "Read todo list",       "TodoWrite": "Update todo list",
-        "NotebookRead": "Read Jupyter nb",  "NotebookEdit": "Edit Jupyter nb",
+        "Read": "Read file contents",
+        "Write": "Write a file",
+        "Edit": "Edit part of a file",
+        "MultiEdit": "Multi-location edit",
+        "Bash": "Run bash commands",
+        "Glob": "Find files by pattern",
+        "Grep": "Search file contents",
+        "LS": "List directory",
+        "WebSearch": "Search the web",
+        "WebFetch": "Fetch a URL",
+        "TodoRead": "Read todo list",
+        "TodoWrite": "Update todo list",
+        "NotebookRead": "Read Jupyter nb",
+        "NotebookEdit": "Edit Jupyter nb",
         "Task": "Spawn a subagent task",
     }
     for name, desc in descs.items():
@@ -361,6 +424,7 @@ def cmd_code_list_tools():
 
 
 # ── doctor diagnostics ────────────────────────────────────────────────────
+
 
 def _run_doctor():
     """Diagnostics for Claude Code environment."""

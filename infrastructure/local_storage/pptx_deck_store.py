@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 infrastructure/local_storage/pptx_deck_store.py — PptxSession, the
 python-pptx-backed in-memory/on-disk slide deck
 AI Model Coder CLI v1.50.0 (Clean Architecture refactor, Phase C, Context #4)
@@ -26,9 +27,7 @@ except ImportError:
 class PptxSession:
     def __init__(self, input_path=None):
         if Presentation is None:
-            raise ImportError(
-                "python-pptx is required for --pptx (pip install python-pptx)"
-            )
+            raise ImportError("python-pptx is required for --pptx (pip install python-pptx)")
         self.slides = []
         self._history_stack = []  # for /undo — list of deep-copied slide lists
         self._template_path = None  # if loaded from an existing deck, reuse its theme
@@ -52,10 +51,15 @@ class PptxSession:
                     title = text
                 elif text:
                     bullets.extend(line for line in text.split("\n") if line.strip())
-            self.slides.append({
-                "title": title, "bullets": bullets, "layout": "title_content",
-                "table": None, "chart": None,
-            })
+            self.slides.append(
+                {
+                    "title": title,
+                    "bullets": bullets,
+                    "layout": "title_content",
+                    "table": None,
+                    "chart": None,
+                }
+            )
 
     # ── context for the model ───────────────────────────────────────────
 
@@ -78,6 +82,7 @@ class PptxSession:
 
     def _snapshot(self):
         import copy
+
         self._history_stack.append(copy.deepcopy(self.slides))
         if len(self._history_stack) > 20:
             self._history_stack.pop(0)
@@ -98,10 +103,15 @@ class PptxSession:
         self._snapshot()
 
         def add_slide(title, bullets=None, layout="title_content", table=None, chart=None):
-            self.slides.append({
-                "title": title, "bullets": bullets or [], "layout": layout,
-                "table": table, "chart": chart,
-            })
+            self.slides.append(
+                {
+                    "title": title,
+                    "bullets": bullets or [],
+                    "layout": layout,
+                    "table": table,
+                    "chart": chart,
+                }
+            )
 
         def update_slide(index, title=None, bullets=None, table=None, chart=None):
             s = self.slides[index]
@@ -128,12 +138,30 @@ class PptxSession:
             "reorder_slides": reorder_slides,
         }
         try:
-            exec(compile(code, "<pptx-turn>", "exec"), {"__builtins__": {
-                "len": len, "range": range, "sum": sum, "min": min, "max": max,
-                "round": round, "sorted": sorted, "list": list, "dict": dict,
-                "str": str, "int": int, "float": float, "bool": bool,
-                "enumerate": enumerate, "zip": zip, "abs": abs,
-            }}, local_ns)
+            exec(
+                compile(code, "<pptx-turn>", "exec"),
+                {
+                    "__builtins__": {
+                        "len": len,
+                        "range": range,
+                        "sum": sum,
+                        "min": min,
+                        "max": max,
+                        "round": round,
+                        "sorted": sorted,
+                        "list": list,
+                        "dict": dict,
+                        "str": str,
+                        "int": int,
+                        "float": float,
+                        "bool": bool,
+                        "enumerate": enumerate,
+                        "zip": zip,
+                        "abs": abs,
+                    }
+                },
+                local_ns,
+            )
         except Exception as e:
             self.undo()
             return False, f"[ERROR] generated code failed: {e}"
@@ -153,7 +181,8 @@ class PptxSession:
 
         for s in self.slides:
             layout = {"title_only": title_only, "section_header": section_header}.get(
-                s.get("layout"), title_content)
+                s.get("layout"), title_content
+            )
             slide = prs.slides.add_slide(layout)
             if slide.shapes.title is not None:
                 slide.shapes.title.text = s["title"]

@@ -81,6 +81,7 @@ def test_load_from_csv(tmp_path):
 
 def test_load_specific_sheet_from_multi_sheet_workbook(tmp_path):
     import pandas as pd
+
     out = tmp_path / "multi.xlsx"
     with pd.ExcelWriter(str(out), engine="openpyxl") as writer:
         pd.DataFrame({"x": [1]}).to_excel(writer, sheet_name="First", index=False)
@@ -93,6 +94,7 @@ def test_load_specific_sheet_from_multi_sheet_workbook(tmp_path):
 
 def test_load_missing_sheet_name_raises_value_error(tmp_path):
     import pandas as pd
+
     out = tmp_path / "single.xlsx"
     pd.DataFrame({"x": [1]}).to_excel(str(out), sheet_name="Only", index=False)
 
@@ -125,6 +127,7 @@ def test_summary_includes_shape_and_columns():
 
 def test_missing_pandas_raises_importerror(monkeypatch):
     import infrastructure.local_storage.excel_workbook_store as store
+
     monkeypatch.setattr(store, "pd", None)
     with pytest.raises(ImportError):
         store.ExcelSession()

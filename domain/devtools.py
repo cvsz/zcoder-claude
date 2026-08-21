@@ -17,9 +17,7 @@ import json
 import re
 from dataclasses import dataclass
 from html.parser import HTMLParser
-from typing import List, Optional, Tuple
 from urllib.parse import urlparse
-
 
 # ── git (claude_git.py) ───────────────────────────────────────────────
 
@@ -30,8 +28,8 @@ GIT_SYSTEM_PROMPT = (
 
 _COMMIT_STYLE_NOTES = {
     "conventional": "Use Conventional Commits format (type(scope): short desc).",
-    "imperative":   "Use imperative mood (Add X, Fix Y, Remove Z).",
-    "detailed":     "Include a subject line and a bullet-point body.",
+    "imperative": "Use imperative mood (Add X, Fix Y, Remove Z).",
+    "detailed": "Include a subject line and a bullet-point body.",
 }
 
 
@@ -106,20 +104,20 @@ def review_pr_context(pr_number: int, pr: dict, diff: str) -> str:
     )
 
 
-def triage_context(repo: str, issues_raw) -> Optional[str]:
+def triage_context(repo: str, issues_raw) -> str | None:
     """Returns None (caller should surface an "unexpected response" message)
     when the GitHub API didn't return the expected list shape."""
     if not isinstance(issues_raw, list):
         return None
     issues_text = "\n".join(
-        f"#{i.get('number')} [{', '.join(l['name'] for l in i.get('labels', []))}] "
+        f"#{i.get('number')} [{', '.join(label['name'] for label in i.get('labels', []))}] "
         f"{i.get('title', '')} — {(i.get('body') or '')[:200]}"
         for i in issues_raw
     )
     return f"Repository: {repo}\n\nOpen issues:\n{issues_text}"
 
 
-def commits_context(repo: str, commits_raw) -> Optional[str]:
+def commits_context(repo: str, commits_raw) -> str | None:
     if not isinstance(commits_raw, list):
         return None
     commits_text = "\n".join(
@@ -198,7 +196,7 @@ class TextExtractor(HTMLParser):
         return " ".join(self.chunks)[:MAX_PAGE_CHARS]
 
 
-def extract_page_text(html: str) -> Tuple[str, List[Tuple[str, str]]]:
+def extract_page_text(html: str) -> tuple[str, list[tuple[str, str]]]:
     """Runs TextExtractor over already-fetched HTML. Returns (text, links).
     Raises on parse failure — callers decide how to report that (the
     original wrapped this in a broad except; the gateway layer still does,
@@ -209,14 +207,14 @@ def extract_page_text(html: str) -> Tuple[str, List[Tuple[str, str]]]:
     return extractor.text(), extractor.links
 
 
-def domain_allowed(url: str, allowed_domains: Optional[List[str]]) -> bool:
+def domain_allowed(url: str, allowed_domains: list[str] | None) -> bool:
     if not allowed_domains:
         return True
     host = urlparse(url).netloc.lower()
     return any(host == d.lower() or host.endswith("." + d.lower()) for d in allowed_domains)
 
 
-def parse_json_action(reply: str) -> Optional[dict]:
+def parse_json_action(reply: str) -> dict | None:
     match = re.search(r"\{.*\}", reply, re.DOTALL)
     if not match:
         return None
@@ -240,8 +238,9 @@ def browse_turn_prompt(task: str, url: str, page_text: str) -> str:
 class BrowseStep:
     """One step of a browsing-agent session — the pure "what happened"
     record; the CLI layer decides how to print it."""
+
     step: int
     url: str
     action: str  # "fetching" | "loop_detected" | "blocked" | "fetch_error" |
-                 # "answer" | "navigate" | "unparsable" | "unknown_action" | "max_steps"
+    # "answer" | "navigate" | "unparsable" | "unknown_action" | "max_steps"
     detail: str = ""

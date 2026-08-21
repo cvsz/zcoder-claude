@@ -16,12 +16,11 @@ CLI presentation lives in interfaces/cli/commands/agent_commands.py.
 Extracted 2026-08-14 from claude_agents_sdk.py.
 """
 
-import os
 import json
+import os
 import time
 import uuid
 from pathlib import Path
-from typing import Optional
 
 SESSIONS_DIR = Path(os.path.expanduser("~/.ai-coder/agent_sessions"))
 
@@ -34,36 +33,39 @@ SESSION_BUDGET_MIN_CENTS = 1  # amount must be > 0
 
 
 class PermissionMode:
-    ACCEPT_EDITS   = "acceptEdits"      # auto-approve all tool calls
-    ASK_PERMISSION = "askPermission"    # ask user for each tool call
-    SUPERVISED     = "supervised"       # auto-approve reads, ask for writes
+    ACCEPT_EDITS = "acceptEdits"  # auto-approve all tool calls
+    ASK_PERMISSION = "askPermission"  # ask user for each tool call
+    SUPERVISED = "supervised"  # auto-approve reads, ask for writes
+
 
 # ── Tool presets ───────────────────────────────────────────────────────────
 
 TOOL_PRESETS = {
-    "all":          ["bash", "text_editor", "web_search", "code_execution"],
-    "code":         ["bash", "text_editor", "code_execution"],
-    "web":          ["web_search", "web_fetch"],
-    "readonly":     ["web_search", "web_fetch", "code_execution"],
-    "filesystem":   ["bash", "text_editor"],
+    "all": ["bash", "text_editor", "web_search", "code_execution"],
+    "code": ["bash", "text_editor", "code_execution"],
+    "web": ["web_search", "web_fetch"],
+    "readonly": ["web_search", "web_fetch", "code_execution"],
+    "filesystem": ["bash", "text_editor"],
 }
+
 
 class AgentSession:
     """Persistent session with message history and tool state."""
 
-    def __init__(self, session_id: str = None, name: str = "",
-                 permission_mode: str = PermissionMode.ASK_PERMISSION):
-        self.id              = session_id or str(uuid.uuid4())[:12]
-        self.name            = name or f"session-{self.id}"
+    def __init__(
+        self, session_id: str = None, name: str = "", permission_mode: str = PermissionMode.ASK_PERMISSION
+    ):
+        self.id = session_id or str(uuid.uuid4())[:12]
+        self.name = name or f"session-{self.id}"
         self.permission_mode = permission_mode
-        self.history: list   = []
+        self.history: list = []
         self.mcp_servers: list = []
-        self.created_at      = time.strftime("%Y-%m-%dT%H:%M:%SZ")
-        self.updated_at      = self.created_at
+        self.created_at = time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.updated_at = self.created_at
         SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
     @classmethod
-    def load(cls, session_id: str) -> "AgentSession":
+    def load(cls, session_id: str) -> AgentSession:
         p = SESSIONS_DIR / f"{session_id}.json"
         if not p.exists():
             raise FileNotFoundError(f"Session {session_id} not found.")
@@ -78,14 +80,14 @@ class AgentSession:
         p.write_text(json.dumps(self.__dict__, indent=2))
 
     def add_turn(self, role: str, content: str):
-        self.history.append({"role": role, "content": content,
-                              "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ")})
+        self.history.append({"role": role, "content": content, "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ")})
 
     def messages(self) -> list[dict]:
         return [{"role": t["role"], "content": t["content"]} for t in self.history]
 
 
 # ── MCP connector config ───────────────────────────────────────────────────
+
 
 class McpServerConfig:
     def __init__(self, type: str, name: str, **kwargs):
@@ -97,15 +99,15 @@ class McpServerConfig:
         return {"type": self.type, "name": self.name, **self.extra}
 
     @classmethod
-    def stdio(cls, name: str, command: str, args: list = None) -> "McpServerConfig":
+    def stdio(cls, name: str, command: str, args: list = None) -> McpServerConfig:
         return cls("stdio", name, command=command, args=args or [])
 
     @classmethod
-    def sse(cls, name: str, url: str, headers: dict = None) -> "McpServerConfig":
+    def sse(cls, name: str, url: str, headers: dict = None) -> McpServerConfig:
         return cls("sse", name, url=url, headers=headers or {})
 
     @classmethod
-    def http(cls, name: str, url: str, headers: dict = None) -> "McpServerConfig":
+    def http(cls, name: str, url: str, headers: dict = None) -> McpServerConfig:
         return cls("http", name, url=url, headers=headers or {})
 
 
@@ -126,6 +128,7 @@ class McpServerConfig:
 # class that's the only consumer — an HTTP endpoint constant belongs with
 # the transport code, not the domain layer.)
 
+
 def _encode_session_budget(usd_cents: int) -> dict:
     if not isinstance(usd_cents, int) or isinstance(usd_cents, bool):
         raise ValueError(f"budget_usd_cents must be an int, got {type(usd_cents).__name__}")
@@ -137,9 +140,7 @@ def _encode_session_budget(usd_cents: int) -> dict:
     return {"type": "limit", "max_list_cost": {"amount": str(usd_cents), "currency": "USD"}}
 
 
-
-
-def _budget_to_dict(budget) -> Optional[dict]:
+def _budget_to_dict(budget) -> dict | None:
     """Normalize the SDK's budget object/dict/None into a plain dict for
     local use (e.g. `mac.get_session(...)["budget"]`), without assuming
     the SDK response object shape beyond attribute access."""
@@ -150,29 +151,32 @@ def _budget_to_dict(budget) -> Optional[dict]:
     max_list_cost = getattr(budget, "max_list_cost", None)
     return {
         "type": getattr(budget, "type", "limit"),
-        "max_list_cost": {
-            "amount": getattr(max_list_cost, "amount", None),
-            "currency": getattr(max_list_cost, "currency", "USD"),
-        } if max_list_cost is not None else None,
+        "max_list_cost": (
+            {
+                "amount": getattr(max_list_cost, "amount", None),
+                "currency": getattr(max_list_cost, "currency", "USD"),
+            }
+            if max_list_cost is not None
+            else None
+        ),
     }
 
 
-
-
-def _list_cost_cents(usage) -> Optional[int]:
+def _list_cost_cents(usage) -> int | None:
     """Best-effort extraction of usage.list_cost.amount (whole US cents,
     as a string per the API) from a session's usage object, if present.
     Returns None rather than raising when a session has no budget (and
     so no list_cost is being tracked) or usage is otherwise absent."""
     if usage is None:
         return None
-    list_cost = getattr(usage, "list_cost", None) if not isinstance(usage, dict) \
-        else usage.get("list_cost")
+    list_cost = getattr(usage, "list_cost", None) if not isinstance(usage, dict) else usage.get("list_cost")
     if list_cost is None:
         return None
-    amount = getattr(list_cost, "amount", None) if not isinstance(list_cost, dict) \
-        else list_cost.get("amount")
+    amount = (
+        getattr(list_cost, "amount", None) if not isinstance(list_cost, dict) else list_cost.get("amount")
+    )
     return int(amount) if amount is not None else None
+
 
 # Managed Agents memory stores (v1.19.0) — a workspace-scoped, persistent,
 # versioned file directory mountable into a session's `resources`. Found via
@@ -207,8 +211,11 @@ DREAMING_BETA = "dreaming-2026-04-21"
 # Dreaming-focused audit since the expansion shipped, so it's the first
 # one positioned to actually close it.
 DREAMING_SUPPORTED_MODELS = {
-    "claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-4-6",
-    "claude-fable-5", "claude-sonnet-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
+    "claude-sonnet-4-6",
+    "claude-fable-5",
+    "claude-sonnet-5",
 }
 
 # Limits#instructions-length: 4,096 characters. Not re-enforced server-side
@@ -216,7 +223,8 @@ DREAMING_SUPPORTED_MODELS = {
 # client-side heads-up before an async job is queued only to fail later.
 DREAMING_INSTRUCTIONS_MAX_CHARS = 4096
 
-def validate_dreaming_model(model_id: str) -> Optional[str]:
+
+def validate_dreaming_model(model_id: str) -> str | None:
     """Return None if `model_id` is a supported Dreaming pipeline model, or
     a warning string if it isn't. Not a hard block — the platform itself is
     the source of truth for whether a request 400s — but every other
@@ -225,14 +233,14 @@ def validate_dreaming_model(model_id: str) -> Optional[str]:
     silently proceeding, so this matches that convention."""
     if model_id in DREAMING_SUPPORTED_MODELS:
         return None
-    return (f"{model_id} is not in claude_agents_sdk.DREAMING_SUPPORTED_MODELS "
-            f"({', '.join(sorted(DREAMING_SUPPORTED_MODELS))}) — the dreaming "
-            f"pipeline may reject this model with a 400.")
+    return (
+        f"{model_id} is not in claude_agents_sdk.DREAMING_SUPPORTED_MODELS "
+        f"({', '.join(sorted(DREAMING_SUPPORTED_MODELS))}) — the dreaming "
+        f"pipeline may reject this model with a 400."
+    )
 
 
-
-
-def validate_dreaming_instructions(instructions: Optional[str]) -> Optional[str]:
+def validate_dreaming_instructions(instructions: str | None) -> str | None:
     """Return None if `instructions` is unset or within the documented
     4,096-character limit, or a warning string if it's over. Same
     not-a-hard-block convention as validate_dreaming_model() — the
@@ -240,9 +248,12 @@ def validate_dreaming_instructions(instructions: Optional[str]) -> Optional[str]
     async job gets queued only to fail minutes later."""
     if not instructions or len(instructions) <= DREAMING_INSTRUCTIONS_MAX_CHARS:
         return None
-    return (f"dreaming instructions are {len(instructions)} chars, over the "
-            f"documented {DREAMING_INSTRUCTIONS_MAX_CHARS}-char limit — the "
-            f"platform will likely reject this with a 400.")
+    return (
+        f"dreaming instructions are {len(instructions)} chars, over the "
+        f"documented {DREAMING_INSTRUCTIONS_MAX_CHARS}-char limit — the "
+        f"platform will likely reject this with a 400."
+    )
+
 
 # Vaults & credentials (v1.21.0, public beta) — per
 # platform.claude.com/docs/en/managed-agents/vaults (checked 2026-07-08):
@@ -273,9 +284,7 @@ MULTIAGENT_MAX_ROSTER = 20
 FILES_API_BETA = "files-api-2025-04-14"
 
 
-
-
-def build_multiagent_config(agents: list, advisor_model: Optional[str] = None) -> dict:
+def build_multiagent_config(agents: list, advisor_model: str | None = None) -> dict:
     """Build the {"type": "coordinator", "agents": [...]} dict passed as
     `multiagent` to create_agent(), per platform.claude.com/docs/en/
     managed-agents/multi-agent (checked 2026-07-08).

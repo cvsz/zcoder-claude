@@ -13,7 +13,9 @@ this shim.
 
 from infrastructure.anthropic_api.messaging_gateway import StructuredCoder
 from interfaces.cli.commands.messaging_commands import (
-    cmd_structured, cmd_structured_analyse, cmd_structured_extract,
+    cmd_structured,
+    cmd_structured_analyse,
+    cmd_structured_extract,
 )
 
 __all__ = ["StructuredCoder", "cmd_structured", "cmd_structured_analyse", "cmd_structured_extract"]

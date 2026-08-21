@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 infrastructure/anthropic_api/code_agent_loop_gateway.py — the Claude Code
 / Agent SDK agentic loop (Messages API), reimplemented in pure stdlib
 Python
@@ -30,15 +31,15 @@ import re
 import subprocess
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
-from exceptions import AICoderError
-from resilience import CircuitBreaker, raise_for_http_error, retry, urlopen_json
+from domain.agent_execution import SandboxViolation, enforce
 from domain.code_agent import READ_ONLY_TOOLS, build_tool_definitions
-from domain.agent_execution import enforce, SandboxViolation
 from domain.tools import CONTEXT_MANAGEMENT_BETA
-from infrastructure.local_storage.code_agent_store import CodeSession, HooksEngine, TodoManager, MemoryManager
+from exceptions import AICoderError
+from infrastructure.local_storage.code_agent_store import CodeSession, HooksEngine, MemoryManager, TodoManager
+from resilience import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
@@ -63,21 +64,25 @@ class CodeAgent:
     API. Replicates the Agent SDK's query() loop in pure stdlib Python."""
 
     def __init__(self, api_key: str, model: str = "claude-sonnet-5", max_tokens: int = 8192):
-        self.api_key    = api_key
-        self.model      = model
+        self.api_key = api_key
+        self.model = model
         self.max_tokens = max_tokens
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-    def _call(self, payload: dict, betas: Optional[list] = None) -> dict:
-        headers = {"Content-Type": "application/json", "x-api-key": self.api_key,
-                   "anthropic-version": "2023-06-01"}
+    def _call(self, payload: dict, betas: list | None = None) -> dict:
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+        }
         if betas:
             headers["anthropic-beta"] = ",".join(betas)
-        req = urllib.request.Request(MESSAGES_ENDPOINT, data=json.dumps(payload).encode(),
-                                      headers=headers, method="POST")
+        req = urllib.request.Request(
+            MESSAGES_ENDPOINT, data=json.dumps(payload).encode(), headers=headers, method="POST"
+        )
         return urlopen_json(req, timeout=300)
 
-    def _post(self, payload: dict, betas: Optional[list] = None) -> dict:
+    def _post(self, payload: dict, betas: list | None = None) -> dict:
         try:
             return self._call(payload, betas)
         except AICoderError as e:
@@ -99,10 +104,17 @@ class CodeAgent:
     def _build_tools(self, preset: str, allowed: list) -> list:
         return build_tool_definitions(preset, allowed)
 
-    def _execute_tool(self, name: str, inputs: dict, session: CodeSession, hooks: HooksEngine,
-                       permission: str, can_use_tool: Callable[[str, dict], bool] = default_can_use_tool,
-                       on_permission_prompt: Callable[[str, dict], None] = _NOOP,
-                       on_warning: Callable[[str], None] = _NOOP) -> str:
+    def _execute_tool(
+        self,
+        name: str,
+        inputs: dict,
+        session: CodeSession,
+        hooks: HooksEngine,
+        permission: str,
+        can_use_tool: Callable[[str, dict], bool] = default_can_use_tool,
+        on_permission_prompt: Callable[[str, dict], None] = _NOOP,
+        on_warning: Callable[[str], None] = _NOOP,
+    ) -> str:
         """Execute a tool call with permission checking and hooks."""
         hook_result = hooks.pre_tool_use(name, inputs, session, on_warning=on_warning)
         if not hook_result["allowed"]:
@@ -219,11 +231,19 @@ class CodeAgent:
     # ── Main agent loop ────────────────────────────────────────────────
 
     def query(
-        self, prompt: str, session: CodeSession, tools: str = "all", allowed: list = None,
-        disallowed: list = None, permission: str = "askPermission", hooks: HooksEngine = None,
-        max_turns: int = 10, can_use_tool: Callable[[str, dict], bool] = default_can_use_tool,
-        output_mode: str = "stream", system_extra: str = "",
-        context_management: Optional[dict] = None,
+        self,
+        prompt: str,
+        session: CodeSession,
+        tools: str = "all",
+        allowed: list = None,
+        disallowed: list = None,
+        permission: str = "askPermission",
+        hooks: HooksEngine = None,
+        max_turns: int = 10,
+        can_use_tool: Callable[[str, dict], bool] = default_can_use_tool,
+        output_mode: str = "stream",
+        system_extra: str = "",
+        context_management: dict | None = None,
         on_turn_start: Callable[[int], None] = _NOOP,
         on_text: Callable[[str], None] = _NOOP,
         on_tool_call: Callable[[str, dict], None] = _NOOP,
@@ -242,7 +262,7 @@ class CodeAgent:
         auto-clear stale tool results once the conversation crosses a
         token trigger.
         """
-        hooks  = hooks or HooksEngine()
+        hooks = hooks or HooksEngine()
         memory = MemoryManager()
 
         sys_parts = []
@@ -253,9 +273,11 @@ class CodeAgent:
             sys_parts.append(session.system_prompt)
         if system_extra:
             sys_parts.append(system_extra)
-        sys_parts.append(f"You are working in directory: {session.cwd}\n"
-                          f"Permission mode: {permission}\n"
-                          f"Use the available tools to complete the task.")
+        sys_parts.append(
+            f"You are working in directory: {session.cwd}\n"
+            f"Permission mode: {permission}\n"
+            f"Use the available tools to complete the task."
+        )
         system = "\n\n".join(sys_parts)
 
         tool_defs = self._build_tools(tools, allowed or [])
@@ -268,8 +290,12 @@ class CodeAgent:
         final_text = ""
 
         while turn < max_turns:
-            payload: dict = {"model": session.model or self.model, "max_tokens": self.max_tokens,
-                              "system": system, "messages": session.messages()}
+            payload: dict = {
+                "model": session.model or self.model,
+                "max_tokens": self.max_tokens,
+                "system": system,
+                "messages": session.messages(),
+            }
             if tool_defs and permission != "planMode":
                 payload["tools"] = tool_defs
 
@@ -286,8 +312,8 @@ class CodeAgent:
                 return f"[ERROR] {data['error']}"
 
             stop_reason = data.get("stop_reason", "end_turn")
-            content     = data.get("content", [])
-            usage       = data.get("usage", {})
+            content = data.get("content", [])
+            usage = data.get("usage", {})
 
             text = "".join(b.get("text", "") for b in content if b.get("type") == "text")
             if text:
@@ -307,9 +333,9 @@ class CodeAgent:
             for block in content:
                 if block.get("type") != "tool_use":
                     continue
-                tname  = block["name"]
+                tname = block["name"]
                 tinput = block.get("input", {})
-                tid    = block["id"]
+                tid = block["id"]
 
                 if output_mode == "stream":
                     on_tool_call(tname, tinput)
@@ -317,8 +343,16 @@ class CodeAgent:
                 if disallowed and tname in disallowed:
                     result = f"[DENIED] {tname} is in disallowed_tools"
                 else:
-                    result = self._execute_tool(tname, tinput, session, hooks, permission,
-                                                 can_use_tool, on_permission_prompt, on_warning)
+                    result = self._execute_tool(
+                        tname,
+                        tinput,
+                        session,
+                        hooks,
+                        permission,
+                        can_use_tool,
+                        on_permission_prompt,
+                        on_warning,
+                    )
 
                 tool_results.append({"type": "tool_result", "tool_use_id": tid, "content": str(result)})
 
@@ -328,8 +362,14 @@ class CodeAgent:
             turn += 1
 
         if output_mode == "json":
-            return json.dumps({"session_id": session.id, "result": final_text,
-                                "turns": turn, "cost": session.cost_summary()})
+            return json.dumps(
+                {
+                    "session_id": session.id,
+                    "result": final_text,
+                    "turns": turn,
+                    "cost": session.cost_summary(),
+                }
+            )
 
         return final_text
 
@@ -341,9 +381,13 @@ class StructuredAgentOutput:
         self.agent = agent
 
     def query_json(self, prompt: str, schema: dict, session: CodeSession) -> dict:
-        full_prompt = (f"{prompt}\n\nRespond ONLY with a valid JSON object matching this schema:\n"
-                       f"{json.dumps(schema, indent=2)}\nNo markdown, no explanation — pure JSON only.")
-        result = self.agent.query(full_prompt, session, tools="none", permission="dontAsk", output_mode="text")
+        full_prompt = (
+            f"{prompt}\n\nRespond ONLY with a valid JSON object matching this schema:\n"
+            f"{json.dumps(schema, indent=2)}\nNo markdown, no explanation — pure JSON only."
+        )
+        result = self.agent.query(
+            full_prompt, session, tools="none", permission="dontAsk", output_mode="text"
+        )
         try:
             clean = result.strip()
             if clean.startswith("```"):

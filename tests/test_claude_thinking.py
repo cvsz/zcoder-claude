@@ -8,6 +8,7 @@ per model. See docs/42_upgrade_v1.30.0.md for the full audit — before
 this fix, --thinking always sent manual budget_tokens, which is a 400
 error on every current-generation model except Opus 4.5 and Haiku 4.5.
 """
+
 import sys
 import types
 from unittest.mock import MagicMock
@@ -29,6 +30,7 @@ def thinking_mod(monkeypatch):
     monkeypatch.setitem(sys.modules, "anthropic", fake_anthropic)
 
     import importlib
+
     # Phase B (2026-08-15): ThinkingCoder's real `import anthropic` now
     # lives in infrastructure/anthropic_api/messaging_gateway.py, not in
     # this shim — reload THAT module first so its `anthropic` name rebinds
@@ -36,8 +38,10 @@ def thinking_mod(monkeypatch):
     # picks up the freshly-rebound class (same "second repoint" pattern
     # documented in the master exec plan's playbook §5 addendum).
     import infrastructure.anthropic_api.messaging_gateway as gateway_mod
+
     importlib.reload(gateway_mod)
     import claude_thinking as mod
+
     importlib.reload(mod)
     return mod
 
@@ -51,6 +55,7 @@ def _fake_message_response():
 
 
 # ── display_omitted (pre-existing v1.25.0 behaviour, still correct) ────────
+
 
 def test_generate_with_thinking_display_omitted_sets_field(thinking_mod):
     tc = thinking_mod.ThinkingCoder(api_key="sk-test", model="claude-opus-4-5")
@@ -73,6 +78,7 @@ def test_generate_with_thinking_display_omitted_default_false_no_regression(thin
 
 
 # ── v1.30.0: model-aware adaptive/legacy routing ───────────────────────────
+
 
 def test_adaptive_capable_model_auto_selects_adaptive(thinking_mod):
     """Regression test for the core v1.30.0 bug: a bare --thinking on a
@@ -174,25 +180,37 @@ def test_streaming_uses_same_adaptive_routing(thinking_mod):
 
 # ── routing helper functions ────────────────────────────────────────────
 
+
 def test_supports_adaptive_thinking_matrix(thinking_mod):
-    for model in ("claude-sonnet-5", "claude-opus-4-8", "claude-opus-4-7",
-                   "claude-mythos-5", "claude-fable-5",
-                   "claude-opus-4-6", "claude-sonnet-4-6"):
+    for model in (
+        "claude-sonnet-5",
+        "claude-opus-4-8",
+        "claude-opus-4-7",
+        "claude-mythos-5",
+        "claude-fable-5",
+        "claude-opus-4-6",
+        "claude-sonnet-4-6",
+    ):
         assert thinking_mod.supports_adaptive_thinking(model), model
     for model in ("claude-opus-4-5", "claude-haiku-4-5-20251001", "claude-sonnet-4-5"):
         assert not thinking_mod.supports_adaptive_thinking(model), model
 
 
 def test_supports_manual_budget_tokens_matrix(thinking_mod):
-    for model in ("claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-5",
-                   "claude-mythos-5", "claude-fable-5"):
+    for model in (
+        "claude-opus-4-8",
+        "claude-opus-4-7",
+        "claude-sonnet-5",
+        "claude-mythos-5",
+        "claude-fable-5",
+    ):
         assert not thinking_mod.supports_manual_budget_tokens(model), model
-    for model in ("claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5",
-                   "claude-haiku-4-5-20251001"):
+    for model in ("claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5", "claude-haiku-4-5-20251001"):
         assert thinking_mod.supports_manual_budget_tokens(model), model
 
 
 # ── cmd_thinking wiring ─────────────────────────────────────────────────
+
 
 def test_cmd_thinking_threads_display_omitted(thinking_mod, monkeypatch):
     captured = {}
@@ -211,8 +229,14 @@ def test_cmd_thinking_threads_display_omitted(thinking_mod, monkeypatch):
     monkeypatch.setattr(messaging_service_mod, "ThinkingCoder", FakeCoder)
 
     thinking_mod.cmd_thinking(
-        "q", api_key="sk-test", model="claude-sonnet-5", budget=8000,
-        effort=None, adaptive=None, show_thinking=False, stream=False,
+        "q",
+        api_key="sk-test",
+        model="claude-sonnet-5",
+        budget=8000,
+        effort=None,
+        adaptive=None,
+        show_thinking=False,
+        stream=False,
         display_omitted=True,
     )
 
@@ -236,8 +260,14 @@ def test_cmd_thinking_threads_legacy_budget_flag(thinking_mod, monkeypatch):
     monkeypatch.setattr(messaging_service_mod, "ThinkingCoder", FakeCoder)
 
     thinking_mod.cmd_thinking(
-        "q", api_key="sk-test", model="claude-opus-4-5", budget=8000,
-        effort=None, adaptive=None, show_thinking=False, stream=False,
+        "q",
+        api_key="sk-test",
+        model="claude-opus-4-5",
+        budget=8000,
+        effort=None,
+        adaptive=None,
+        show_thinking=False,
+        stream=False,
         legacy_budget=True,
     )
 
@@ -248,6 +278,7 @@ def test_cmd_thinking_reads_correct_thinking_tokens_usage_field(thinking_mod, mo
     """Regression test: the old code read usage['thinking_input_tokens'],
     which doesn't exist in the real API response shape and always printed
     0. The real field is usage['output_tokens_details']['thinking_tokens']."""
+
     class FakeCoder:
         def __init__(self, api_key, model):
             pass
@@ -268,8 +299,14 @@ def test_cmd_thinking_reads_correct_thinking_tokens_usage_field(thinking_mod, mo
     monkeypatch.setattr(messaging_service_mod, "ThinkingCoder", FakeCoder)
 
     thinking_mod.cmd_thinking(
-        "q", api_key="sk-test", model="claude-sonnet-5", budget=8000,
-        effort=None, adaptive=None, show_thinking=False, stream=False,
+        "q",
+        api_key="sk-test",
+        model="claude-sonnet-5",
+        budget=8000,
+        effort=None,
+        adaptive=None,
+        show_thinking=False,
+        stream=False,
     )
 
     out = capsys.readouterr().out

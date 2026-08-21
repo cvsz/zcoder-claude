@@ -9,7 +9,7 @@ shim and continues to pass unmodified — see that file for the fuller
 placement-rule test matrix.
 """
 
-from domain.cache import make_cache_control, add_cache_breakpoint
+from domain.cache import add_cache_breakpoint, make_cache_control
 
 
 def test_make_cache_control_default_is_5m_ephemeral():

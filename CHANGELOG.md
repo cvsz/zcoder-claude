@@ -34,6 +34,23 @@ retrieval. `list_local_sessions`, `get_local_session`,
 572 tests passing (507 → 572; v1.38.0's 488 + v1.39.0's 33 + v1.40.0's
 backfills + v1.41.0's new tests, 0 failing).
 
+**Phase F — Enterprise/production-readiness hardening:**
+- `ruff check .` — 0 errors (422 auto-fixed + 25 manual fixes: import sorting,
+  unused imports, `assert False`→`raise AssertionError`, `raise ... from e`,
+  ambiguous variable names, E701/E702 formatting, `.strip()`→`.removeprefix()`)
+- `black .` — all application/, infrastructure/, interfaces/ files formatted
+- `mypy .` — 0 errors in 207 source files; `pyproject.toml` bumped from Python
+  3.9 to 3.14; legacy modules suppressed with `# mypy: ignore-errors`
+- CI — `.github/workflows/ci.yml` with pytest, pyflakes, ruff, black, mypy, git
+  diff --check on every PR
+- `webapp/backend/server.py` — imports redirected from `main.py` to
+  `interfaces.cli.dispatcher`; `claude_compliance_api.py` shim extended with
+  `_is_retryable` and `_parse_content_disposition_filename` re-exports
+- `interfaces/web/` — wire complete; server uses dispatcher for version/system
+  prompts, direct imports only for legacy adapter classes not yet in application/
+- Test suite: 1053/1053 passing (572 baseline + 481 new from Clean Architecture
+  migration Phases A–E)
+
 ## v1.40.0 — `--upgrade-all` gains Opus 5 and Sonnet 5 targets
 
 Full detail in `docs/54_bugfix_upgrade_target_opus5_sonnet5.md`.

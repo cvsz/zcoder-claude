@@ -64,11 +64,10 @@ CLI flags:
 """
 
 import json
-import urllib.request
 import urllib.error
-from typing import Optional
+import urllib.request
 
-from claude_models import FAST_MODE_SUPPORTED, SERVICE_TIER_UNSUPPORTED, INFERENCE_GEO_SUPPORTED
+from claude_models import FAST_MODE_SUPPORTED, INFERENCE_GEO_SUPPORTED, SERVICE_TIER_UNSUPPORTED
 from domain.models.catalog import PRICE as _CATALOG_PRICE
 from exceptions import AICoderError
 from resilience import CircuitBreaker, retry, urlopen_json
@@ -81,11 +80,11 @@ OPUS5_MODEL_ID = "claude-opus-5"
 # Authoritative for Opus 5 — do not fall back to claude_models.EFFORT_BUDGETS,
 # which has no "xhigh" rung and predates this model.
 OPUS5_EFFORT_BUDGETS = {
-    "low":    2_000,
+    "low": 2_000,
     "medium": 8_000,
-    "high":   16_000,
-    "xhigh":  24_000,
-    "max":    32_000,
+    "high": 16_000,
+    "xhigh": 24_000,
+    "max": 32_000,
 }
 OPUS5_EFFORT_LEVELS = list(OPUS5_EFFORT_BUDGETS.keys())
 
@@ -93,25 +92,25 @@ OPUS5_EFFORT_LEVELS = list(OPUS5_EFFORT_BUDGETS.keys())
 OPUS5_THINKING_DISABLE_ALLOWED = {"low", "medium", "high"}
 
 OPUS5_INFO = {
-    "display_name":       "Claude Opus 5",
-    "tier":               "current",
-    "launched":           "2026-07-24",
-    "context_window":     1_000_000,
-    "max_output_tokens":  128_000,
-    "price_input_per_mtok_usd":  _CATALOG_PRICE[OPUS5_MODEL_ID]["in"],
+    "display_name": "Claude Opus 5",
+    "tier": "current",
+    "launched": "2026-07-24",
+    "context_window": 1_000_000,
+    "max_output_tokens": 128_000,
+    "price_input_per_mtok_usd": _CATALOG_PRICE[OPUS5_MODEL_ID]["in"],
     "price_output_per_mtok_usd": _CATALOG_PRICE[OPUS5_MODEL_ID]["out"],
-    "thinking_default":   "on (adaptive)",
-    "effort_levels":      OPUS5_EFFORT_LEVELS,
+    "thinking_default": "on (adaptive)",
+    "effort_levels": OPUS5_EFFORT_LEVELS,
     "fast_mode_supported": OPUS5_MODEL_ID in FAST_MODE_SUPPORTED,
     "service_tier_supported": OPUS5_MODEL_ID not in SERVICE_TIER_UNSUPPORTED,
     "inference_geo_supported": OPUS5_MODEL_ID in INFERENCE_GEO_SUPPORTED,
     "notes": "A step-change over Opus 4.8 at the same per-token price. "
-             "Breaking change vs. Opus 4.8: thinking can only be disabled "
-             "at effort high or below.",
+    "Breaking change vs. Opus 4.8: thinking can only be disabled "
+    "at effort high or below.",
 }
 
 
-def validate_effort_thinking(effort: Optional[str], disable_thinking: bool) -> Optional[str]:
+def validate_effort_thinking(effort: str | None, disable_thinking: bool) -> str | None:
     """Return None if this effort/thinking combination is safe to send to
     Opus 5, or a human-readable reason string if the API would 400 it.
     Callers should treat a non-None return as a hard stop, not a warning —
@@ -125,16 +124,19 @@ def validate_effort_thinking(effort: Optional[str], disable_thinking: bool) -> O
         # conservative and only clear combinations we can confirm are safe.
         return None
     if effort not in OPUS5_EFFORT_LEVELS:
-        return (f"unknown effort level '{effort}' for Opus 5 — choose from "
-                f"{', '.join(OPUS5_EFFORT_LEVELS)}")
+        return (
+            f"unknown effort level '{effort}' for Opus 5 — choose from " f"{', '.join(OPUS5_EFFORT_LEVELS)}"
+        )
     if effort not in OPUS5_THINKING_DISABLE_ALLOWED:
-        return (f"Opus 5 rejects thinking disabled at effort '{effort}' (HTTP 400). "
-                f"Thinking can only be disabled at effort {', '.join(sorted(OPUS5_THINKING_DISABLE_ALLOWED))}. "
-                f"Either drop --opus5-disable-thinking or lower --opus5-effort.")
+        return (
+            f"Opus 5 rejects thinking disabled at effort '{effort}' (HTTP 400). "
+            f"Thinking can only be disabled at effort {', '.join(sorted(OPUS5_THINKING_DISABLE_ALLOWED))}. "
+            f"Either drop --opus5-disable-thinking or lower --opus5-effort."
+        )
     return None
 
 
-def validate_inference_geo(use_geo: bool) -> Optional[str]:
+def validate_inference_geo(use_geo: bool) -> str | None:
     """Opus 5 is absent from claude_models.INFERENCE_GEO_SUPPORTED as of
     the 2026-07-02 catalog check, which predates this model's 2026-07-24
     launch — so treat this as unconfirmed rather than a confident yes/no."""
@@ -142,10 +144,12 @@ def validate_inference_geo(use_geo: bool) -> Optional[str]:
         return None
     if OPUS5_MODEL_ID in INFERENCE_GEO_SUPPORTED:
         return None
-    return ("inference_geo support for claude-opus-5 is unconfirmed (the shared "
-            "INFERENCE_GEO_SUPPORTED list predates this model's launch by three "
-            "weeks and has not been re-checked against live docs). Sending "
-            "inference_geo may 400. Verify at platform.claude.com/docs before relying on this.")
+    return (
+        "inference_geo support for claude-opus-5 is unconfirmed (the shared "
+        "INFERENCE_GEO_SUPPORTED list predates this model's launch by three "
+        "weeks and has not been re-checked against live docs). Sending "
+        "inference_geo may 400. Verify at platform.claude.com/docs before relying on this."
+    )
 
 
 class Opus5Client:
@@ -166,8 +170,10 @@ class Opus5Client:
             "anthropic-version": "2023-06-01",
         }
         req = urllib.request.Request(
-            MESSAGES_ENDPOINT, data=json.dumps(payload).encode(),
-            headers=headers, method="POST",
+            MESSAGES_ENDPOINT,
+            data=json.dumps(payload).encode(),
+            headers=headers,
+            method="POST",
         )
         return urlopen_json(req, timeout=300)
 
@@ -179,9 +185,15 @@ class Opus5Client:
         except Exception as e:
             return {"error": str(e)}
 
-    def call(self, prompt: str, system: Optional[str] = None,
-             effort: Optional[str] = None, disable_thinking: bool = False,
-             fast: bool = False, use_geo: bool = False) -> dict:
+    def call(
+        self,
+        prompt: str,
+        system: str | None = None,
+        effort: str | None = None,
+        disable_thinking: bool = False,
+        fast: bool = False,
+        use_geo: bool = False,
+    ) -> dict:
         """Build and send one request. Raises ValueError client-side for
         combinations the API is documented to reject, rather than sending
         a request known in advance to 400."""
@@ -221,8 +233,10 @@ class Opus5Client:
 
 
 def estimate_cost_usd(input_tokens: int, output_tokens: int) -> float:
-    return (input_tokens / 1_000_000 * OPUS5_INFO["price_input_per_mtok_usd"] +
-            output_tokens / 1_000_000 * OPUS5_INFO["price_output_per_mtok_usd"])
+    return (
+        input_tokens / 1_000_000 * OPUS5_INFO["price_input_per_mtok_usd"]
+        + output_tokens / 1_000_000 * OPUS5_INFO["price_output_per_mtok_usd"]
+    )
 
 
 def cmd_opus5_info():
@@ -231,26 +245,42 @@ def cmd_opus5_info():
     print(f"  Launched:          {info['launched']}")
     print(f"  Context window:    {info['context_window']:,} tokens")
     print(f"  Max output:        {info['max_output_tokens']:,} tokens")
-    print(f"  Pricing:           ${info['price_input_per_mtok_usd']}/MTok in, "
-          f"${info['price_output_per_mtok_usd']}/MTok out")
+    print(
+        f"  Pricing:           ${info['price_input_per_mtok_usd']}/MTok in, "
+        f"${info['price_output_per_mtok_usd']}/MTok out"
+    )
     print(f"  Thinking default:  {info['thinking_default']}")
     print(f"  Effort ladder:     {', '.join(info['effort_levels'])}")
     print(f"  Fast mode:         {'supported' if info['fast_mode_supported'] else 'not supported'}")
     print(f"  Priority Tier:     {'supported' if info['service_tier_supported'] else 'not supported'}")
-    print(f"  Data residency:    {'supported' if info['inference_geo_supported'] else 'unconfirmed — see module notes'}")
-    print(f"\n  \033[93m⚠ Breaking change vs Opus 4.8:\033[0m thinking can only be disabled")
-    print(f"    at effort high or below. --opus5-disable-thinking + --opus5-effort")
-    print(f"    xhigh/max is rejected client-side here rather than sent as a 400.")
+    print(
+        f"  Data residency:    {'supported' if info['inference_geo_supported'] else 'unconfirmed — see module notes'}"
+    )
+    print("\n  \033[93m⚠ Breaking change vs Opus 4.8:\033[0m thinking can only be disabled")
+    print("    at effort high or below. --opus5-disable-thinking + --opus5-effort")
+    print("    xhigh/max is rejected client-side here rather than sent as a 400.")
     print(f"\n  Notes: {info['notes']}\n")
 
 
-def cmd_opus5_call(prompt: str, api_key: str, effort: Optional[str] = None,
-                   disable_thinking: bool = False, fast: bool = False,
-                   use_geo: bool = False, system: Optional[str] = None):
+def cmd_opus5_call(
+    prompt: str,
+    api_key: str,
+    effort: str | None = None,
+    disable_thinking: bool = False,
+    fast: bool = False,
+    use_geo: bool = False,
+    system: str | None = None,
+):
     client = Opus5Client(api_key=api_key)
     try:
-        data = client.call(prompt, system=system, effort=effort,
-                           disable_thinking=disable_thinking, fast=fast, use_geo=use_geo)
+        data = client.call(
+            prompt,
+            system=system,
+            effort=effort,
+            disable_thinking=disable_thinking,
+            fast=fast,
+            use_geo=use_geo,
+        )
     except ValueError as e:
         print(f"\033[91m✗ {e}\033[0m")
         return None

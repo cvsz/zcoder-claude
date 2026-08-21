@@ -22,25 +22,43 @@ existing imports keep working unmodified.
 import urllib  # noqa: F401
 
 from domain.wif import (
-    WIFExchangeError, WIF_ENV_VARS, resolve_wif_env,
-    OAUTH_TOKEN_ENDPOINT, ADMIN_BASE, JWT_BEARER_GRANT,
+    ADMIN_BASE,
+    JWT_BEARER_GRANT,
+    OAUTH_TOKEN_ENDPOINT,
+    WIF_ENV_VARS,
+    WIFExchangeError,
+    resolve_wif_env,
 )
 from infrastructure.anthropic_api.wif_gateway import (
-    WIFCredentialExchanger, WIFAdminClient,
+    WIFAdminClient,
+    WIFCredentialExchanger,
 )
 from interfaces.cli.commands.wif_commands import (
-    cmd_wif_status, cmd_wif_exchange_token,
-    cmd_wif_create_service_account, cmd_wif_list_service_accounts,
-    cmd_wif_create_issuer, cmd_wif_list_issuers,
-    cmd_wif_create_rule, cmd_wif_list_rules,
+    cmd_wif_create_issuer,
+    cmd_wif_create_rule,
+    cmd_wif_create_service_account,
+    cmd_wif_exchange_token,
+    cmd_wif_list_issuers,
+    cmd_wif_list_rules,
+    cmd_wif_list_service_accounts,
+    cmd_wif_status,
 )
 
 __all__ = [
-    "WIFExchangeError", "WIF_ENV_VARS", "resolve_wif_env",
-    "OAUTH_TOKEN_ENDPOINT", "ADMIN_BASE", "JWT_BEARER_GRANT",
-    "WIFCredentialExchanger", "WIFAdminClient",
-    "cmd_wif_status", "cmd_wif_exchange_token",
-    "cmd_wif_create_service_account", "cmd_wif_list_service_accounts",
-    "cmd_wif_create_issuer", "cmd_wif_list_issuers",
-    "cmd_wif_create_rule", "cmd_wif_list_rules",
+    "WIFExchangeError",
+    "WIF_ENV_VARS",
+    "resolve_wif_env",
+    "OAUTH_TOKEN_ENDPOINT",
+    "ADMIN_BASE",
+    "JWT_BEARER_GRANT",
+    "WIFCredentialExchanger",
+    "WIFAdminClient",
+    "cmd_wif_status",
+    "cmd_wif_exchange_token",
+    "cmd_wif_create_service_account",
+    "cmd_wif_list_service_accounts",
+    "cmd_wif_create_issuer",
+    "cmd_wif_list_issuers",
+    "cmd_wif_create_rule",
+    "cmd_wif_list_rules",
 ]

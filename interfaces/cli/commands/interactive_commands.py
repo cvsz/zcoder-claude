@@ -8,13 +8,17 @@ application/interactive_service.py and coder.py.
 from application import interactive_service as service
 
 
-def cmd_interactive(api_key, model, system=None, temperature=0.3, max_tokens=4096,
-                    personality_style=None):
+def cmd_interactive(api_key, model, system=None, temperature=0.3, max_tokens=4096, personality_style=None):
     from coder import Coder
 
     history = []
-    c = Coder(api_key=api_key, model=model, temperature=temperature,
-              max_tokens=max_tokens, personality_style=personality_style)
+    c = Coder(
+        api_key=api_key,
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        personality_style=personality_style,
+    )
 
     print(f"\\033[94mAI Model Coder — interactive chat\\033[0m  (model: {c.model})")
     print("Type /help for commands, /exit (or Ctrl-D) to quit.\\n")

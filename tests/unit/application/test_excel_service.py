@@ -6,11 +6,11 @@ Coder/SkillsApiClient/FilesAPI substituted in — no real network. Mirrors
 tests/unit/application/test_pptx_service.py's structure one-for-one.
 """
 
-from infrastructure.local_storage.excel_workbook_store import ExcelSession
 import application.excel_service as service
-
+from infrastructure.local_storage.excel_workbook_store import ExcelSession
 
 # ── resolve_output_path ──────────────────────────────────────────────────
+
 
 def test_resolve_output_path_explicit_wins():
     assert service.resolve_output_path("in.xlsx", "out.xlsx") == "out.xlsx"
@@ -25,6 +25,7 @@ def test_resolve_output_path_defaults_when_neither_given():
 
 
 # ── run_turn ──────────────────────────────────────────────────────────────
+
 
 class FakeCoder:
     def __init__(self, reply):
@@ -82,6 +83,7 @@ def test_run_turn_denylisted_code_does_not_save(tmp_path):
 
 # ── upload_input_workbook ────────────────────────────────────────────────
 
+
 class FakeFilesAPI:
     def __init__(self, upload_result=None, raise_exc=None):
         self.upload_result = upload_result
@@ -106,7 +108,7 @@ def test_upload_input_workbook_raises_on_api_error():
     fa = FakeFilesAPI(raise_exc=RuntimeError("boom"))
     try:
         service.upload_input_workbook(fa, "wb.xlsx")
-        assert False, "expected RuntimeError"
+        raise AssertionError("expected RuntimeError")
     except RuntimeError as e:
         assert "Could not upload" in str(e)
         assert "boom" in str(e)
@@ -116,12 +118,13 @@ def test_upload_input_workbook_raises_when_no_file_id_returned():
     fa = FakeFilesAPI(upload_result={"filename": "wb.xlsx"})  # no "id" key
     try:
         service.upload_input_workbook(fa, "wb.xlsx")
-        assert False, "expected RuntimeError"
+        raise AssertionError("expected RuntimeError")
     except RuntimeError as e:
         assert "returned no file id" in str(e)
 
 
 # ── run_native_turn ──────────────────────────────────────────────────────
+
 
 class FakeSkillsClient:
     def __init__(self, response):
@@ -134,16 +137,24 @@ class FakeSkillsClient:
 
 
 def test_run_native_turn_success_with_text():
-    client = FakeSkillsClient({
-        "container": {"id": "cont_1"},
-        "content": [{"type": "text", "text": "Done!"}],
-    })
+    client = FakeSkillsClient(
+        {
+            "container": {"id": "cont_1"},
+            "content": [{"type": "text", "text": "Done!"}],
+        }
+    )
     fa = FakeFilesAPI()
     messages = []
 
-    result = service.run_native_turn(client, fa, messages, "clean this data",
-                                      pending_file_ids=[], container_id=None,
-                                      output_path="out.xlsx")
+    result = service.run_native_turn(
+        client,
+        fa,
+        messages,
+        "clean this data",
+        pending_file_ids=[],
+        container_id=None,
+        output_path="out.xlsx",
+    )
 
     assert result["error"] is None
     assert result["text"] == "Done!"
@@ -153,18 +164,21 @@ def test_run_native_turn_success_with_text():
 
 
 def test_run_native_turn_downloads_generated_file(monkeypatch):
-    client = FakeSkillsClient({
-        "container": {"id": "cont_1"},
-        "content": [{"type": "text", "text": "Here's your workbook."}],
-    })
+    client = FakeSkillsClient(
+        {
+            "container": {"id": "cont_1"},
+            "content": [{"type": "text", "text": "Here's your workbook."}],
+        }
+    )
     fa = FakeFilesAPI()
 
     import claude_skills_api
+
     monkeypatch.setattr(claude_skills_api, "extract_output_file_ids", lambda data: ["file_out"])
 
-    result = service.run_native_turn(client, fa, [], "build a model",
-                                      pending_file_ids=[], container_id=None,
-                                      output_path="out.xlsx")
+    result = service.run_native_turn(
+        client, fa, [], "build a model", pending_file_ids=[], container_id=None, output_path="out.xlsx"
+    )
     assert result["downloaded"] is True
     assert fa.downloaded == ("file_out", "out.xlsx")
 
@@ -174,9 +188,9 @@ def test_run_native_turn_error_pops_user_message():
     fa = FakeFilesAPI()
     messages = []
 
-    result = service.run_native_turn(client, fa, messages, "build a model",
-                                      pending_file_ids=[], container_id=None,
-                                      output_path="out.xlsx")
+    result = service.run_native_turn(
+        client, fa, messages, "build a model", pending_file_ids=[], container_id=None, output_path="out.xlsx"
+    )
 
     assert result["error"] == "container failed"
     assert messages == []

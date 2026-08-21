@@ -15,17 +15,16 @@ project between "talks to Anthropic" and "touches local disk".
 
 import json
 import mimetypes
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
-from typing import Optional
 
-from exceptions import AICoderError
-from resilience import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 from domain.files import BETA_HEADER, MAX_FILE_SIZE_BYTES, _validate_filename
+from exceptions import AICoderError
 from infrastructure.local_storage import files_registry_store as registry
+from resilience import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 
-FILES_BASE    = "https://api.anthropic.com/v1/files"
+FILES_BASE = "https://api.anthropic.com/v1/files"
 MESSAGES_BASE = "https://api.anthropic.com/v1/messages"
 
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
@@ -36,23 +35,23 @@ class FilesAPI:
 
     def __init__(self, api_key: str, model: str = "claude-sonnet-5"):
         self.api_key = api_key
-        self.model   = model
+        self.model = model
         registry.ensure_registry_dir()
 
     def _headers(self, content_type: str = "application/json") -> dict:
         return {
-            "x-api-key":         self.api_key,
+            "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
-            "anthropic-beta":    BETA_HEADER,
-            "Content-Type":      content_type,
+            "anthropic-beta": BETA_HEADER,
+            "Content-Type": content_type,
         }
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-    def _call_json(self, req: "urllib.request.Request", timeout: float) -> dict:
+    def _call_json(self, req: urllib.request.Request, timeout: float) -> dict:
         return urlopen_json(req, timeout=timeout)
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-    def _call_bytes(self, req: "urllib.request.Request", timeout: float) -> bytes:
+    def _call_bytes(self, req: urllib.request.Request, timeout: float) -> bytes:
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read()
@@ -60,7 +59,7 @@ class FilesAPI:
             raise_for_http_error(e)
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-    def _call_nobody(self, req: "urllib.request.Request", timeout: float) -> None:
+    def _call_nobody(self, req: urllib.request.Request, timeout: float) -> None:
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 r.read()
@@ -85,16 +84,20 @@ class FilesAPI:
             )
 
         data = p.read_bytes()
-        mt   = mimetypes.guess_type(str(p))[0] or "application/octet-stream"
+        mt = mimetypes.guess_type(str(p))[0] or "application/octet-stream"
 
         # Multipart/form-data encoding
         boundary = "---AICLIBoundary"
 
         body = (
-            f"--{boundary}\r\n"
-            f'Content-Disposition: form-data; name="file"; filename="{p.name}"\r\n'
-            f"Content-Type: {mt}\r\n\r\n"
-        ).encode() + data + f"\r\n--{boundary}--\r\n".encode()
+            (
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="file"; filename="{p.name}"\r\n'
+                f"Content-Type: {mt}\r\n\r\n"
+            ).encode()
+            + data
+            + f"\r\n--{boundary}--\r\n".encode()
+        )
 
         headers = self._headers(f"multipart/form-data; boundary={boundary}")
         headers.pop("Content-Type", None)  # let us set it with boundary
@@ -112,8 +115,9 @@ class FilesAPI:
 
     # ── List ──────────────────────────────────────────────────────────────
 
-    def list_files(self, limit: int = 20, before_id: Optional[str] = None,
-                   after_id: Optional[str] = None) -> dict:
+    def list_files(
+        self, limit: int = 20, before_id: str | None = None, after_id: str | None = None
+    ) -> dict:
         """List one page of files. Returns {"data": [...], "has_more": bool,
         "first_id": ..., "last_id": ...} per the paginated List Files endpoint."""
         params = {"limit": str(limit)}
@@ -132,7 +136,7 @@ class FilesAPI:
         except AICoderError as e:
             raise RuntimeError(f"List failed: {e.message}") from e
 
-    def list_files_all(self, max_items: Optional[int] = None) -> list:
+    def list_files_all(self, max_items: int | None = None) -> list:
         """Auto-paginate across all pages, bounded by max_items (None = unbounded)."""
         out, after_id = [], None
         while True:
@@ -205,10 +209,14 @@ class FilesAPI:
 
     # ── Use file in Messages API ────────────────────────────────────────────
 
-    def ask_about_file(self, file_id: str, prompt: str,
-                       media_type: str = "application/pdf",
-                       max_tokens: int = 4096,
-                       use_code_execution: bool = False) -> str:
+    def ask_about_file(
+        self,
+        file_id: str,
+        prompt: str,
+        media_type: str = "application/pdf",
+        max_tokens: int = 4096,
+        use_code_execution: bool = False,
+    ) -> str:
         """Reference an uploaded file in a Messages API call.
 
         Block type follows the File type -> Content block table in
@@ -227,25 +235,30 @@ class FilesAPI:
             block = {"type": "container_upload", "file_id": file_id}
             tools = [{"type": "code_execution_20250825", "name": "code_execution"}]
         else:
-            block = {"type": "document", "source": {"type": "file", "file_id": file_id},
-                     "citations": {"enabled": True}}
+            block = {
+                "type": "document",
+                "source": {"type": "file", "file_id": file_id},
+                "citations": {"enabled": True},
+            }
 
         payload = {
-            "model":      self.model,
+            "model": self.model,
             "max_tokens": max_tokens,
-            "messages": [{
-                "role": "user",
-                "content": [block, {"type": "text", "text": prompt}],
-            }],
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [block, {"type": "text", "text": prompt}],
+                }
+            ],
         }
         if tools:
             payload["tools"] = tools
 
         headers = {
-            "Content-Type":      "application/json",
-            "x-api-key":         self.api_key,
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
-            "anthropic-beta":    BETA_HEADER,
+            "anthropic-beta": BETA_HEADER,
         }
         req = urllib.request.Request(
             MESSAGES_BASE,
@@ -258,10 +271,7 @@ class FilesAPI:
         except AICoderError as e:
             return f"[API ERROR {getattr(e, 'status_code', '')}] {e.message}"
 
-        return "".join(
-            b.get("text", "") for b in data.get("content", [])
-            if b.get("type") == "text"
-        )
+        return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
 
     # ── Local registry helpers ────────────────────────────────────────────
     # Thin delegation to infrastructure/local_storage/files_registry_store.py

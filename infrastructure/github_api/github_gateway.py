@@ -18,11 +18,13 @@ directly").
 
 import os
 import urllib.request
-from typing import Optional
 
 from exceptions import AICoderError
 from infrastructure.anthropic_api.http_client import (
-    CircuitBreaker, retry, urlopen_json, urlopen_text,
+    CircuitBreaker,
+    retry,
+    urlopen_json,
+    urlopen_text,
 )
 
 GITHUB_API = "https://api.github.com"
@@ -32,7 +34,7 @@ GITHUB_API = "https://api.github.com"
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
 
 
-def resolve_token(explicit: Optional[str]) -> str:
+def resolve_token(explicit: str | None) -> str:
     token = explicit or os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
     if not token:
         raise ValueError(
@@ -45,12 +47,15 @@ def resolve_token(explicit: Optional[str]) -> str:
 @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
 def get(path: str, token: str):
     url = f"{GITHUB_API}{path}"
-    req = urllib.request.Request(url, headers={
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "ai-coder-cli/1.9.1",
-    })
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "ai-coder-cli/1.9.1",
+        },
+    )
     try:
         return urlopen_json(req, timeout=20)
     except AICoderError as e:
@@ -61,10 +66,13 @@ def get(path: str, token: str):
 def fetch_diff(diff_url: str, token: str, max_chars: int) -> str:
     """Fetch a PR diff. Was previously inlined (and unretried/unhandled) at
     both of review_pr()'s and generate_pr_description()'s call sites."""
-    req = urllib.request.Request(diff_url, headers={
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github.diff",
-    })
+    req = urllib.request.Request(
+        diff_url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github.diff",
+        },
+    )
     try:
         return urlopen_text(req, timeout=30)[:max_chars]
     except AICoderError as e:

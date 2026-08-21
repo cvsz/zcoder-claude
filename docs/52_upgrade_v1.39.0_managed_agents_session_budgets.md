@@ -209,3 +209,22 @@ required-parameter change.
 - This audit did not re-run `ruff`/`black`/`mypy` (not present in the
   execution environment); only `pytest` and a manual `ast.parse` syntax
   check were used to validate the changed files.
+
+---
+
+## Phase F completion note (2026-08-21)
+
+All deferred items from §7 were resolved in subsequent phases:
+
+- **Admin API deep-dive** — covered in v1.38.0 (CE user management) and v1.40.0
+  (cost report, usage report, Claude Code usage, CMK, rate limits, spend limits,
+  invites, groups, roles, org management).
+- **WIF** — covered in v1.23.0, verified clean in v1.39.0 and v1.40.0.
+- **Compliance API remote + local session transcripts** — implemented in v1.40.0
+  (Aug 3 remote, Aug 11 local).
+- **`anthropic-workspace-id` metadata** — implemented in v1.40.0 (`--whoami`).
+- **Model retirement sweep** — Opus 4.1 retired in v1.40.0.
+- **Sonnet 5 pricing** — corrected in v1.40.0 ($2/$10 permanent).
+
+Phase F (enterprise hardening, 2026-08-21) completed the release gate:
+`ruff` clean, `mypy` clean, CI wired, test suite 1053/1053 green.

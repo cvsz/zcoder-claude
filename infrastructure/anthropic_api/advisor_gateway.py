@@ -6,7 +6,6 @@ Real HTTP calls to api.anthropic.com for the advisor tool. No print().
 
 import json
 import urllib.request
-from typing import Optional
 
 from domain.advisor import ADVISOR_TOOL_BETA, ADVISOR_TOOL_TYPE, strip_advisor_blocks
 from exceptions import AICoderError
@@ -17,8 +16,7 @@ _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
 
 
 class AdvisorGateway:
-    def __init__(self, api_key: str, executor_model: str = "claude-sonnet-5",
-                 max_tokens: int = 4096):
+    def __init__(self, api_key: str, executor_model: str = "claude-sonnet-5", max_tokens: int = 4096):
         self.api_key = api_key
         self.executor_model = executor_model
         self.max_tokens = max_tokens
@@ -32,8 +30,10 @@ class AdvisorGateway:
             "anthropic-beta": beta,
         }
         req = urllib.request.Request(
-            ENDPOINT, data=json.dumps(payload).encode(),
-            headers=headers, method="POST",
+            ENDPOINT,
+            data=json.dumps(payload).encode(),
+            headers=headers,
+            method="POST",
         )
         return urlopen_json(req, timeout=180)
 
@@ -45,10 +45,14 @@ class AdvisorGateway:
         except Exception as e:
             return {"error": str(e)}
 
-    def run(self, prompt: str, advisor_tool: dict,
-            extra_tools: Optional[list] = None,
-            system: Optional[str] = None,
-            max_advisor_calls: int = 10) -> tuple:
+    def run(
+        self,
+        prompt: str,
+        advisor_tool: dict,
+        extra_tools: list | None = None,
+        system: str | None = None,
+        max_advisor_calls: int = 10,
+    ) -> tuple:
         tools = [advisor_tool] + (extra_tools or [])
         messages = [{"role": "user", "content": prompt}]
         advisor_calls = 0
@@ -83,8 +87,14 @@ class AdvisorGateway:
             if data.get("stop_reason") == "tool_use":
                 pending = [b for b in content if b.get("type") == "tool_use"]
                 if pending:
-                    return {"error": "[TOOL_USE] Executor called client tool(s) — "
-                            "send tool_result blocks and resend to continue"}, messages, advisor_calls
+                    return (
+                        {
+                            "error": "[TOOL_USE] Executor called client tool(s) — "
+                            "send tool_result blocks and resend to continue"
+                        },
+                        messages,
+                        advisor_calls,
+                    )
                 continue
 
             if data.get("stop_reason") == "end_turn":

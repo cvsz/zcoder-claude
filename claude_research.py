@@ -19,15 +19,27 @@ existing imports keep working unmodified.
 """
 
 from domain.research import (
-    SYS_PLAN, SYS_ANAL, SYS_SYNTH,
-    SubQ, Report, clean_json_response, parse_subquestions, parse_findings,
+    SYS_ANAL,
+    SYS_PLAN,
+    SYS_SYNTH,
+    Report,
+    SubQ,
+    clean_json_response,
+    parse_findings,
+    parse_subquestions,
 )
 from infrastructure.anthropic_api.research_gateway import DeepResearchGateway
 from interfaces.cli.commands.research_commands import cmd_research
 
 __all__ = [
-    "SYS_PLAN", "SYS_ANAL", "SYS_SYNTH",
-    "SubQ", "Report", "clean_json_response", "parse_subquestions", "parse_findings",
+    "SYS_PLAN",
+    "SYS_ANAL",
+    "SYS_SYNTH",
+    "SubQ",
+    "Report",
+    "clean_json_response",
+    "parse_subquestions",
+    "parse_findings",
     "DeepResearchGateway",
     "cmd_research",
 ]

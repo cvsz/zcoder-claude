@@ -8,7 +8,6 @@ Pure data + pure functions for output styles. No I/O, no print(), no
 import os
 import re
 from pathlib import Path
-from typing import Optional
 
 PROJECT_STYLES_DIR = Path(".claude/output-styles")
 USER_STYLES_DIR = Path(os.path.expanduser("~/.claude/output-styles"))
@@ -50,7 +49,7 @@ BUILTIN_STYLES = {
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)$", re.DOTALL)
 
 
-def _parse_style_file(path: Path) -> Optional[dict]:
+def _parse_style_file(path: Path) -> dict | None:
     try:
         text = path.read_text()
     except Exception:
@@ -73,25 +72,28 @@ def _parse_style_file(path: Path) -> Optional[dict]:
     }
 
 
-def list_styles(plugin_styles: Optional[list] = None) -> list:
-    out = [{"name": n, "description": s["description"], "builtin": True}
-           for n, s in BUILTIN_STYLES.items()]
+def list_styles(plugin_styles: list | None = None) -> list:
+    out = [{"name": n, "description": s["description"], "builtin": True} for n, s in BUILTIN_STYLES.items()]
     custom = plugin_styles or []
     for s in custom:
-        out.append({
-            "name": s["name"], "description": s["description"], "builtin": False,
-            "plugin": s.get("plugin"),
-        })
+        out.append(
+            {
+                "name": s["name"],
+                "description": s["description"],
+                "builtin": False,
+                "plugin": s.get("plugin"),
+            }
+        )
     return out
 
 
-def get_style(name: str, custom_styles: Optional[dict] = None) -> Optional[dict]:
+def get_style(name: str, custom_styles: dict | None = None) -> dict | None:
     if name in BUILTIN_STYLES:
         return {"name": name, **BUILTIN_STYLES[name], "keep_coding_instructions": True}
     return (custom_styles or {}).get(name)
 
 
-def system_prompt_fragment(name: str, custom_styles: Optional[dict] = None) -> str:
+def system_prompt_fragment(name: str, custom_styles: dict | None = None) -> str:
     style = get_style(name, custom_styles)
     if not style or not style.get("prompt"):
         return ""

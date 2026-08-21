@@ -11,8 +11,8 @@ New code should import from those locations directly rather than through
 this shim.
 """
 
-from domain.messaging import AmbientBuffer, LIVE_SYSTEM
+from domain.messaging import LIVE_SYSTEM, AmbientBuffer
 from infrastructure.anthropic_api.messaging_gateway import LiveSession
-from interfaces.cli.commands.messaging_commands import cmd_live, _handle_slash
+from interfaces.cli.commands.messaging_commands import _handle_slash, cmd_live
 
 __all__ = ["AmbientBuffer", "LIVE_SYSTEM", "LiveSession", "cmd_live", "_handle_slash"]

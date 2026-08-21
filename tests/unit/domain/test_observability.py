@@ -6,18 +6,31 @@ Cost, Metrics, Observability & Eval bounded context, extracted 2026-08-19
 zero test coverage before this migration; this closes that gap for the
 pure-logic half of both.
 """
+
 import pytest
 
 from domain.observability import (
-    SONNET5_INTRO_PRICE, TIER_MODELS, estimate_cost, classify_complexity,
-    select_model, OptimizedResponse, price_lookup, summarise_metrics,
-    histogram, build_latency_report, build_request_record,
-    EvalCase, EvalResult, EvalRun, build_eval_run,
-    PRICE, DEFAULT_PRICE,
+    DEFAULT_PRICE,
+    PRICE,
+    SONNET5_INTRO_PRICE,
+    TIER_MODELS,
+    EvalCase,
+    EvalResult,
+    EvalRun,
+    OptimizedResponse,
+    build_eval_run,
+    build_latency_report,
+    build_request_record,
+    classify_complexity,
+    estimate_cost,
+    histogram,
+    price_lookup,
+    select_model,
+    summarise_metrics,
 )
 
-
 # ── Cost routing ──────────────────────────────────────────────────────
+
 
 def test_sonnet5_intro_price_alias_matches_base_price():
     assert SONNET5_INTRO_PRICE == PRICE["claude-sonnet-5"]
@@ -55,12 +68,20 @@ def test_select_model_maps_tiers():
 
 
 def test_optimized_response_is_a_plain_dataclass():
-    r = OptimizedResponse(text="hi", model_used="claude-sonnet-5", complexity="low",
-                          in_tokens=1, out_tokens=1, cost_usd=0.0, latency_ms=1)
+    r = OptimizedResponse(
+        text="hi",
+        model_used="claude-sonnet-5",
+        complexity="low",
+        in_tokens=1,
+        out_tokens=1,
+        cost_usd=0.0,
+        latency_ms=1,
+    )
     assert r.text == "hi"
 
 
 # ── Metrics ───────────────────────────────────────────────────────────
+
 
 def test_price_lookup_matches_catalog_price():
     cost = price_lookup("claude-sonnet-5", 1_000_000, 1_000_000)
@@ -73,12 +94,27 @@ def test_summarise_metrics_empty():
 
 def test_summarise_metrics_aggregates_by_model():
     entries = [
-        {"model": "claude-sonnet-5", "input_tokens": 100, "output_tokens": 50,
-         "cost_usd": 1.0, "latency_seconds": 2.0},
-        {"model": "claude-sonnet-5", "input_tokens": 200, "output_tokens": 100,
-         "cost_usd": 2.0, "latency_seconds": 4.0},
-        {"model": "claude-opus-4-8", "input_tokens": 10, "output_tokens": 10,
-         "cost_usd": 0.5, "latency_seconds": 1.0},
+        {
+            "model": "claude-sonnet-5",
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "cost_usd": 1.0,
+            "latency_seconds": 2.0,
+        },
+        {
+            "model": "claude-sonnet-5",
+            "input_tokens": 200,
+            "output_tokens": 100,
+            "cost_usd": 2.0,
+            "latency_seconds": 4.0,
+        },
+        {
+            "model": "claude-opus-4-8",
+            "input_tokens": 10,
+            "output_tokens": 10,
+            "cost_usd": 0.5,
+            "latency_seconds": 1.0,
+        },
     ]
     s = summarise_metrics(entries)
     assert s["calls"] == 3
@@ -88,6 +124,7 @@ def test_summarise_metrics_aggregates_by_model():
 
 
 # ── Observability ─────────────────────────────────────────────────────
+
 
 def test_histogram_no_data():
     assert histogram([]) == "(no data)"
@@ -120,8 +157,7 @@ def test_build_latency_report_aggregates():
 
 
 def test_build_request_record_shapes_a_dict():
-    rec = build_request_record("claude-sonnet-5", "a" * 200, "b" * 200,
-                               123, 10, 20, error=None, tags=["t1"])
+    rec = build_request_record("claude-sonnet-5", "a" * 200, "b" * 200, 123, 10, 20, error=None, tags=["t1"])
     assert rec["model"] == "claude-sonnet-5"
     assert len(rec["prompt_preview"]) == 120
     assert len(rec["response_preview"]) == 120
@@ -132,20 +168,38 @@ def test_build_request_record_shapes_a_dict():
 
 # ── Eval harness ──────────────────────────────────────────────────────
 
+
 def test_eval_case_and_result_are_plain_dataclasses():
     c = EvalCase(case_id="c1", prompt="p", expected="e")
     assert c.tags == []
-    r = EvalResult(case_id="c1", prompt="p", expected="e", actual="a",
-                   score=1.0, passed=True, latency_ms=5, model="m")
+    r = EvalResult(
+        case_id="c1", prompt="p", expected="e", actual="a", score=1.0, passed=True, latency_ms=5, model="m"
+    )
     assert r.reason == ""
 
 
 def test_build_eval_run_aggregates_results():
     results = [
-        EvalResult(case_id="c1", prompt="p", expected="e", actual="a",
-                  score=1.0, passed=True, latency_ms=100, model="m"),
-        EvalResult(case_id="c2", prompt="p", expected="e", actual="a",
-                  score=0.0, passed=False, latency_ms=200, model="m"),
+        EvalResult(
+            case_id="c1",
+            prompt="p",
+            expected="e",
+            actual="a",
+            score=1.0,
+            passed=True,
+            latency_ms=100,
+            model="m",
+        ),
+        EvalResult(
+            case_id="c2",
+            prompt="p",
+            expected="e",
+            actual="a",
+            score=0.0,
+            passed=False,
+            latency_ms=200,
+            model="m",
+        ),
     ]
     run = build_eval_run("run1", "claude-sonnet-5", results)
     assert isinstance(run, EvalRun)
@@ -163,9 +217,21 @@ def test_build_eval_run_empty_results():
 
 
 def test_eval_run_summary_string():
-    run = build_eval_run("abc123", "claude-sonnet-5", [
-        EvalResult(case_id="c1", prompt="p", expected="e", actual="a",
-                  score=1.0, passed=True, latency_ms=100, model="m"),
-    ])
+    run = build_eval_run(
+        "abc123",
+        "claude-sonnet-5",
+        [
+            EvalResult(
+                case_id="c1",
+                prompt="p",
+                expected="e",
+                actual="a",
+                score=1.0,
+                passed=True,
+                latency_ms=100,
+                model="m",
+            ),
+        ],
+    )
     s = run.summary()
     assert "abc123" in s and "claude-sonnet-5" in s and "1/1 passed" in s

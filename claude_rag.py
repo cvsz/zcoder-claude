@@ -17,15 +17,33 @@ this shim.
 """
 
 from domain.tools import (
-    Chunk, RAGIndex, SUPPORTED_RAG_EXTS, SUPPORTED_RAG_EXTS as SUPPORTED_EXTS,
-    tokenize, chunk_text, retrieve,
+    SUPPORTED_RAG_EXTS,
+    Chunk,
+    RAGIndex,
+    chunk_text,
+    retrieve,
+    tokenize,
 )
-from infrastructure.local_storage.rag_index_store import build_index, load_index, INDEX_DIR
+from domain.tools import (
+    SUPPORTED_RAG_EXTS as SUPPORTED_EXTS,
+)
 from infrastructure.anthropic_api.rag_gateway import generate
-from interfaces.cli.commands.tools_commands import cmd_rag_index, cmd_rag_query, cmd_rag_list
+from infrastructure.local_storage.rag_index_store import INDEX_DIR, build_index, load_index
+from interfaces.cli.commands.tools_commands import cmd_rag_index, cmd_rag_list, cmd_rag_query
 
 __all__ = [
-    "Chunk", "RAGIndex", "SUPPORTED_EXTS", "SUPPORTED_RAG_EXTS", "INDEX_DIR",
-    "tokenize", "chunk_text", "retrieve", "build_index", "load_index", "generate",
-    "cmd_rag_index", "cmd_rag_query", "cmd_rag_list",
+    "Chunk",
+    "RAGIndex",
+    "SUPPORTED_EXTS",
+    "SUPPORTED_RAG_EXTS",
+    "INDEX_DIR",
+    "tokenize",
+    "chunk_text",
+    "retrieve",
+    "build_index",
+    "load_index",
+    "generate",
+    "cmd_rag_index",
+    "cmd_rag_query",
+    "cmd_rag_list",
 ]

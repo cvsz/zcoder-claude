@@ -17,7 +17,6 @@ established for infrastructure/anthropic_api/messaging_gateway.py's
 MESSAGES_ENDPOINT.
 """
 
-from typing import Optional
 
 BETA_HEADER = "files-api-2025-04-14"
 
@@ -26,7 +25,7 @@ MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024  # 500 MB per file
 _FORBIDDEN_FILENAME_CHARS = set('<>:"|?*\\/') | {chr(c) for c in range(32)}
 
 
-def _validate_filename(name: str) -> Optional[str]:
+def _validate_filename(name: str) -> str | None:
     """Mirror the API's documented Invalid filename (400) rule client-side.
     Returns an error message, or None if the filename is fine."""
     if not (1 <= len(name) <= 255):

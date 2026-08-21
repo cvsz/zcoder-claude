@@ -8,6 +8,7 @@ subprocess itself, since exercising the real git binary is the point
 (this is exactly the kind of local-process I/O the domain/infra split
 exists to isolate, and mocking it away would test nothing).
 """
+
 import subprocess
 
 import pytest

@@ -5,7 +5,6 @@ Orchestrates domain/interactive.py — no print() of its own. The actual
 input/output loop lives in interfaces/.
 """
 
-
 from domain.interactive import HELP_TEXT, format_transcript
 
 

@@ -7,9 +7,8 @@ resilience.urlopen_json_with_headers rather than a hand-invented mock
 shape, and cover both header-casing variants since urllib doesn't
 guarantee case normalization across platforms.
 """
-import json
 
-import pytest
+import json
 
 import claude_response_metadata as rm
 from exceptions import AICoderError
@@ -17,8 +16,7 @@ from exceptions import AICoderError
 
 def test_get_response_metadata_parses_lowercase_headers(monkeypatch):
     def fake_call(api_key):
-        return {"content": []}, {"anthropic-workspace-id": "wrkspc_1",
-                                  "anthropic-organization-id": "org_1"}
+        return {"content": []}, {"anthropic-workspace-id": "wrkspc_1", "anthropic-organization-id": "org_1"}
 
     monkeypatch.setattr(rm, "_call_with_headers", fake_call)
     meta = rm.get_response_metadata("sk-ant-fake")
@@ -28,8 +26,7 @@ def test_get_response_metadata_parses_lowercase_headers(monkeypatch):
 
 def test_get_response_metadata_parses_titlecase_headers(monkeypatch):
     def fake_call(api_key):
-        return {"content": []}, {"Anthropic-Workspace-Id": "wrkspc_2",
-                                  "Anthropic-Organization-Id": "org_2"}
+        return {"content": []}, {"Anthropic-Workspace-Id": "wrkspc_2", "Anthropic-Organization-Id": "org_2"}
 
     monkeypatch.setattr(rm, "_call_with_headers", fake_call)
     meta = rm.get_response_metadata("sk-ant-fake")
@@ -66,10 +63,14 @@ def test_call_with_headers_sends_minimal_documented_payload(monkeypatch):
 
 
 def test_cmd_whoami_prints_ids(monkeypatch, capsys):
-    monkeypatch.setattr(rm, "_call_with_headers",
-                        lambda api_key: ({"content": []},
-                                         {"anthropic-workspace-id": "wrkspc_4",
-                                          "anthropic-organization-id": "org_4"}))
+    monkeypatch.setattr(
+        rm,
+        "_call_with_headers",
+        lambda api_key: (
+            {"content": []},
+            {"anthropic-workspace-id": "wrkspc_4", "anthropic-organization-id": "org_4"},
+        ),
+    )
     rm.cmd_whoami("sk-ant-fake")
     out = capsys.readouterr().out
     assert "wrkspc_4" in out

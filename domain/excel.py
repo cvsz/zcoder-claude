@@ -55,9 +55,21 @@ _CODE_BLOCK = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL)
 # not a malicious actor. Anything more sensitive should go through
 # --code-agent-sandbox instead, which isolates filesystem/network access.
 _DENYLIST = (
-    "import os", "import sys", "import subprocess", "import socket",
-    "__import__", "open(", "eval(", "exec(", "os.", "sys.", "subprocess.",
-    "socket.", "shutil.", ".system(", "pathlib",
+    "import os",
+    "import sys",
+    "import subprocess",
+    "import socket",
+    "__import__",
+    "open(",
+    "eval(",
+    "exec(",
+    "os.",
+    "sys.",
+    "subprocess.",
+    "socket.",
+    "shutil.",
+    ".system(",
+    "pathlib",
 )
 
 HELP_TEXT = """\

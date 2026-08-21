@@ -17,8 +17,9 @@ from infrastructure.local_storage.pptx_deck_store import Presentation
 __all__ = ["cmd_pptx_chat"]
 
 
-def cmd_pptx_chat(api_key, model, input_path=None, output_path=None,
-                   temperature=0.3, max_tokens=4096, native=False):
+def cmd_pptx_chat(
+    api_key, model, input_path=None, output_path=None, temperature=0.3, max_tokens=4096, native=False
+):
     """native=True routes each turn through claude_skills_api.py's pptx
     Skill (Anthropic's own maintained implementation, server-side in a
     code-execution container) instead of the hand-rolled python-pptx path
@@ -26,12 +27,15 @@ def cmd_pptx_chat(api_key, model, input_path=None, output_path=None,
     hand-rolled path here remains the default and the fallback for
     accounts without it."""
     if native:
-        return _cmd_pptx_chat_native(api_key, model, input_path=input_path,
-                                     output_path=output_path, max_tokens=max_tokens)
+        return _cmd_pptx_chat_native(
+            api_key, model, input_path=input_path, output_path=output_path, max_tokens=max_tokens
+        )
 
     if Presentation is None:
-        print("[ERROR] python-pptx is required for --pptx. Install with: "
-              "pip install python-pptx", file=sys.stderr)
+        print(
+            "[ERROR] python-pptx is required for --pptx. Install with: " "pip install python-pptx",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     from coder import Coder
@@ -66,7 +70,8 @@ def cmd_pptx_chat(api_key, model, input_path=None, output_path=None,
             if cmd in ("/exit", "/quit"):
                 break
             if cmd == "/help":
-                print(HELP_TEXT); continue
+                print(HELP_TEXT)
+                continue
             if cmd == "/slides":
                 for i, s in enumerate(session.slides):
                     print(f"  {i}: {s['title']!r} ({len(s['bullets'])} bullets)")
@@ -90,8 +95,10 @@ def cmd_pptx_chat(api_key, model, input_path=None, output_path=None,
         result = service.run_turn(c, session, user_input, history, output_path)
         if result["code_block_found"]:
             if result["applied"]:
-                print(f"\033[96mclaude›\033[0m Updated and saved to {output_path} "
-                     f"({result['num_slides']} slides)\n")
+                print(
+                    f"\033[96mclaude›\033[0m Updated and saved to {output_path} "
+                    f"({result['num_slides']} slides)\n"
+                )
             else:
                 print(f"\033[93mclaude›\033[0m {result['message']}\n")
         else:
@@ -111,8 +118,8 @@ def _cmd_pptx_chat_native(api_key, model, input_path=None, output_path=None, max
     aren't available here — the pptx Skill owns the deck, this CLI has no
     local copy of it to inspect or revert.
     """
-    from claude_skills_api import SkillsApiClient
     from claude_files import FilesAPI
+    from claude_skills_api import SkillsApiClient
 
     files_api = FilesAPI(api_key=api_key, model=model)
     client = SkillsApiClient(api_key=api_key, model=model, max_tokens=max_tokens)
@@ -145,8 +152,9 @@ def _cmd_pptx_chat_native(api_key, model, input_path=None, output_path=None, max
         if user_input.lower() in ("/exit", "/quit"):
             break
 
-        result = service.run_native_turn(client, files_api, messages, user_input,
-                                          pending_file_ids, container_id, output_path)
+        result = service.run_native_turn(
+            client, files_api, messages, user_input, pending_file_ids, container_id, output_path
+        )
         pending_file_ids = []  # only attach on the turn that actually introduces the file
         container_id = result["container_id"]
 

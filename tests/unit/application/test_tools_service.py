@@ -4,12 +4,13 @@ Covers application/tools_service.py — the use-case layer added
 2026-08-16 (Phase C) for the Tool Use & Retrieval bounded context. Fake
 gateway classes substituted in — no print() capture, no real network.
 """
+
 import json
 
 import application.tools_service as service
 
-
 # ── agentic tool runner ─────────────────────────────────────────────────
+
 
 def test_run_tool_agent_delegates_and_threads_callback(monkeypatch):
     calls = {}
@@ -24,7 +25,9 @@ def test_run_tool_agent_delegates_and_threads_callback(monkeypatch):
 
     monkeypatch.setattr(service, "ToolCoder", FakeToolCoder)
     seen = []
-    result = service.run_tool_agent("q", "k", "claude-sonnet-5", on_tool_call=lambda n, i: seen.append((n, i)))
+    result = service.run_tool_agent(
+        "q", "k", "claude-sonnet-5", on_tool_call=lambda n, i: seen.append((n, i))
+    )
     assert result == "done"
     assert seen == [("read_file", {"path": "x"})]
 
@@ -48,7 +51,11 @@ def test_run_server_tools_marks_extra_tools_with_ptc(monkeypatch):
 
     monkeypatch.setattr(service, "ToolCoder", FakeToolCoder)
     service.run_server_tools(
-        "q", ["code_execution"], "k", "claude-sonnet-5", use_ptc=True,
+        "q",
+        ["code_execution"],
+        "k",
+        "claude-sonnet-5",
+        use_ptc=True,
         extra_tool_defs=[{"name": "my_tool", "input_schema": {}}],
     )
     assert captured["extra_tools"][0]["allowed_callers"]
@@ -70,7 +77,9 @@ def test_run_memory_agent_delegates(monkeypatch):
     monkeypatch.setattr(service, "ToolCoder", FakeToolCoder)
     monkeypatch.setattr(service, "MemoryToolHandler", FakeMemory)
     seen = []
-    result = service.run_memory_agent("q", "k", "claude-sonnet-5", on_memory_op=lambda c, p: seen.append((c, p)))
+    result = service.run_memory_agent(
+        "q", "k", "claude-sonnet-5", on_memory_op=lambda c, p: seen.append((c, p))
+    )
     assert result == "ok"
     assert seen == [("view", "/memories")]
 
@@ -83,6 +92,7 @@ def test_list_server_tools_info_includes_retirement_notes():
 
 
 # ── vision ───────────────────────────────────────────────────────────────
+
 
 def test_analyse_image_code_mode_calls_screenshot(monkeypatch):
     calls = {}
@@ -115,6 +125,7 @@ def test_ocr_image_delegates(monkeypatch):
 
 # ── web search & fetch ───────────────────────────────────────────────────
 
+
 def test_web_search_delegates(monkeypatch):
     class FakeSearchCoder:
         def __init__(self, api_key, model):
@@ -142,6 +153,7 @@ def test_fetch_url_delegates(monkeypatch):
 
 # ── embeddings ───────────────────────────────────────────────────────────
 
+
 def test_embed_text_unwraps_single_vector(monkeypatch):
     monkeypatch.setattr(service, "embed", lambda texts, model, input_type: [[1.0, 2.0]])
     assert service.embed_text("hi") == [1.0, 2.0]
@@ -162,6 +174,7 @@ def test_embed_similarity_uses_cosine(monkeypatch):
 
 
 # ── RAG ──────────────────────────────────────────────────────────────────
+
 
 def test_rag_query_missing_index(monkeypatch):
     monkeypatch.setattr(service.rag_index_store, "load_index", lambda name: None)

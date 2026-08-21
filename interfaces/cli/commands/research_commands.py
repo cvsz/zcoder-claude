@@ -6,15 +6,19 @@ application/research_service.py.
 """
 
 from pathlib import Path
-from typing import Optional
 
 from application import research_service as service
 from infrastructure.anthropic_api.research_gateway import DeepResearchGateway
 
 
-def cmd_research(topic: str, api_key: str, model: str,
-                 depth: int = 4, source_urls: Optional[list] = None,
-                 output: Optional[str] = None):
+def cmd_research(
+    topic: str,
+    api_key: str,
+    model: str,
+    depth: int = 4,
+    source_urls: list | None = None,
+    output: str | None = None,
+):
     print(f"🔎 Deep Research: {topic!r}  (depth={depth})\\n")
     gateway = DeepResearchGateway(api_key=api_key, model=model)
     report = service.run_research(gateway, topic, depth=depth, source_urls=source_urls)

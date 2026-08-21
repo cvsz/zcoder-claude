@@ -21,17 +21,29 @@ existing imports keep working unmodified.
 """
 
 from domain.workflow import (
-    WorkflowStep, Workflow, StepResult, WorkflowRun,
-    load_workflow, parse_workflow, fill_template,
+    StepResult,
+    Workflow,
+    WorkflowRun,
+    WorkflowStep,
+    fill_template,
+    load_workflow,
+    parse_workflow,
 )
 from infrastructure.anthropic_api.workflow_gateway import WorkflowGateway
 from interfaces.cli.commands.workflow_commands import (
-    cmd_workflow_run, cmd_workflow_scaffold,
+    cmd_workflow_run,
+    cmd_workflow_scaffold,
 )
 
 __all__ = [
-    "WorkflowStep", "Workflow", "StepResult", "WorkflowRun",
-    "load_workflow", "parse_workflow", "fill_template",
+    "WorkflowStep",
+    "Workflow",
+    "StepResult",
+    "WorkflowRun",
+    "load_workflow",
+    "parse_workflow",
+    "fill_template",
     "WorkflowGateway",
-    "cmd_workflow_run", "cmd_workflow_scaffold",
+    "cmd_workflow_run",
+    "cmd_workflow_scaffold",
 ]

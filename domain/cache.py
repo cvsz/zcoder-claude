@@ -61,6 +61,7 @@ def validate_system_message_placement(messages: list) -> None:
       - Cannot be adjacent to another system message (no consecutive
         system messages).
     """
+
     def _is_system(m: dict) -> bool:
         return m.get("role") == "system"
 
@@ -76,14 +77,16 @@ def validate_system_message_placement(messages: list) -> None:
         if i == 0:
             raise SystemMessagePlacementError(
                 "A system message cannot be the first entry in messages; "
-                "use the top-level `system` field for turn-one instructions.")
+                "use the top-level `system` field for turn-one instructions."
+            )
 
         prev = messages[i - 1]
         if _is_system(prev):
             raise SystemMessagePlacementError(
                 f"System message at index {i} is adjacent to another system "
                 f"message at index {i-1}; consecutive system messages are "
-                "not allowed.")
+                "not allowed."
+            )
 
         prev_types = _block_types(prev.get("content"))
 
@@ -92,21 +95,24 @@ def validate_system_message_placement(messages: list) -> None:
         # inserting a system message right after it would sit between the
         # tool_use and its tool_result, which is invalid regardless of the
         # more general "must follow user/server-tool-use" rule below.
-        if prev.get("role") == "assistant" and "tool_use" in prev_types \
-                and "server_tool_use" not in prev_types:
+        if (
+            prev.get("role") == "assistant"
+            and "tool_use" in prev_types
+            and "server_tool_use" not in prev_types
+        ):
             raise SystemMessagePlacementError(
-                f"System message at index {i} cannot sit between a tool_use "
-                "block and its tool_result.")
+                f"System message at index {i} cannot sit between a tool_use " "block and its tool_result."
+            )
 
-        prev_ok = (
-            prev.get("role") == "user"
-            or (prev.get("role") == "assistant" and "server_tool_use" in prev_types)
+        prev_ok = prev.get("role") == "user" or (
+            prev.get("role") == "assistant" and "server_tool_use" in prev_types
         )
         if not prev_ok:
             raise SystemMessagePlacementError(
                 f"System message at index {i} must immediately follow a user "
                 "turn or an assistant turn ending in server tool use "
-                f"(preceding message has role={prev.get('role')!r}).")
+                f"(preceding message has role={prev.get('role')!r})."
+            )
 
         if i < len(messages) - 1:
             nxt = messages[i + 1]
@@ -114,21 +120,24 @@ def validate_system_message_placement(messages: list) -> None:
                 raise SystemMessagePlacementError(
                     f"System message at index {i} is adjacent to another "
                     f"system message at index {i+1}; consecutive system "
-                    "messages are not allowed.")
+                    "messages are not allowed."
+                )
             if nxt.get("role") != "assistant":
                 raise SystemMessagePlacementError(
                     f"System message at index {i} must be the last entry in "
                     f"messages or be followed by an assistant turn "
-                    f"(next message has role={nxt.get('role')!r}).")
+                    f"(next message has role={nxt.get('role')!r})."
+                )
 
 
 # ── Cache-control breakpoint helpers ─────────────────────────────────────
+
 
 def make_cache_control(ttl: str = "5m") -> dict:
     """Build a cache_control block."""
     if ttl == "1h":
         return {"type": "ephemeral", "ttl": 3600}
-    return {"type": "ephemeral"}          # 5-minute default
+    return {"type": "ephemeral"}  # 5-minute default
 
 
 def add_cache_breakpoint(block: dict, ttl: str = "5m") -> dict:

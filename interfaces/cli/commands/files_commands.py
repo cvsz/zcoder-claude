@@ -9,13 +9,15 @@ cmd_file_upload, cmd_file_list, cmd_file_delete, cmd_file_ask,
 cmd_file_download.
 """
 
-from typing import Optional
 
 from application import files_service as service
 
 __all__ = [
-    "cmd_file_upload", "cmd_file_list", "cmd_file_delete",
-    "cmd_file_ask", "cmd_file_download",
+    "cmd_file_upload",
+    "cmd_file_list",
+    "cmd_file_delete",
+    "cmd_file_ask",
+    "cmd_file_download",
 ]
 
 
@@ -30,7 +32,7 @@ def cmd_file_upload(file_path: str, api_key: str, model: str):
     return result["id"]
 
 
-def cmd_file_list(api_key: str, model: str, max_items: Optional[int] = None):
+def cmd_file_list(api_key: str, model: str, max_items: int | None = None):
     files, local = service.list_all_files(api_key, model, max_items=max_items)
     if not files:
         print("No files uploaded yet.")
@@ -38,11 +40,11 @@ def cmd_file_list(api_key: str, model: str, max_items: Optional[int] = None):
     print(f"\n{'ID':<28}{'FILENAME':<30}{'SIZE':>10}  CREATED")
     print("─" * 80)
     for f in files:
-        fid      = f["id"]
+        fid = f["id"]
         local_fn = local.get(fid, {}).get("local_path", "")
-        fname    = f.get("filename", local_fn)[:29]
-        size     = f"{f.get('size', 0):,}"
-        created  = str(f.get("created_at", ""))[:10]
+        fname = f.get("filename", local_fn)[:29]
+        size = f"{f.get('size', 0):,}"
+        created = str(f.get("created_at", ""))[:10]
         print(f"{fid:<28}{fname:<30}{size:>10}  {created}")
     print(f"\n{len(files)} file(s)")
 
@@ -52,8 +54,7 @@ def cmd_file_delete(file_id: str, api_key: str):
     print(f"\033[92m✓ File {file_id} deleted.\033[0m")
 
 
-def cmd_file_ask(file_id: str, prompt: str, api_key: str, model: str,
-                 media_type: str = "application/pdf"):
+def cmd_file_ask(file_id: str, prompt: str, api_key: str, model: str, media_type: str = "application/pdf"):
     print(f"\033[94mℹ Asking about file {file_id}…\033[0m\n")
     result = service.ask_about_file(file_id, prompt, api_key, model, media_type=media_type)
     print(result)

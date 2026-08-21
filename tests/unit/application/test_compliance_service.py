@@ -5,6 +5,7 @@ Phase A (exec-planing.md) to close the gap where
 interfaces/cli/commands/compliance_commands.py called ComplianceApiClient
 directly. Plain data in/data out, no stdout capture needed.
 """
+
 import pytest
 
 import application.compliance_service as svc
@@ -29,16 +30,29 @@ def fake_client(monkeypatch):
         client = FakeComplianceApiClient(api_key)
         holder["client"] = client
         for method in (
-            "list_activities", "list_chats", "get_chat_messages", "delete_chat",
-            "download_file_content", "delete_file", "list_projects", "get_project",
-            "list_project_attachments", "delete_project", "list_organizations",
-            "list_organization_users", "list_roles", "get_effective_settings",
-            "list_groups", "list_group_members", "list_local_sessions",
-            "get_local_session", "get_local_session_messages", "list_remote_sessions",
+            "list_activities",
+            "list_chats",
+            "get_chat_messages",
+            "delete_chat",
+            "download_file_content",
+            "delete_file",
+            "list_projects",
+            "get_project",
+            "list_project_attachments",
+            "delete_project",
+            "list_organizations",
+            "list_organization_users",
+            "list_roles",
+            "get_effective_settings",
+            "list_groups",
+            "list_group_members",
+            "list_local_sessions",
+            "get_local_session",
+            "get_local_session_messages",
+            "list_remote_sessions",
             "get_remote_session_messages",
         ):
-            setattr(client, method,
-                    (lambda m: lambda *a, **kw: client._record(m, *a, **kw))(method))
+            setattr(client, method, (lambda m: lambda *a, **kw: client._record(m, *a, **kw))(method))
         client.download_file_content = lambda *a, **kw: (b"bytes", "f.txt", "text/plain")
         client.iterate_activities = lambda **kw: iter([{"id": "a1"}, {"id": "a2"}])
         return client
@@ -48,8 +62,9 @@ def fake_client(monkeypatch):
 
 
 def test_list_activities_page_passes_filters(fake_client):
-    svc.list_activities_page("k", since="2026-01-01", until="2026-02-01",
-                             activity_types=["chat_created"], limit=50)
+    svc.list_activities_page(
+        "k", since="2026-01-01", until="2026-02-01", activity_types=["chat_created"], limit=50
+    )
     name, args, kwargs = fake_client["client"].calls[0]
     assert name == "list_activities"
     assert kwargs["created_at_gte"] == "2026-01-01"
@@ -67,7 +82,9 @@ def test_iterate_all_activities_caps_page_size_at_5000(monkeypatch):
     captured = {}
 
     class FakeClient:
-        def __init__(self, api_key): pass
+        def __init__(self, api_key):
+            pass
+
         def iterate_activities(self, **kw):
             captured.update(kw)
             return iter([])
@@ -125,8 +142,7 @@ def test_list_local_sessions_passes_date_range(fake_client):
 
 
 def test_list_remote_sessions_passes_all_filters(fake_client):
-    svc.list_remote_sessions("k", since="2026-01-01", user_ids=["u1"],
-                             organization_ids=["o1"], limit=10)
+    svc.list_remote_sessions("k", since="2026-01-01", user_ids=["u1"], organization_ids=["o1"], limit=10)
     name, args, kwargs = fake_client["client"].calls[0]
     assert kwargs["user_ids"] == ["u1"]
     assert kwargs["organization_ids"] == ["o1"]
@@ -145,7 +161,9 @@ def test_every_service_function_forwards_the_api_key(fake_client):
 
 def test_list_chats_propagates_value_error(monkeypatch):
     class BoomClient:
-        def __init__(self, api_key): pass
+        def __init__(self, api_key):
+            pass
+
         def list_chats(self, user_ids, limit=100):
             raise ValueError("too many user_ids")
 
@@ -156,10 +174,13 @@ def test_list_chats_propagates_value_error(monkeypatch):
 
 def test_get_project_propagates_compliance_api_error(monkeypatch):
     class BoomClient:
-        def __init__(self, api_key): pass
+        def __init__(self, api_key):
+            pass
+
         def get_project(self, project_id):
-            raise ComplianceApiError(status=404, error_type="not_found",
-                                     message="no such project", request_id=None)
+            raise ComplianceApiError(
+                status=404, error_type="not_found", message="no such project", request_id=None
+            )
 
     monkeypatch.setattr(svc, "ComplianceApiClient", BoomClient)
     with pytest.raises(ComplianceApiError):

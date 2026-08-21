@@ -10,6 +10,7 @@ gateway-level HTTP logic (optimized_call's spend logging + refusal
 exemption, LLMJudge.score's JSON parsing, EvalRunner.run's on_case
 callback wiring, and analyze_errors).
 """
+
 import json
 
 import infrastructure.anthropic_api.observability_gateway as gateway
@@ -59,11 +60,13 @@ def _install_fake_client(monkeypatch, responses):
 
 # ── optimized_call ────────────────────────────────────────────────────
 
+
 def test_optimized_call_logs_spend_and_returns_response(monkeypatch, tmp_path):
     _install_fake_client(monkeypatch, [FakeResponse("hi there", 100, 50)])
     logged = []
-    monkeypatch.setattr(gateway, "log_spend",
-                        lambda model, i, o, cost, prompt: logged.append((model, i, o, cost)))
+    monkeypatch.setattr(
+        gateway, "log_spend", lambda model, i, o, cost, prompt: logged.append((model, i, o, cost))
+    )
     r = gateway.optimized_call("say hi", "key", "claude-sonnet-5", "low")
     assert r.text == "hi there"
     assert r.model_used == "claude-sonnet-5"
@@ -82,6 +85,7 @@ def test_optimized_call_pure_refusal_is_not_billed(monkeypatch):
 
 
 # ── LLMJudge ──────────────────────────────────────────────────────────
+
 
 def test_llm_judge_parses_json_score(monkeypatch):
     _install_fake_client(monkeypatch, [FakeResponse(json.dumps({"score": 0.8, "reason": "close"}))])
@@ -109,11 +113,13 @@ def test_llm_judge_handles_malformed_json_gracefully(monkeypatch):
 
 # ── EvalRunner ────────────────────────────────────────────────────────
 
+
 def test_eval_runner_run_invokes_on_case_callback(monkeypatch):
     _install_fake_client(monkeypatch, [FakeResponse("the answer")])
 
     def fake_score(self, prompt, expected, actual):
         return 0.9, "good"
+
     monkeypatch.setattr(gateway.LLMJudge, "score", fake_score)
 
     seen = []
@@ -136,8 +142,10 @@ def test_eval_runner_run_default_on_case_is_a_noop(monkeypatch):
 
 # ── analyze_errors ────────────────────────────────────────────────────
 
+
 def test_analyze_errors_returns_text_from_response(monkeypatch):
     _install_fake_client(monkeypatch, [FakeResponse("pattern: timeouts under load")])
-    text = gateway.analyze_errors("key", "claude-sonnet-5",
-                                  [{"ts": "2026-08-19T00:00", "model": "m", "error": "timeout"}])
+    text = gateway.analyze_errors(
+        "key", "claude-sonnet-5", [{"ts": "2026-08-19T00:00", "model": "m", "error": "timeout"}]
+    )
     assert text == "pattern: timeouts under load"

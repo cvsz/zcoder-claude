@@ -6,6 +6,7 @@ interfaces/cli/commands/admin_commands.py called AdminApiClient directly.
 These test plain data in/data out — no stdout capture needed, unlike the
 cmd_* coverage in tests/test_claude_admin_api.py.
 """
+
 import pytest
 
 import application.admin_service as svc
@@ -13,6 +14,7 @@ import application.admin_service as svc
 
 class FakeAdminApiClient:
     """Records the call it received and returns a canned response."""
+
     def __init__(self, admin_api_key):
         self.admin_api_key = admin_api_key
         self.calls = []
@@ -30,20 +32,38 @@ def fake_client(monkeypatch):
         client = FakeAdminApiClient(admin_api_key)
         holder["client"] = client
         for method in (
-            "get_usage_report", "get_cost_report", "list_external_keys",
-            "get_claude_code_usage_report", "list_api_keys", "revoke_api_key",
-            "list_effective_spend_limits", "set_spend_limit", "get_spend_limit",
-            "delete_spend_limit", "list_spend_limit_increase_requests",
-            "approve_spend_limit_increase_request", "deny_spend_limit_increase_request",
-            "get_org_rate_limits", "get_workspace_rate_limits",
-            "list_members", "get_member", "update_member_role", "remove_member",
-            "create_invite", "list_invites", "withdraw_invite",
-            "list_groups", "create_group", "delete_group", "list_group_members",
-            "add_group_member", "remove_group_member", "list_roles",
+            "get_usage_report",
+            "get_cost_report",
+            "list_external_keys",
+            "get_claude_code_usage_report",
+            "list_api_keys",
+            "revoke_api_key",
+            "list_effective_spend_limits",
+            "set_spend_limit",
+            "get_spend_limit",
+            "delete_spend_limit",
+            "list_spend_limit_increase_requests",
+            "approve_spend_limit_increase_request",
+            "deny_spend_limit_increase_request",
+            "get_org_rate_limits",
+            "get_workspace_rate_limits",
+            "list_members",
+            "get_member",
+            "update_member_role",
+            "remove_member",
+            "create_invite",
+            "list_invites",
+            "withdraw_invite",
+            "list_groups",
+            "create_group",
+            "delete_group",
+            "list_group_members",
+            "add_group_member",
+            "remove_group_member",
+            "list_roles",
             "list_role_permissions",
         ):
-            setattr(client, method,
-                    (lambda m: lambda *a, **kw: client._record(m, *a, **kw))(method))
+            setattr(client, method, (lambda m: lambda *a, **kw: client._record(m, *a, **kw))(method))
         return client
 
     monkeypatch.setattr(svc, "AdminApiClient", factory)
@@ -53,6 +73,7 @@ def fake_client(monkeypatch):
 def test_default_date_range_is_30_days():
     start, end = svc._default_date_range()
     from datetime import date
+
     assert date.fromisoformat(start) < date.fromisoformat(end)
 
 

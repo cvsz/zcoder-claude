@@ -6,12 +6,13 @@ doesn't call infrastructure/anthropic_api/messaging_gateway.py directly.
 These test the service functions as plain data in/data out, with fake
 gateway classes substituted in — no print() capture, no real network.
 """
+
 import json
 
 import application.messaging_service as service
 
-
 # ── streaming ────────────────────────────────────────────────────────────
+
 
 def test_stream_text_plain(monkeypatch):
     calls = {}
@@ -62,6 +63,7 @@ def test_stream_with_tools_passes_through(monkeypatch):
 
 # ── structured outputs ───────────────────────────────────────────────────
 
+
 def test_generate_structured_json_object_mode(monkeypatch):
     class FakeStructuredCoder:
         def __init__(self, api_key, model):
@@ -85,7 +87,8 @@ def test_generate_structured_inline_schema_mode(monkeypatch):
 
     monkeypatch.setattr(service, "StructuredCoder", FakeStructuredCoder)
     outcome = service.generate_structured(
-        "q", "k", "claude-sonnet-5", schema_inline=json.dumps({"type": "object"}))
+        "q", "k", "claude-sonnet-5", schema_inline=json.dumps({"type": "object"})
+    )
     assert outcome["mode"] == "schema_inline"
     assert outcome["result"] == {"schema_seen": {"type": "object"}}
 
@@ -111,6 +114,7 @@ def test_analyse_code_structured_reads_file_and_infers_language(tmp_path, monkey
 
 
 # ── citations & RAG ──────────────────────────────────────────────────────
+
 
 def test_cite_documents_reports_missing_files(tmp_path, monkeypatch):
     present = tmp_path / "doc1.txt"
@@ -152,6 +156,7 @@ def test_rag_query_delegates_to_gateway(monkeypatch):
 
 # ── extended / adaptive thinking ─────────────────────────────────────────
 
+
 def test_generate_thinking_non_streaming(monkeypatch):
     class FakeThinkingCoder:
         def __init__(self, api_key, model):
@@ -161,8 +166,7 @@ def test_generate_thinking_non_streaming(monkeypatch):
             return {"response": "answer", "usage": {}}
 
     monkeypatch.setattr(service, "ThinkingCoder", FakeThinkingCoder)
-    result = service.generate_thinking(
-        "q", "k", "claude-sonnet-5", 8000, None, None, False, stream=False)
+    result = service.generate_thinking("q", "k", "claude-sonnet-5", 8000, None, None, False, stream=False)
     assert result["response"] == "answer"
 
 
@@ -175,8 +179,7 @@ def test_generate_thinking_streaming(monkeypatch):
             return "streamed answer"
 
     monkeypatch.setattr(service, "ThinkingCoder", FakeThinkingCoder)
-    result = service.generate_thinking(
-        "q", "k", "claude-sonnet-5", 8000, None, None, False, stream=True)
+    result = service.generate_thinking("q", "k", "claude-sonnet-5", 8000, None, None, False, stream=True)
     assert result == "streamed answer"
 
 
@@ -194,6 +197,7 @@ def test_resolve_thinking_mode_label(monkeypatch):
 
 # ── token counting ───────────────────────────────────────────────────────
 
+
 def test_count_tokens_with_budget_under(monkeypatch):
     class FakeTokenCounter:
         def __init__(self, api_key, model):
@@ -203,8 +207,12 @@ def test_count_tokens_with_budget_under(monkeypatch):
             return {"input_tokens": 100}
 
         def estimate_cost(self, token_count, model):
-            return {"tokens": token_count, "model": model,
-                    "price_per_mtok": 3.0, "estimated_cost_usd": 0.0003}
+            return {
+                "tokens": token_count,
+                "model": model,
+                "price_per_mtok": 3.0,
+                "estimated_cost_usd": 0.0003,
+            }
 
     monkeypatch.setattr(service, "TokenCounter", FakeTokenCounter)
     outcome = service.count_tokens("q", "k", "claude-sonnet-5", budget=1000)
@@ -222,8 +230,12 @@ def test_count_tokens_exceeds_budget(monkeypatch):
             return {"input_tokens": 1500}
 
         def estimate_cost(self, token_count, model):
-            return {"tokens": token_count, "model": model,
-                    "price_per_mtok": 3.0, "estimated_cost_usd": 0.0045}
+            return {
+                "tokens": token_count,
+                "model": model,
+                "price_per_mtok": 3.0,
+                "estimated_cost_usd": 0.0045,
+            }
 
     monkeypatch.setattr(service, "TokenCounter", FakeTokenCounter)
     outcome = service.count_tokens("q", "k", "claude-sonnet-5", budget=1000)
@@ -240,8 +252,12 @@ def test_count_tokens_no_budget_omits_budget_info(monkeypatch):
             return {"input_tokens": 42}
 
         def estimate_cost(self, token_count, model):
-            return {"tokens": token_count, "model": model,
-                    "price_per_mtok": 3.0, "estimated_cost_usd": 0.000126}
+            return {
+                "tokens": token_count,
+                "model": model,
+                "price_per_mtok": 3.0,
+                "estimated_cost_usd": 0.000126,
+            }
 
     monkeypatch.setattr(service, "TokenCounter", FakeTokenCounter)
     outcome = service.count_tokens("q", "k", "claude-sonnet-5")
@@ -249,6 +265,7 @@ def test_count_tokens_no_budget_omits_budget_info(monkeypatch):
 
 
 # ── zai-live session ──────────────────────────────────────────────────────
+
 
 def test_create_live_session_and_send(monkeypatch):
     class FakeSession:

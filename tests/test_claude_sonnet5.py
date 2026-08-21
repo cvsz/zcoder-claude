@@ -1,25 +1,26 @@
 """tests/test_claude_sonnet5.py"""
+
 from datetime import date
 
 import pytest
 
 from claude_sonnet5 import (
+    PROMO_END_DATE,
+    PROMO_PRICE_IN_USD,
+    PROMO_PRICE_OUT_USD,
+    SONNET5_MODEL_ID,
+    STANDARD_PRICE_IN_USD,
+    STANDARD_PRICE_OUT_USD,
     Sonnet5Client,
     current_pricing,
     estimate_cost_usd,
     validate_service_tier,
-    PROMO_END_DATE,
-    PROMO_PRICE_IN_USD,
-    PROMO_PRICE_OUT_USD,
-    STANDARD_PRICE_IN_USD,
-    STANDARD_PRICE_OUT_USD,
-    SONNET5_MODEL_ID,
 )
-
 
 # ── pricing (2026-08-10 release note: the scheduled 2026-09-01 increase to
 # $3/$15 was cancelled, so $2/$10 is now the permanent standard price and
 # there is no longer a promo/standard cliff-edge) ────────────────────────
+
 
 def test_pricing_is_flat_2_10_regardless_of_date():
     for as_of in (date(2026, 7, 26), PROMO_END_DATE, date(2026, 9, 15)):
@@ -42,6 +43,7 @@ def test_estimate_cost_usd_applies_geo_multiplier():
 
 # ── service_tier: the one current model that doesn't support it ─────────
 
+
 def test_service_tier_none_is_fine():
     assert validate_service_tier(None) is None
 
@@ -53,6 +55,7 @@ def test_service_tier_requested_warns_unsupported():
 
 
 # ── client wiring ────────────────────────────────────────────────────────
+
 
 def test_call_sends_model_id_and_geo_flag(monkeypatch):
     client = Sonnet5Client(api_key="k")

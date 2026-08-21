@@ -11,7 +11,6 @@ layer's ops are thin too — same shape as Phase A's Admin/Compliance
 ops for equally thin original call sites.
 """
 
-from typing import Optional
 
 from infrastructure.anthropic_api.files_gateway import FilesAPI
 
@@ -21,7 +20,7 @@ def upload_file(file_path: str, api_key: str, model: str) -> dict:
     return fa.upload(file_path)
 
 
-def list_all_files(api_key: str, model: str, max_items: Optional[int] = None) -> tuple:
+def list_all_files(api_key: str, model: str, max_items: int | None = None) -> tuple:
     """Returns (files, local_registry) — files from the API, local_registry
     is the local-disk cache of filenames/local paths for files this
     machine uploaded (used to fill in a filename when the API's own
@@ -37,8 +36,9 @@ def delete_file(file_id: str, api_key: str) -> None:
     fa.delete(file_id)
 
 
-def ask_about_file(file_id: str, prompt: str, api_key: str, model: str,
-                    media_type: str = "application/pdf") -> str:
+def ask_about_file(
+    file_id: str, prompt: str, api_key: str, model: str, media_type: str = "application/pdf"
+) -> str:
     fa = FilesAPI(api_key=api_key, model=model)
     return fa.ask_about_file(file_id, prompt, media_type=media_type)
 

@@ -13,22 +13,26 @@ infrastructure/local_storage/rag_index_store.py) and CLI presentation
 
 import math
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
 
 # ── Server tool descriptors & beta-header routing (claude_tools.py) ────────
 
 SERVER_TOOLS = {
-    "web_search":     {"type": "web_search_20260318", "name": "web_search"},
-    "web_fetch":       {"type": "web_fetch_20260318", "name": "web_fetch"},
-    "code_execution":  {"type": "code_execution_20260521", "name": "code_execution"},
-    "bash":            {"type": "bash_20250124", "name": "bash"},
-    "text_editor":     {"type": "text_editor_20250124", "name": "str_replace_based_edit_tool"},
-    "computer_use":    {"type": "computer_20251124", "name": "computer",
-                         "display_width_px": 1024, "display_height_px": 768},
-    "memory":          {"type": "memory_20250818", "name": "memory"},
-    "tool_search":     {"type": "tool_search_tool_20251019", "name": "tool_search"},
+    "web_search": {"type": "web_search_20260318", "name": "web_search"},
+    "web_fetch": {"type": "web_fetch_20260318", "name": "web_fetch"},
+    "code_execution": {"type": "code_execution_20260521", "name": "code_execution"},
+    "bash": {"type": "bash_20250124", "name": "bash"},
+    "text_editor": {"type": "text_editor_20250124", "name": "str_replace_based_edit_tool"},
+    "computer_use": {
+        "type": "computer_20251124",
+        "name": "computer",
+        "display_width_px": 1024,
+        "display_height_px": 768,
+    },
+    "memory": {"type": "memory_20250818", "name": "memory"},
+    "tool_search": {"type": "tool_search_tool_20251019", "name": "tool_search"},
 }
 
 COMPUTER_USE_TOOL_VERSIONS = {
@@ -36,18 +40,22 @@ COMPUTER_USE_TOOL_VERSIONS = {
     "2025-01-24": {"type": "computer_20250124", "beta": "computer-use-2025-01-24"},
 }
 _COMPUTER_USE_2025_01_24_MODELS = {
-    "claude-sonnet-4-5", "claude-haiku-4-5", "claude-haiku-4-5-20251001",
-    "claude-sonnet-4-20250514", "claude-sonnet-4-0",
-    "claude-opus-4-20250514", "claude-opus-4-0",
+    "claude-sonnet-4-5",
+    "claude-haiku-4-5",
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-20250514",
+    "claude-sonnet-4-0",
+    "claude-opus-4-20250514",
+    "claude-opus-4-0",
 }
 
 RETIRED_TOOL_VERSIONS: dict = {
     "web_search_20250305": {
         "replacement": "web_search_20260318",
         "notes": "Still works. 20260209 added dynamic content filtering; "
-                 "20260318 adds the response_inclusion param (drop a "
-                 "consumed result's blocks from the response — see "
-                 "programmatic tool calling).",
+        "20260318 adds the response_inclusion param (drop a "
+        "consumed result's blocks from the response — see "
+        "programmatic tool calling).",
     },
     "web_search_20260209": {
         "replacement": "web_search_20260318",
@@ -56,53 +64,53 @@ RETIRED_TOOL_VERSIONS: dict = {
     "web_fetch_20250910": {
         "replacement": "web_fetch_20260318",
         "notes": "Still works. 20260209 added dynamic content filtering, "
-                 "20260309 added use_cache, 20260318 adds response_inclusion "
-                 "(v1.24.0) — see Web fetch tool docs for the full chain.",
+        "20260309 added use_cache, 20260318 adds response_inclusion "
+        "(v1.24.0) — see Web fetch tool docs for the full chain.",
     },
     "web_fetch_20250124": {
         "replacement": "web_fetch_20260318",
         "notes": "Older than web_fetch_20250910 above — see that entry for "
-                 "the full upgrade chain to 20260318.",
+        "the full upgrade chain to 20260318.",
     },
     "code_execution_20250522": {
         "replacement": "code_execution_20260521",
         "notes": "Still works, but 20260120 is the minimum version for "
-                 "programmatic tool calling (adds REPL-state persistence); "
-                 "20260521 additionally discloses the sandbox's 90-second "
-                 "per-cell wall-clock limit in the tool description "
-                 "(v1.24.0), so Claude budgets long-running cells.",
+        "programmatic tool calling (adds REPL-state persistence); "
+        "20260521 additionally discloses the sandbox's 90-second "
+        "per-cell wall-clock limit in the tool description "
+        "(v1.24.0), so Claude budgets long-running cells.",
     },
     "code_execution_20250825": {
         "replacement": "code_execution_20260521",
         "notes": "Both 20250522 and 20250825 are accepted interchangeably "
-                 "in allowed_callers per the programmatic tool calling "
-                 "docs; 20260521 is current as of v1.24.0.",
+        "in allowed_callers per the programmatic tool calling "
+        "docs; 20260521 is current as of v1.24.0.",
     },
     "code_execution_20260120": {
         "replacement": "code_execution_20260521",
         "notes": "Still works and is still the minimum version for "
-                 "programmatic tool calling. 20260521 (v1.24.0) additionally "
-                 "discloses the sandbox's 90-second per-cell wall-clock "
-                 "limit in the tool description, so Claude budgets "
-                 "long-running cells instead of writing one loop that "
-                 "times out.",
+        "programmatic tool calling. 20260521 (v1.24.0) additionally "
+        "discloses the sandbox's 90-second per-cell wall-clock "
+        "limit in the tool description, so Claude budgets "
+        "long-running cells instead of writing one loop that "
+        "times out.",
     },
     "text_editor_20250124": {
         "replacement": "text_editor_20250728",
         "notes": "Model-keyed, not a strict upgrade: 20250124 is for pre-Claude-4 "
-                 "models, 20250728 is for Claude 4 series. Use the one matching "
-                 "your model, not automatically the newer string.",
+        "models, 20250728 is for Claude 4 series. Use the one matching "
+        "your model, not automatically the newer string.",
     },
     "computer_20250124": {
         "replacement": "computer_20251124",
         "notes": "Model-keyed, see computer_use_tool_for_model() — current models "
-                 "(Sonnet 5, Opus 4.5+) use 20251124, older models still need "
-                 "20250124. Sending the wrong pairing 400s.",
+        "(Sonnet 5, Opus 4.5+) use 20251124, older models still need "
+        "20250124. Sending the wrong pairing 400s.",
     },
 }
 
 
-def check_retired_tool_version(tool_type: str) -> Optional[dict]:
+def check_retired_tool_version(tool_type: str) -> dict | None:
     """Return the retirement/upgrade record for a dated tool-type string,
     or None if it isn't tracked. Mirrors domain/models/catalog.py's
     check_retired() pattern — an unmatched string is just not tracked
@@ -115,16 +123,15 @@ def computer_use_tool_for_model(model: str, width: int = 1024, height: int = 768
     tool version this model actually supports."""
     key = "2025-01-24" if model in _COMPUTER_USE_2025_01_24_MODELS else "2025-11-24"
     v = COMPUTER_USE_TOOL_VERSIONS[key]
-    tool = {"type": v["type"], "name": "computer",
-            "display_width_px": width, "display_height_px": height}
+    tool = {"type": v["type"], "name": "computer", "display_width_px": width, "display_height_px": height}
     return tool, v["beta"]
 
 
 SERVER_TOOL_BETAS = {
-    "bash":          "computer-use-2025-01-24",
-    "text_editor":   "computer-use-2025-01-24",
-    "computer_use":  "computer-use-2025-11-24",
-    "tool_search":   "tool-search-tool-2025-10-19",
+    "bash": "computer-use-2025-01-24",
+    "text_editor": "computer-use-2025-01-24",
+    "computer_use": "computer-use-2025-11-24",
+    "tool_search": "tool-search-tool-2025-10-19",
 }
 
 CONTEXT_MANAGEMENT_BETA = "context-management-2025-06-27"
@@ -132,28 +139,35 @@ COMPACTION_BETA = "compact-2026-01-12"
 
 TASK_BUDGET_BETA = "task-budgets-2026-03-13"
 TASK_BUDGET_MODELS = {
-    "claude-fable-5", "claude-mythos-5",
-    "claude-opus-4-8", "claude-opus-4-7",
+    "claude-fable-5",
+    "claude-mythos-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
 }
 
 ADVANCED_TOOL_USE_BETA = "advanced-tool-use-2025-11-20"
 
 MID_CONVERSATION_TOOL_CHANGES_BETA = "mid-conversation-tool-changes-2026-07-01"
 MID_CONVERSATION_TOOL_CHANGES_SUPPORTED = {
-    "claude-fable-5", "claude-mythos-5", "claude-opus-4-8", "claude-opus-5",
+    "claude-fable-5",
+    "claude-mythos-5",
+    "claude-opus-4-8",
+    "claude-opus-5",
 }
 
 
-def validate_mid_conversation_tool_change(model_id: str) -> Optional[str]:
+def validate_mid_conversation_tool_change(model_id: str) -> str | None:
     """Return None if `model_id` supports mid-conversation tool changes,
     or a warning string if it doesn't. Not a hard block — the platform
     itself is the source of truth for whether a request 400s."""
     if model_id in MID_CONVERSATION_TOOL_CHANGES_SUPPORTED:
         return None
-    return (f"{model_id} is not in MID_CONVERSATION_TOOL_CHANGES_SUPPORTED "
-            f"(Fable 5, Mythos 5, Opus 4.8, Opus 5 only) — changing `tools` between "
-            f"turns on this model may not preserve the prompt cache the way it does "
-            f"on those four.")
+    return (
+        f"{model_id} is not in MID_CONVERSATION_TOOL_CHANGES_SUPPORTED "
+        f"(Fable 5, Mythos 5, Opus 4.8, Opus 5 only) — changing `tools` between "
+        f"turns on this model may not preserve the prompt cache the way it does "
+        f"on those four."
+    )
 
 
 def with_mid_conversation_tool_changes(headers: dict, model_id: str) -> dict:
@@ -179,7 +193,7 @@ def build_context_management(
     keep_last_n_thinking_turns: int = 2,
     compact: bool = False,
     compact_trigger_tokens: int = 150000,
-    compact_instructions: Optional[str] = None,
+    compact_instructions: str | None = None,
     compact_pause_after: bool = False,
 ) -> dict:
     """Build a context_management payload for long agent loops. See
@@ -187,16 +201,20 @@ def build_context_management(
     full clear-vs-compact explanation."""
     edits = []
     if clear_tool_uses:
-        edits.append({
-            "type": "clear_tool_uses_20250919",
-            "trigger": {"type": "input_tokens", "value": clear_tool_uses_trigger_tokens},
-            "keep": {"type": "tool_uses", "value": keep_last_n_tool_uses},
-        })
+        edits.append(
+            {
+                "type": "clear_tool_uses_20250919",
+                "trigger": {"type": "input_tokens", "value": clear_tool_uses_trigger_tokens},
+                "keep": {"type": "tool_uses", "value": keep_last_n_tool_uses},
+            }
+        )
     if clear_thinking:
-        edits.append({
-            "type": "clear_thinking_20251015",
-            "keep": {"type": "thinking_turns", "value": keep_last_n_thinking_turns},
-        })
+        edits.append(
+            {
+                "type": "clear_thinking_20251015",
+                "keep": {"type": "thinking_turns", "value": keep_last_n_thinking_turns},
+            }
+        )
     if compact:
         edit = {
             "type": "compact_20260112",
@@ -210,8 +228,9 @@ def build_context_management(
     return {"edits": edits}
 
 
-def resume_after_compaction(messages: list, compaction_response: dict,
-                             extra_content: Optional[list] = None) -> list:
+def resume_after_compaction(
+    messages: list, compaction_response: dict, extra_content: list | None = None
+) -> list:
     """After a call made with compact_pause_after=True returns
     stop_reason:"compaction", append the compaction block as an
     assistant turn before continuing."""
@@ -233,7 +252,7 @@ def with_input_examples(tool_def: dict, examples: list) -> dict:
     return out
 
 
-def with_allowed_callers(tool_def: dict, callers: Optional[list] = None) -> dict:
+def with_allowed_callers(tool_def: dict, callers: list | None = None) -> dict:
     """Mark a custom tool definition as callable from Programmatic Tool
     Calling. callers defaults to the current code_execution tool type."""
     out = dict(tool_def)
@@ -248,11 +267,10 @@ class ToolRegistry:
     the registry itself makes no HTTP calls and does no I/O of its own."""
 
     def __init__(self):
-        self._tools: Dict[str, dict] = {}
-        self._funcs: Dict[str, Callable] = {}
+        self._tools: dict[str, dict] = {}
+        self._funcs: dict[str, Callable] = {}
 
-    def register(self, name: str, description: str, parameters: dict,
-                 func: Callable, strict: bool = False):
+    def register(self, name: str, description: str, parameters: dict, func: Callable, strict: bool = False):
         defn = {"name": name, "description": description, "input_schema": parameters}
         if strict:
             defn["strict"] = True
@@ -273,34 +291,54 @@ class ToolRegistry:
 
 # ── RAG: chunks, index shape, scoring (claude_rag.py) ───────────────────────
 
-SUPPORTED_RAG_EXTS = {".txt", ".md", ".py", ".js", ".ts", ".go", ".java", ".rs",
-                       ".c", ".cpp", ".h", ".json", ".yaml", ".yml", ".csv", ".html"}
+SUPPORTED_RAG_EXTS = {
+    ".txt",
+    ".md",
+    ".py",
+    ".js",
+    ".ts",
+    ".go",
+    ".java",
+    ".rs",
+    ".c",
+    ".cpp",
+    ".h",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".csv",
+    ".html",
+}
 
 
 @dataclass
 class Chunk:
-    cid:     str
-    source:  str
+    cid: str
+    source: str
     content: str
-    tokens:  int = 0
+    tokens: int = 0
 
 
 @dataclass
 class RAGIndex:
-    name:     str
-    chunks:   List[Chunk] = field(default_factory=list)
-    idf:      Dict[str, float] = field(default_factory=dict)
-    file_ids: Dict[str, str] = field(default_factory=dict)  # cid → Files API id
+    name: str
+    chunks: list[Chunk] = field(default_factory=list)
+    idf: dict[str, float] = field(default_factory=dict)
+    file_ids: dict[str, str] = field(default_factory=dict)  # cid → Files API id
 
     def to_dict(self):
-        return {"name": self.name,
-                "chunks": [{"cid": c.cid, "source": c.source,
-                            "content": c.content, "tokens": c.tokens}
-                           for c in self.chunks],
-                "idf": self.idf, "file_ids": self.file_ids}
+        return {
+            "name": self.name,
+            "chunks": [
+                {"cid": c.cid, "source": c.source, "content": c.content, "tokens": c.tokens}
+                for c in self.chunks
+            ],
+            "idf": self.idf,
+            "file_ids": self.file_ids,
+        }
 
     @staticmethod
-    def from_dict(d) -> "RAGIndex":
+    def from_dict(d) -> RAGIndex:
         idx = RAGIndex(name=d["name"])
         idx.chunks = [Chunk(**c) for c in d.get("chunks", [])]
         idx.idf = d.get("idf", {})
@@ -308,11 +346,11 @@ class RAGIndex:
         return idx
 
 
-def tokenize(text: str) -> List[str]:
+def tokenize(text: str) -> list[str]:
     return re.findall(r"\b\w+\b", text.lower())
 
 
-def chunk_text(source: str, text: str, size: int = 600, overlap: int = 100) -> List[Chunk]:
+def chunk_text(source: str, text: str, size: int = 600, overlap: int = 100) -> list[Chunk]:
     words = text.split()
     chunks = []
     i = 0
@@ -326,8 +364,9 @@ def chunk_text(source: str, text: str, size: int = 600, overlap: int = 100) -> L
     return chunks
 
 
-def score_chunk(query_tokens: List[str], chunk: Chunk, idf: Dict[str, float]) -> float:
+def score_chunk(query_tokens: list[str], chunk: Chunk, idf: dict[str, float]) -> float:
     from collections import Counter
+
     tf = Counter(tokenize(chunk.content))
     score = 0.0
     for qt in query_tokens:
@@ -336,18 +375,19 @@ def score_chunk(query_tokens: List[str], chunk: Chunk, idf: Dict[str, float]) ->
     return score
 
 
-def retrieve(idx: RAGIndex, query: str, k: int = 5) -> List[Chunk]:
+def retrieve(idx: RAGIndex, query: str, k: int = 5) -> list[Chunk]:
     qt = tokenize(query)
     scored = [(c, score_chunk(qt, c, idx.idf)) for c in idx.chunks]
     scored.sort(key=lambda x: x[1], reverse=True)
     return [c for c, s in scored[:k] if s > 0]
 
 
-def build_idf(all_chunks_tokens: List[set], total: int) -> Dict[str, float]:
+def build_idf(all_chunks_tokens: list[set], total: int) -> dict[str, float]:
     """Pure IDF computation given a list of per-chunk token sets — split
     out of build_index() (which does the file-walk I/O) so the actual
     math has no disk dependency."""
     from collections import Counter
+
     df: Counter = Counter()
     for token_set in all_chunks_tokens:
         for w in token_set:
@@ -357,11 +397,12 @@ def build_idf(all_chunks_tokens: List[set], total: int) -> Dict[str, float]:
 
 # ── Embeddings: pure vector math (claude_embeddings.py) ─────────────────────
 
-def cosine_similarity(a: List[float], b: List[float]) -> float:
+
+def cosine_similarity(a: list[float], b: list[float]) -> float:
     """Voyage embeddings are normalized to length 1, so dot product equals
     cosine similarity and is cheaper — but this stays a true cosine
     similarity so it's correct even against non-Voyage vectors."""
-    dot   = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     mag_a = math.sqrt(sum(x * x for x in a))
     mag_b = math.sqrt(sum(y * y for y in b))
     if mag_a == 0 or mag_b == 0:

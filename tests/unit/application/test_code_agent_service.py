@@ -6,11 +6,12 @@ Code bounded context (Code Execution tool, Hooks, Permissions, Plan
 Mode, Multi-Agent Router). Fake gateway/store classes substituted in —
 no print() capture, no real network, no real filesystem outside tmp_path.
 """
-import application.code_agent_service as service
-from domain.agent_execution import HookEvent, Decision, Plan, PlanStep
 
+import application.code_agent_service as service
+from domain.agent_execution import Decision, HookEvent, Plan, PlanStep
 
 # ── Code Execution tool ──────────────────────────────────────────────────
+
 
 def test_run_code_exec_delegates(monkeypatch):
     class FakeCoder:
@@ -46,8 +47,10 @@ def test_debug_code_reads_file_and_infers_language(tmp_path, monkeypatch):
 
 # ── Hooks ────────────────────────────────────────────────────────────────
 
+
 def test_hooks_add_list_remove_roundtrip(monkeypatch, tmp_path):
     import infrastructure.local_storage.hooks_permissions_store as store
+
     monkeypatch.setattr(store, "HOOKS_FILE", tmp_path / "hooks.json")
 
     service.hooks_add("pre_tool_use", "echo hi", tool_match="Bash")
@@ -62,8 +65,10 @@ def test_hooks_add_list_remove_roundtrip(monkeypatch, tmp_path):
 
 # ── Permissions ──────────────────────────────────────────────────────────
 
+
 def test_perms_add_and_list(monkeypatch, tmp_path):
     import infrastructure.local_storage.hooks_permissions_store as store
+
     monkeypatch.setattr(store, "PERMS_FILE", tmp_path / "perms.json")
 
     service.perms_add("run_shell", "deny", "too risky")
@@ -73,6 +78,7 @@ def test_perms_add_and_list(monkeypatch, tmp_path):
 
 
 # ── Plan Mode ────────────────────────────────────────────────────────────
+
 
 def test_plan_propose_delegates(monkeypatch):
     class FakeAgent:
@@ -111,7 +117,9 @@ def test_plan_execute_all_fires_callbacks_in_order(monkeypatch):
     plan = Plan(task="t", steps=[PlanStep(number=1, description="a"), PlanStep(number=2, description="b")])
 
     service.plan_execute_all(
-        plan, "k", "claude-sonnet-5",
+        plan,
+        "k",
+        "claude-sonnet-5",
         on_step_start=lambda s: order.append(f"start:{s.number}"),
         on_step=lambda s: order.append(f"done:{s.number}"),
     )
@@ -120,6 +128,7 @@ def test_plan_execute_all_fires_callbacks_in_order(monkeypatch):
 
 
 # ── Multi-Agent Router ───────────────────────────────────────────────────
+
 
 def test_route_query_merges_extra_table(monkeypatch):
     captured = {}

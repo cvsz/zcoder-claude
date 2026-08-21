@@ -29,8 +29,10 @@ def test_load_session_missing_returns_none(tmp_path, monkeypatch):
 
 def test_list_sessions_sorted_by_updated_desc(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
-    s1 = Session(); s1.updated = "2026-01-01T00:00:00"
-    s2 = Session(); s2.updated = "2026-06-01T00:00:00"
+    s1 = Session()
+    s1.updated = "2026-01-01T00:00:00"
+    s2 = Session()
+    s2.updated = "2026-06-01T00:00:00"
     store.save_session(s1)
     store.save_session(s2)
 
@@ -62,8 +64,10 @@ def test_list_sessions_skips_unparseable_files(tmp_path, monkeypatch):
 
 def test_latest_session_returns_most_recently_updated(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
-    s1 = Session(); s1.updated = "2026-01-01T00:00:00"
-    s2 = Session(); s2.updated = "2026-06-01T00:00:00"
+    s1 = Session()
+    s1.updated = "2026-01-01T00:00:00"
+    s2 = Session()
+    s2.updated = "2026-06-01T00:00:00"
     store.save_session(s1)
     store.save_session(s2)
 
@@ -109,7 +113,7 @@ def test_rewind_to_missing_checkpoint_raises(tmp_path, monkeypatch):
     s = Session()
     try:
         store.rewind_to_checkpoint(s, "nonexistent")
-        assert False, "expected ValueError"
+        raise AssertionError("expected ValueError")
     except ValueError as e:
         assert "not found" in str(e)
 
@@ -123,7 +127,7 @@ def test_rewind_wrong_session_raises(tmp_path, monkeypatch):
     s2 = Session()
     try:
         store.rewind_to_checkpoint(s2, cp.cpid)
-        assert False, "expected ValueError"
+        raise AssertionError("expected ValueError")
     except ValueError as e:
         assert "different session" in str(e)
 

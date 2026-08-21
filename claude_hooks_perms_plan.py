@@ -15,19 +15,42 @@ this shim.
 """
 
 from domain.agent_execution import (
-    HookEvent, Hook, HookResult, Decision, PermRule, DEFAULT_RULES, PlanStep, Plan,
+    DEFAULT_RULES,
+    Decision,
+    Hook,
+    HookEvent,
+    HookResult,
+    PermRule,
+    Plan,
+    PlanStep,
 )
-from infrastructure.local_storage.hooks_permissions_store import HookManager, PermissionEngine
 from infrastructure.anthropic_api.code_agent_gateway import PlanModeAgent
+from infrastructure.local_storage.hooks_permissions_store import HookManager, PermissionEngine
 from interfaces.cli.commands.code_agent_commands import (
-    cmd_hooks_add, cmd_hooks_list, cmd_hooks_remove,
-    cmd_perms_list, cmd_perms_add, cmd_plan,
+    cmd_hooks_add,
+    cmd_hooks_list,
+    cmd_hooks_remove,
+    cmd_perms_add,
+    cmd_perms_list,
+    cmd_plan,
 )
 
 __all__ = [
-    "HookEvent", "Hook", "HookResult", "HookManager",
-    "Decision", "PermRule", "DEFAULT_RULES", "PermissionEngine",
-    "PlanStep", "Plan", "PlanModeAgent",
-    "cmd_hooks_add", "cmd_hooks_list", "cmd_hooks_remove",
-    "cmd_perms_list", "cmd_perms_add", "cmd_plan",
+    "HookEvent",
+    "Hook",
+    "HookResult",
+    "HookManager",
+    "Decision",
+    "PermRule",
+    "DEFAULT_RULES",
+    "PermissionEngine",
+    "PlanStep",
+    "Plan",
+    "PlanModeAgent",
+    "cmd_hooks_add",
+    "cmd_hooks_list",
+    "cmd_hooks_remove",
+    "cmd_perms_list",
+    "cmd_perms_add",
+    "cmd_plan",
 ]

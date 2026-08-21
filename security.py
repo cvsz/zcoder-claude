@@ -21,6 +21,7 @@ arbitrary code the model asks to execute — see claude_sandbox.py, which
 already delegates that to Anthropic's hosted code-execution tool rather
 than running anything locally.
 """
+
 from __future__ import annotations
 
 import os
@@ -53,7 +54,7 @@ def safe_resolve(path: str | os.PathLike, base_dir: str | os.PathLike) -> Path:
         raise SecurityError(
             "Path escapes the allowed base directory",
             details={"path": str(path), "base_dir": str(base)},
-        )
+        ) from None
     return candidate
 
 

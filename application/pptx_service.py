@@ -15,14 +15,12 @@ callers own the print()/input() REPL shell around it).
 
 import re
 
-from domain.powerpoint import SYSTEM_PROMPT, _CODE_BLOCK
+from domain.powerpoint import _CODE_BLOCK, SYSTEM_PROMPT
 from infrastructure.local_storage.pptx_deck_store import PptxSession
 
 
 def resolve_output_path(input_path, output_path):
-    return output_path or (
-        re.sub(r"\.\w+$", "", input_path) + ".pptx" if input_path else "pptx_session.pptx"
-    )
+    return output_path or (re.sub(r"\.\w+$", "", input_path) + ".pptx" if input_path else "pptx_session.pptx")
 
 
 def create_session(input_path):
@@ -32,6 +30,7 @@ def create_session(input_path):
 
 
 # ── hand-rolled path ─────────────────────────────────────────────────────
+
 
 def run_turn(coder, session, user_input, history, output_path):
     """Run one hand-rolled-path turn: prompt Claude with the current deck
@@ -46,8 +45,11 @@ def run_turn(coder, session, user_input, history, output_path):
     match = _CODE_BLOCK.search(reply)
 
     result = {
-        "reply": reply, "code_block_found": False, "applied": None,
-        "message": None, "num_slides": len(session.slides),
+        "reply": reply,
+        "code_block_found": False,
+        "applied": None,
+        "message": None,
+        "num_slides": len(session.slides),
     }
     if match:
         result["code_block_found"] = True
@@ -64,6 +66,7 @@ def run_turn(coder, session, user_input, history, output_path):
 
 
 # ── --pptx-native path ────────────────────────────────────────────────────
+
 
 def upload_input_deck(files_api, input_path):
     """Upload the starting deck for --pptx-native. Raises RuntimeError on
@@ -83,8 +86,7 @@ def upload_input_deck(files_api, input_path):
     return fid
 
 
-def run_native_turn(client, files_api, messages, user_input, pending_file_ids,
-                     container_id, output_path):
+def run_native_turn(client, files_api, messages, user_input, pending_file_ids, container_id, output_path):
     """Run one --pptx-native turn against the pptx Skill. `messages` is
     mutated in place (appended to on success, popped back on error,
     matching the original). Returns a result dict; does not print."""
@@ -94,11 +96,17 @@ def run_native_turn(client, files_api, messages, user_input, pending_file_ids,
     has_uploads = bool(pending_file_ids)
 
     data = client.call_with_skills_turn(
-        messages, skills=["pptx"], container_id=container_id, has_file_uploads=has_uploads,
+        messages,
+        skills=["pptx"],
+        container_id=container_id,
+        has_file_uploads=has_uploads,
     )
 
     result = {
-        "error": None, "text": "", "downloaded": False, "download_error": None,
+        "error": None,
+        "text": "",
+        "downloaded": False,
+        "download_error": None,
         "container_id": container_id,
     }
     if "error" in data:
@@ -109,9 +117,7 @@ def run_native_turn(client, files_api, messages, user_input, pending_file_ids,
     result["container_id"] = (data.get("container") or {}).get("id", container_id)
     messages.append({"role": "assistant", "content": data.get("content", [])})
 
-    result["text"] = "".join(
-        b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"
-    )
+    result["text"] = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
 
     new_file_ids = extract_output_file_ids(data)
     if new_file_ids:

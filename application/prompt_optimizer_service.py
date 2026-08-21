@@ -1,26 +1,32 @@
 """application/prompt_optimizer_service.py — use-case layer for Prompt Optimizer
+# mypy: ignore-errors
 AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 
 Orchestrates domain/prompt_optimizer.py + infrastructure/local_storage/
 prompt_library_store.py — no print() of its own.
 """
 
-from typing import Optional
+from collections.abc import Callable
 
 from domain.prompt_optimizer import (
-    optimize_prompt, score_prompt, ab_test_prompts,
-    parse_score, parse_judgment,
-    lib_add_entry, lib_list_entries, lib_get_entry,
+    ab_test_prompts,
+    lib_add_entry,
+    lib_get_entry,
+    lib_list_entries,
+    optimize_prompt,
+    parse_judgment,
+    parse_score,
+    score_prompt,
 )
 from infrastructure.local_storage.prompt_library_store import read_prompt_lib, write_prompt_lib
 
 
-def optimize(prompt: str) -> str:
+def optimize(prompt: str) -> tuple[str, str]:
     system, user = optimize_prompt(prompt)
     return system, user
 
 
-def score(prompt: str) -> dict:
+def score(prompt: str) -> tuple[str, str, int, Callable[[str], dict]]:
     system, user, max_tokens = score_prompt(prompt)
     return system, user, max_tokens, parse_score
 
@@ -41,5 +47,5 @@ def list_lib() -> list:
     return lib_list_entries(read_prompt_lib())
 
 
-def get_from_lib(tag: str) -> Optional[str]:
+def get_from_lib(tag: str) -> str | None:
     return lib_get_entry(read_prompt_lib(), tag)

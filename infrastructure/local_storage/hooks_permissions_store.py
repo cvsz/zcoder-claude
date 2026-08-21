@@ -15,11 +15,16 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from typing import List, Optional
 
 from domain.agent_execution import (
-    Hook, HookEvent, HookResult, hook_matches,
-    PermRule, Decision, DEFAULT_RULES, evaluate_perm,
+    DEFAULT_RULES,
+    Decision,
+    Hook,
+    HookEvent,
+    HookResult,
+    PermRule,
+    evaluate_perm,
+    hook_matches,
 )
 
 HOOKS_FILE = Path.home() / ".ai-coder" / "hooks.json"
@@ -28,7 +33,7 @@ PERMS_FILE = Path.home() / ".ai-coder" / "permissions.json"
 
 class HookManager:
     def __init__(self):
-        self.hooks: List[Hook] = []
+        self.hooks: list[Hook] = []
         self._load()
 
     def _load(self):
@@ -42,10 +47,8 @@ class HookManager:
         HOOKS_FILE.parent.mkdir(parents=True, exist_ok=True)
         HOOKS_FILE.write_text(json.dumps([h.to_dict() for h in self.hooks], indent=2))
 
-    def add(self, event: HookEvent, command: str, tool_match: Optional[str] = None,
-            description: str = ""):
-        self.hooks.append(Hook(event=event, command=command, tool_match=tool_match,
-                                description=description))
+    def add(self, event: HookEvent, command: str, tool_match: str | None = None, description: str = ""):
+        self.hooks.append(Hook(event=event, command=command, tool_match=tool_match, description=description))
         self.save()
 
     def remove(self, idx: int) -> bool:
@@ -55,7 +58,7 @@ class HookManager:
             return True
         return False
 
-    def fire(self, event: HookEvent, tool_name: Optional[str] = None) -> List[HookResult]:
+    def fire(self, event: HookEvent, tool_name: str | None = None) -> list[HookResult]:
         env = {**os.environ}
         if tool_name:
             env["AI_CODER_TOOL_NAME"] = tool_name
@@ -63,14 +66,23 @@ class HookManager:
         results = []
         for h in [h for h in self.hooks if hook_matches(h, event, tool_name)]:
             try:
-                p = subprocess.run(h.command, shell=True, capture_output=True,
-                                    text=True, timeout=30, env=env)
-                blocked = (event == HookEvent.PRE_TOOL_USE and p.returncode != 0)
-                results.append(HookResult(hook=h, returncode=p.returncode,
-                                           stdout=p.stdout, stderr=p.stderr, blocked=blocked))
+                p = subprocess.run(h.command, shell=True, capture_output=True, text=True, timeout=30, env=env)
+                blocked = event == HookEvent.PRE_TOOL_USE and p.returncode != 0
+                results.append(
+                    HookResult(
+                        hook=h, returncode=p.returncode, stdout=p.stdout, stderr=p.stderr, blocked=blocked
+                    )
+                )
             except subprocess.TimeoutExpired:
-                results.append(HookResult(hook=h, returncode=-1, stdout="",
-                                           stderr="timeout", blocked=(event == HookEvent.PRE_TOOL_USE)))
+                results.append(
+                    HookResult(
+                        hook=h,
+                        returncode=-1,
+                        stdout="",
+                        stderr="timeout",
+                        blocked=(event == HookEvent.PRE_TOOL_USE),
+                    )
+                )
         return results
 
     def guarded_call(self, tool_name: str, fn, *args, **kwargs):
@@ -86,7 +98,7 @@ class HookManager:
 
 class PermissionEngine:
     def __init__(self):
-        self.rules: List[PermRule] = []
+        self.rules: list[PermRule] = []
         self._load()
 
     def _load(self):

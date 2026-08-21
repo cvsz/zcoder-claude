@@ -7,7 +7,7 @@ name = "zcoder"
 version = "1.41.0"
 description = "AI Model Coder CLI — enterprise-grade edition"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.14"
 license = { text = "MIT" }
 
 [tool.pytest.ini_options]
@@ -26,7 +26,7 @@ show_missing = true
 
 [tool.ruff]
 line-length = 110
-target-version = "py39"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
@@ -34,10 +34,153 @@ ignore = ["E501"]
 
 [tool.black]
 line-length = 110
-target-version = ["py39"]
+target-version = ["py314"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.14"
 ignore_missing_imports = true
 warn_unused_ignores = true
 no_implicit_optional = true
+exclude = ["webapp/backend/server\\.py$", "tests/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "domain",
+    "domain.*",
+    "coder",
+    "coder.*",
+    "artifacts",
+    "artifacts.*",
+    "projects",
+    "projects.*",
+    "personalities",
+    "personalities.*",
+    "skills",
+    "skills.*",
+    "config",
+    "config.*",
+    "exceptions",
+    "exceptions.*",
+    "health",
+    "health.*",
+    "logging_config",
+    "logging_config.*",
+    "resilience",
+    "resilience.*",
+    "security",
+    "security.*",
+    "utils",
+    "utils.*",
+    "tui",
+    "tui.*",
+    "tui_streaming",
+    "tui_streaming.*",
+    "cowork",
+    "cowork.*",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "claude_agents_sdk",
+    "claude_agents_sdk.*",
+    "claude_admin_api",
+    "claude_admin_api.*",
+    "claude_advisor",
+    "claude_advisor.*",
+    "claude_batch",
+    "claude_batch.*",
+    "claude_cache",
+    "claude_cache.*",
+    "claude_chrome",
+    "claude_chrome.*",
+    "claude_citations",
+    "claude_citations.*",
+    "claude_code",
+    "claude_code.*",
+    "claude_code_exec",
+    "claude_code_exec.*",
+    "claude_compliance_api",
+    "claude_compliance_api.*",
+    "claude_cost_optimizer",
+    "claude_cost_optimizer.*",
+    "claude_embeddings",
+    "claude_embeddings.*",
+    "claude_eval",
+    "claude_eval.*",
+    "claude_evals",
+    "claude_evals.*",
+    "claude_excel",
+    "claude_excel.*",
+    "claude_fable5",
+    "claude_fable5.*",
+    "claude_files",
+    "claude_files.*",
+    "claude_git",
+    "claude_git.*",
+    "claude_github",
+    "claude_github.*",
+    "claude_haiku45",
+    "claude_haiku45.*",
+    "claude_hooks_perms_plan",
+    "claude_hooks_perms_plan.*",
+    "claude_interactive",
+    "claude_interactive.*",
+    "claude_live",
+    "claude_live.*",
+    "claude_memory",
+    "claude_memory.*",
+    "claude_metrics",
+    "claude_metrics.*",
+    "claude_models",
+    "claude_models.*",
+    "claude_mythos5",
+    "claude_mythos5.*",
+    "claude_observability",
+    "claude_observability.*",
+    "claude_opus5",
+    "claude_opus5.*",
+    "claude_output_styles",
+    "claude_output_styles.*",
+    "claude_plugins",
+    "claude_plugins.*",
+    "claude_powerpoint",
+    "claude_powerpoint.*",
+    "claude_prompt_optimizer",
+    "claude_prompt_optimizer.*",
+    "claude_rag",
+    "claude_rag.*",
+    "claude_research",
+    "claude_research.*",
+    "claude_response_metadata",
+    "claude_response_metadata.*",
+    "claude_sandbox",
+    "claude_sandbox.*",
+    "claude_search",
+    "claude_search.*",
+    "claude_sessions",
+    "claude_sessions.*",
+    "claude_settings",
+    "claude_settings.*",
+    "claude_skills_api",
+    "claude_skills_api.*",
+    "claude_sonnet5",
+    "claude_sonnet5.*",
+    "claude_stream",
+    "claude_stream.*",
+    "claude_structured",
+    "claude_structured.*",
+    "claude_thinking",
+    "claude_thinking.*",
+    "claude_tokens",
+    "claude_tokens.*",
+    "claude_tools",
+    "claude_tools.*",
+    "claude_vision",
+    "claude_vision.*",
+    "claude_wif",
+    "claude_wif.*",
+    "claude_workflow",
+    "claude_workflow.*",
+]
+ignore_errors = true

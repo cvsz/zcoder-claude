@@ -6,8 +6,8 @@ No print().
 """
 
 import json
-import urllib.request
 import urllib.error
+import urllib.request
 
 from resilience import raise_for_http_error, retry, urlopen_json
 

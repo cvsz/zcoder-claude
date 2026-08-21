@@ -39,11 +39,11 @@ def register_file(api_result: dict, local_path: str):
     ensure_registry_dir()
     reg = load_registry()
     reg[api_result["id"]] = {
-        "id":          api_result["id"],
-        "filename":    api_result.get("filename", ""),
-        "local_path":  local_path,
-        "created_at":  api_result.get("created_at", ""),
-        "size":        api_result.get("size", 0),
+        "id": api_result["id"],
+        "filename": api_result.get("filename", ""),
+        "local_path": local_path,
+        "created_at": api_result.get("created_at", ""),
+        "size": api_result.get("size", 0),
     }
     LOCAL_REGISTRY.write_text(json.dumps(reg, indent=2))
 

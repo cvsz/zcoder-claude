@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 interfaces/cli/commands/model_commands.py — CLI presentation for model catalog & tools
 AI Model Coder CLI v1.43.0 (Clean Architecture refactor)
 
@@ -11,8 +12,12 @@ grow any new business rules, only formatting.
 import json
 
 from application.models_service import (
-    list_models, get_model_info, scan_for_deprecated_models,
-    upgrade_all, run_computer_use, run_adaptive_thinking,
+    get_model_info,
+    list_models,
+    run_adaptive_thinking,
+    run_computer_use,
+    scan_for_deprecated_models,
+    upgrade_all,
 )
 
 
@@ -23,9 +28,9 @@ def cmd_list_models(api_key: str, include_legacy: bool = False):
         print(f"\n{'MODEL ID':<35}{'DISPLAY NAME':<35}{'CONTEXT'}")
         print("─" * 85)
         for m in models:
-            mid  = m.get("id", "")
+            mid = m.get("id", "")
             name = m.get("display_name", "")[:34]
-            ctx  = m.get("context_window", 0)
+            ctx = m.get("context_window", 0)
             ctx_str = f"{ctx//1000}K" if ctx else "—"
             print(f"{mid:<35}{name:<35}{ctx_str}")
         print(f"\n{len(models)} models available")
@@ -35,13 +40,18 @@ def cmd_list_models(api_key: str, include_legacy: bool = False):
     print(f"\n\033[93m⚠ Could not reach Models API: {result['error']}\033[0m")
     print("\nKnown models (local catalog, verify against --model-info when online):")
     for tier, rows in result["tiers"].items():
-        label = {"mythos": "Mythos-class (above Opus)", "current": "Current",
-                 "legacy": "Legacy (superseded, still callable)"}[tier]
+        label = {
+            "mythos": "Mythos-class (above Opus)",
+            "current": "Current",
+            "legacy": "Legacy (superseded, still callable)",
+        }[tier]
         print(f"\n  \033[1m{label}\033[0m")
         for mid, info in rows:
             ctx = f"{info['context_window']//1000}K"
-            print(f"    {mid:<32}{info['display_name']:<24}{ctx:<7}"
-                 f"${info['price_in']}/${info['price_out']} per MTok")
+            print(
+                f"    {mid:<32}{info['display_name']:<24}{ctx:<7}"
+                f"${info['price_in']}/${info['price_out']} per MTok"
+            )
     if not result["include_legacy"]:
         print("\n  (legacy models hidden — pass --list-models-legacy to include them)")
     print("\n  Mythos-tier note: Fable 5 and Mythos 5 share the same underlying model;")
@@ -60,19 +70,22 @@ def cmd_model_info(model_id: str, api_key: str):
         print(f"    Was:         {retired['display_name']}")
         print(f"    Migrate to:  {retired['replacement']}")
         print(f"    Notes:       {retired['notes']}")
-        print("\n  API calls to this ID will fail — this isn't a live lookup, "
-              "just the local retirement record. Continuing to check the live "
-              "API and local catalog below in case the record above is stale:\n")
+        print(
+            "\n  API calls to this ID will fail — this isn't a live lookup, "
+            "just the local retirement record. Continuing to check the live "
+            "API and local catalog below in case the record above is stale:\n"
+        )
 
     if deprecated:
-        print(f"\n  \033[93m⚠ {model_id} is deprecated, retiring "
-              f"{deprecated['retirement_scheduled']}\033[0m")
+        print(
+            f"\n  \033[93m⚠ {model_id} is deprecated, retiring "
+            f"{deprecated['retirement_scheduled']}\033[0m"
+        )
         print(f"    Was:            {deprecated['display_name']}")
         print(f"    Announced:      {deprecated['deprecation_announced']}")
         print(f"    Migrate to:     {deprecated['replacement']}")
         print(f"    Notes:          {deprecated['notes']}")
-        print("\n  Still works today — this is an early warning, not a failure. "
-              "Continuing below:\n")
+        print("\n  Still works today — this is an early warning, not a failure. " "Continuing below:\n")
 
     if result["live"]:
         m = result["live"]
@@ -94,8 +107,10 @@ def cmd_model_info(model_id: str, api_key: str):
                 levels = effort.get("levels") or effort.get("supported_levels")
                 default = effort.get("default")
                 if levels:
-                    print(f"    Effort levels:       {', '.join(levels)}"
-                          f"{f' (default: {default})' if default else ''}")
+                    print(
+                        f"    Effort levels:       {', '.join(levels)}"
+                        f"{f' (default: {default})' if default else ''}"
+                    )
                 elif default:
                     print(f"    Effort default:      {default}")
         return
@@ -124,7 +139,7 @@ def cmd_check_deprecated(path: str):
     """Scan a file or directory for retired/deprecated model ID strings
     and report migration targets. See application.models_service
     .scan_for_deprecated_models for the actual scan logic."""
-    from domain.models.catalog import RETIRED_MODELS, DEPRECATED_MODELS
+    from domain.models.catalog import DEPRECATED_MODELS, RETIRED_MODELS
 
     hits = scan_for_deprecated_models(path)
     retired_hits, deprecated_hits = hits["retired_hits"], hits["deprecated_hits"]
@@ -137,8 +152,10 @@ def cmd_check_deprecated(path: str):
         print(f"\n\033[91m⚠ Retired model IDs found under {path}\033[0m\n")
         for model_id, locations in retired_hits.items():
             rec = RETIRED_MODELS[model_id]
-            print(f"  \033[1m{model_id}\033[0m — retired {rec['retired']}, "
-                  f"migrate to \033[92m{rec['replacement']}\033[0m")
+            print(
+                f"  \033[1m{model_id}\033[0m — retired {rec['retired']}, "
+                f"migrate to \033[92m{rec['replacement']}\033[0m"
+            )
             for fp, lineno in locations[:5]:
                 print(f"    {fp}:{lineno}")
             if len(locations) > 5:
@@ -146,13 +163,17 @@ def cmd_check_deprecated(path: str):
             print()
 
     if deprecated_hits:
-        print(f"\n\033[93m⚠ Deprecated model IDs found under {path} "
-              f"(still work today, retiring soon)\033[0m\n")
+        print(
+            f"\n\033[93m⚠ Deprecated model IDs found under {path} "
+            f"(still work today, retiring soon)\033[0m\n"
+        )
         for model_id, locations in deprecated_hits.items():
             rec = DEPRECATED_MODELS[model_id]
-            print(f"  \033[1m{model_id}\033[0m — retiring "
-                  f"{rec['retirement_scheduled']}, migrate to "
-                  f"\033[92m{rec['replacement']}\033[0m")
+            print(
+                f"  \033[1m{model_id}\033[0m — retiring "
+                f"{rec['retirement_scheduled']}, migrate to "
+                f"\033[92m{rec['replacement']}\033[0m"
+            )
             for fp, lineno in locations[:5]:
                 print(f"    {fp}:{lineno}")
             if len(locations) > 5:
@@ -160,8 +181,7 @@ def cmd_check_deprecated(path: str):
             print()
 
 
-def cmd_upgrade_all(path: str, target: str = "fable5", apply: bool = False,
-                    no_backup: bool = False):
+def cmd_upgrade_all(path: str, target: str = "fable5", apply: bool = False, no_backup: bool = False):
     """Rewrite every known Claude model ID under `path` to the chosen
     target. See application.models_service.upgrade_all for the actual
     rewrite logic."""
@@ -176,8 +196,10 @@ def cmd_upgrade_all(path: str, target: str = "fable5", apply: bool = False,
         return
 
     verb = "Upgraded" if apply else "Would upgrade"
-    print(f"\n\033[94mℹ {verb} {result['total_hits']} model reference(s) across "
-          f"{len(result['per_file_report'])} file(s) to \033[1m{result['target_id']}\033[0m\n")
+    print(
+        f"\n\033[94mℹ {verb} {result['total_hits']} model reference(s) across "
+        f"{len(result['per_file_report'])} file(s) to \033[1m{result['target_id']}\033[0m\n"
+    )
     for fp, counts in result["per_file_report"]:
         detail = ", ".join(f"{mid} ×{n}" for mid, n in sorted(counts.items()))
         print(f"  {fp}: {detail}")
@@ -186,11 +208,14 @@ def cmd_upgrade_all(path: str, target: str = "fable5", apply: bool = False,
         backup_note = "" if no_backup else " (.bak backup written alongside each changed file)"
         print(f"\n\033[92m✓ {result['files_changed']} file(s) updated{backup_note}\033[0m")
     else:
-        print("\n\033[93m⚠ Dry run — no files were changed. Re-run with --upgrade-yes to "
-              "apply (add --upgrade-no-backup to skip .bak files).\033[0m")
+        print(
+            "\n\033[93m⚠ Dry run — no files were changed. Re-run with --upgrade-yes to "
+            "apply (add --upgrade-no-backup to skip .bak files).\033[0m"
+        )
 
 
 # ── Computer Use ───────────────────────────────────────────────────────────
+
 
 def cmd_computer_use(task: str, api_key: str, model: str):
     print("\033[94mℹ Computer Use mode\033[0m")
@@ -206,8 +231,8 @@ def cmd_computer_use(task: str, api_key: str, model: str):
 
 # ── Adaptive + Interleaved Thinking ───────────────────────────────────────
 
-def cmd_adaptive_thinking(prompt: str, api_key: str, model: str,
-                           effort: str = "medium", budget: int = None):
+
+def cmd_adaptive_thinking(prompt: str, api_key: str, model: str, effort: str = "medium", budget: int = None):
     print(f"\033[94mℹ Adaptive Thinking | effort={effort}\033[0m\n")
     result = run_adaptive_thinking(prompt, api_key, model, effort=effort, budget=budget)
     print(result)

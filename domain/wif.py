@@ -7,27 +7,29 @@ anthropic` — those belong to infrastructure/.
 
 import os
 from pathlib import Path
-from typing import Optional
 
 OAUTH_TOKEN_ENDPOINT = "https://api.anthropic.com/v1/oauth/token"
 ADMIN_BASE = "https://api.anthropic.com/v1/organizations"
 JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 
 WIF_ENV_VARS = (
-    "ANTHROPIC_FEDERATION_RULE_ID", "ANTHROPIC_ORGANIZATION_ID",
-    "ANTHROPIC_SERVICE_ACCOUNT_ID", "ANTHROPIC_WORKSPACE_ID",
-    "ANTHROPIC_IDENTITY_TOKEN_FILE", "ANTHROPIC_IDENTITY_TOKEN",
+    "ANTHROPIC_FEDERATION_RULE_ID",
+    "ANTHROPIC_ORGANIZATION_ID",
+    "ANTHROPIC_SERVICE_ACCOUNT_ID",
+    "ANTHROPIC_WORKSPACE_ID",
+    "ANTHROPIC_IDENTITY_TOKEN_FILE",
+    "ANTHROPIC_IDENTITY_TOKEN",
 )
 
 
 class WIFExchangeError(Exception):
-    def __init__(self, status: Optional[int], body: str):
+    def __init__(self, status: int | None, body: str):
         self.status = status
         self.body = body
         super().__init__(f"WIF token exchange failed: HTTP {status}")
 
 
-def resolve_wif_env(env: Optional[dict] = None) -> Optional[dict]:
+def resolve_wif_env(env: dict | None = None) -> dict | None:
     env = env if env is not None else os.environ
     rule_id = env.get("ANTHROPIC_FEDERATION_RULE_ID")
     org_id = env.get("ANTHROPIC_ORGANIZATION_ID")

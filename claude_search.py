@@ -10,7 +10,7 @@ New code should import from those locations directly rather than through
 this shim.
 """
 
-from infrastructure.anthropic_api.search_gateway import SearchCoder, WEB_SEARCH_TOOL, WEB_FETCH_TOOL
-from interfaces.cli.commands.tools_commands import cmd_web_search, cmd_fetch_url
+from infrastructure.anthropic_api.search_gateway import WEB_FETCH_TOOL, WEB_SEARCH_TOOL, SearchCoder
+from interfaces.cli.commands.tools_commands import cmd_fetch_url, cmd_web_search
 
 __all__ = ["SearchCoder", "WEB_SEARCH_TOOL", "WEB_FETCH_TOOL", "cmd_web_search", "cmd_fetch_url"]

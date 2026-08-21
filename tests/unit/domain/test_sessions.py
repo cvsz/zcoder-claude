@@ -4,7 +4,7 @@ Covers domain/sessions.py — pure Turn/Session/Checkpoint dataclasses,
 extracted 2026-08-18 (Phase C, Context #5).
 """
 
-from domain.sessions import Turn, Session, Checkpoint, SKIP_DIRS
+from domain.sessions import SKIP_DIRS, Checkpoint, Session, Turn
 
 
 def test_turn_roundtrip():
@@ -50,8 +50,12 @@ def test_session_recap_truncates_long_content():
 
 
 def test_checkpoint_roundtrip():
-    cp = Checkpoint(sid="abc123", label="before refactor", n_turns=3,
-                    snap=[{"role": "user", "content": "hi", "ts": "now"}])
+    cp = Checkpoint(
+        sid="abc123",
+        label="before refactor",
+        n_turns=3,
+        snap=[{"role": "user", "content": "hi", "ts": "now"}],
+    )
     d = cp.to_dict()
     cp2 = Checkpoint.from_dict(d)
     assert cp2.sid == "abc123"

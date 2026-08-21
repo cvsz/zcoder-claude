@@ -7,6 +7,7 @@ docs/53_release_gate_v1.40.0.md as the reason a stale Sonnet 5 price
 copy of the same pricing table. Covers _price(), the not_billed/refusal
 handling from v1.11.0, and summarise().
 """
+
 import json
 
 import pytest
@@ -33,6 +34,7 @@ def isolated_log(tmp_path, monkeypatch):
 
 # ── pricing table (2026-08-10 release note: $2/$10 is now permanent) ────
 
+
 def test_sonnet5_price_table_entry_is_2_10_not_cancelled_3_15():
     assert metrics.PRICE_TABLE["claude-sonnet-5"] == (2.0, 10.0)
 
@@ -48,6 +50,7 @@ def test_price_unknown_model_falls_back_to_default():
 
 
 # ── record() / not_billed refusal handling (v1.11.0) ─────────────────
+
 
 def test_record_writes_priced_entry(isolated_log):
     metrics.record("claude-sonnet-5", 1_000_000, 1_000_000, 1.5, command="chat")
@@ -77,6 +80,7 @@ def test_record_refusal_with_nonzero_output_is_still_billed(isolated_log):
 
 # ── load_log() filters ────────────────────────────────────────────────
 
+
 def test_load_log_empty_when_no_file(isolated_log):
     assert metrics.load_log() == []
 
@@ -98,18 +102,34 @@ def test_load_log_skips_malformed_lines(isolated_log):
 
 # ── summarise() ────────────────────────────────────────────────────────
 
+
 def test_summarise_empty_entries():
     assert metrics.summarise([]) == {"calls": 0}
 
 
 def test_summarise_aggregates_by_model():
     entries = [
-        {"model": "claude-sonnet-5", "input_tokens": 100, "output_tokens": 50,
-         "cost_usd": 1.0, "latency_seconds": 2.0},
-        {"model": "claude-sonnet-5", "input_tokens": 200, "output_tokens": 100,
-         "cost_usd": 2.0, "latency_seconds": 4.0},
-        {"model": "claude-opus-4-8", "input_tokens": 10, "output_tokens": 10,
-         "cost_usd": 0.5, "latency_seconds": 1.0},
+        {
+            "model": "claude-sonnet-5",
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "cost_usd": 1.0,
+            "latency_seconds": 2.0,
+        },
+        {
+            "model": "claude-sonnet-5",
+            "input_tokens": 200,
+            "output_tokens": 100,
+            "cost_usd": 2.0,
+            "latency_seconds": 4.0,
+        },
+        {
+            "model": "claude-opus-4-8",
+            "input_tokens": 10,
+            "output_tokens": 10,
+            "cost_usd": 0.5,
+            "latency_seconds": 1.0,
+        },
     ]
     s = metrics.summarise(entries)
     assert s["calls"] == 3
@@ -120,6 +140,7 @@ def test_summarise_aggregates_by_model():
 
 
 # ── cmd_metrics_export ───────────────────────────────────────────────
+
 
 def test_cmd_metrics_export_writes_entries_and_summary(isolated_log, tmp_path):
     metrics.record("claude-sonnet-5", 1000, 1000, 0.5)

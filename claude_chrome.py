@@ -73,18 +73,33 @@ playbook).
 """
 
 from domain.devtools import (
-    MAX_PAGE_CHARS, BROWSE_SYSTEM_PROMPT as SYSTEM_PROMPT,
+    BROWSE_SYSTEM_PROMPT as SYSTEM_PROMPT,
+)
+from domain.devtools import (
+    MAX_PAGE_CHARS,
+)
+from domain.devtools import (
     TextExtractor as _TextExtractor,
+)
+from domain.devtools import (
     domain_allowed as _domain_allowed,
+)
+from domain.devtools import (
     parse_json_action as _parse_json_action,
 )
 from infrastructure.anthropic_api.devtools_gateway import (
-    fetch_page, _fetch_retrying,
+    _fetch_retrying,
+    fetch_page,
 )
 from interfaces.cli.commands.devtools_commands import cmd_browse
 
 __all__ = [
-    "MAX_PAGE_CHARS", "SYSTEM_PROMPT", "_TextExtractor",
-    "fetch_page", "_fetch_retrying", "_domain_allowed", "_parse_json_action",
+    "MAX_PAGE_CHARS",
+    "SYSTEM_PROMPT",
+    "_TextExtractor",
+    "fetch_page",
+    "_fetch_retrying",
+    "_domain_allowed",
+    "_parse_json_action",
     "cmd_browse",
 ]

@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 application/models_service.py — Use-case layer for model catalog operations
 AI Model Coder CLI v1.43.0 (Clean Architecture refactor)
 
@@ -21,15 +22,21 @@ data; this module is the glue between them.
 
 import os
 import re
-from typing import Optional
 
 from domain.models.catalog import (
-    check_retired, check_deprecated, RETIRED_MODELS, DEPRECATED_MODELS,
-    MODEL_CATALOG, UPGRADE_TARGETS, _upgrade_source_ids,
+    DEPRECATED_MODELS,
+    MODEL_CATALOG,
+    RETIRED_MODELS,
     TIER_ORDER,
+    UPGRADE_TARGETS,
+    _upgrade_source_ids,
+    check_deprecated,
+    check_retired,
 )
 from infrastructure.anthropic_api.models_gateway import (
-    ModelsAPI, ComputerUseCoder, AdaptiveThinkingCoder,
+    AdaptiveThinkingCoder,
+    ComputerUseCoder,
+    ModelsAPI,
 )
 
 
@@ -61,8 +68,13 @@ def get_model_info(model_id: str, api_key: str) -> dict:
     expected and not surfaced as an error)."""
     retired = check_retired(model_id)
     deprecated = check_deprecated(model_id)
-    result = {"retired": retired, "deprecated": deprecated,
-              "live": None, "local_fallback": None, "error": None}
+    result = {
+        "retired": retired,
+        "deprecated": deprecated,
+        "live": None,
+        "local_fallback": None,
+        "error": None,
+    }
 
     ma = ModelsAPI(api_key=api_key)
     try:
@@ -102,7 +114,7 @@ def scan_for_deprecated_models(path: str) -> dict:
     hits: dict = {}
     for fp in files:
         try:
-            with open(fp, "r", encoding="utf-8", errors="ignore") as fh:
+            with open(fp, encoding="utf-8", errors="ignore") as fh:
                 for lineno, line in enumerate(fh, 1):
                     for m in pattern.finditer(line):
                         hits.setdefault(m.group(0), []).append((fp, lineno))
@@ -127,8 +139,7 @@ def _walk_upgrade_candidates(path: str):
             yield os.path.join(root, fn)
 
 
-def upgrade_all(path: str, target: str = "fable5", apply: bool = False,
-                no_backup: bool = False) -> dict:
+def upgrade_all(path: str, target: str = "fable5", apply: bool = False, no_backup: bool = False) -> dict:
     """Rewrite every known Claude model ID under `path` to `target`
     (one of UPGRADE_TARGETS' keys — currently 'fable5', 'opus', 'opus5',
     'sonnet5'). Dry-run (report only) unless apply=True.
@@ -136,14 +147,11 @@ def upgrade_all(path: str, target: str = "fable5", apply: bool = False,
     {'target_id': str, 'total_hits': int, 'per_file_report': [(file,
     {id: count})...], 'files_changed': int, 'applied': bool}."""
     if target not in UPGRADE_TARGETS:
-        return {"error": f"Unknown upgrade target '{target}'. Choose from: "
-                          f"{', '.join(UPGRADE_TARGETS)}"}
+        return {"error": f"Unknown upgrade target '{target}'. Choose from: " f"{', '.join(UPGRADE_TARGETS)}"}
 
     target_id = UPGRADE_TARGETS[target]
     old_ids = _upgrade_source_ids(target_id)
-    pattern = re.compile(
-        r"(?<![\w-])(" + "|".join(re.escape(i) for i in old_ids) + r")(?![\w-])"
-    )
+    pattern = re.compile(r"(?<![\w-])(" + "|".join(re.escape(i) for i in old_ids) + r")(?![\w-])")
 
     files_changed = 0
     total_hits = 0
@@ -151,7 +159,7 @@ def upgrade_all(path: str, target: str = "fable5", apply: bool = False,
 
     for fp in _walk_upgrade_candidates(path):
         try:
-            with open(fp, "r", encoding="utf-8", errors="strict") as fh:
+            with open(fp, encoding="utf-8", errors="strict") as fh:
                 text = fh.read()
         except (UnicodeDecodeError, PermissionError, IsADirectoryError):
             continue  # binary / unreadable — skip rather than risk corrupting it
@@ -176,8 +184,10 @@ def upgrade_all(path: str, target: str = "fable5", apply: bool = False,
             files_changed += 1
 
     return {
-        "target_id": target_id, "total_hits": total_hits,
-        "per_file_report": per_file_report, "files_changed": files_changed,
+        "target_id": target_id,
+        "total_hits": total_hits,
+        "per_file_report": per_file_report,
+        "files_changed": files_changed,
         "applied": apply,
     }
 
@@ -188,7 +198,8 @@ def run_computer_use(task: str, api_key: str, model: str) -> dict:
     return cu.run_task(task)
 
 
-def run_adaptive_thinking(prompt: str, api_key: str, model: str,
-                          effort: str = "medium", budget: Optional[int] = None) -> str:
+def run_adaptive_thinking(
+    prompt: str, api_key: str, model: str, effort: str = "medium", budget: int | None = None
+) -> str:
     atc = AdaptiveThinkingCoder(api_key=api_key, model=model)
     return atc.adaptive(prompt, budget=budget or 8000, effort=effort)

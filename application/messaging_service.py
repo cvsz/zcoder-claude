@@ -18,12 +18,16 @@ print-based ones) down to where the SSE loop lives.
 """
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 from infrastructure.anthropic_api.messaging_gateway import (
-    StreamCoder, StructuredCoder, CitationsCoder, ThinkingCoder,
-    TokenCounter, LiveSession,
+    CitationsCoder,
+    LiveSession,
+    StreamCoder,
+    StructuredCoder,
+    ThinkingCoder,
+    TokenCounter,
 )
 
 _NOOP = lambda *a, **k: None  # noqa: E731
@@ -31,26 +35,39 @@ _NOOP = lambda *a, **k: None  # noqa: E731
 
 # ── Streaming ────────────────────────────────────────────────────────────
 
-def stream_text(prompt: str, api_key: str, model: str, system: Optional[str] = None,
-                 file_content: Optional[str] = None, show_thinking: bool = False,
-                 **callbacks) -> str:
+
+def stream_text(
+    prompt: str,
+    api_key: str,
+    model: str,
+    system: str | None = None,
+    file_content: str | None = None,
+    show_thinking: bool = False,
+    **callbacks,
+) -> str:
     sc = StreamCoder(api_key=api_key, model=model)
     if file_content:
         return sc.stream_file_analysis(file_content, prompt, system=system, **callbacks)
     return sc.stream(prompt, system=system, show_thinking=show_thinking, **callbacks)
 
 
-def stream_with_tools(prompt: str, tools: list, api_key: str, model: str,
-                       system: Optional[str] = None, **callbacks) -> dict:
+def stream_with_tools(
+    prompt: str, tools: list, api_key: str, model: str, system: str | None = None, **callbacks
+) -> dict:
     sc = StreamCoder(api_key=api_key, model=model)
     return sc.stream_with_tools(prompt, tools, system=system, **callbacks)
 
 
 # ── Structured outputs ──────────────────────────────────────────────────
 
-def generate_structured(prompt: str, api_key: str, model: str,
-                         schema_path: Optional[str] = None,
-                         schema_inline: Optional[str] = None) -> dict:
+
+def generate_structured(
+    prompt: str,
+    api_key: str,
+    model: str,
+    schema_path: str | None = None,
+    schema_inline: str | None = None,
+) -> dict:
     """Returns {"result": dict, "mode": "schema_file"|"schema_inline"|"json_object"}."""
     sc = StructuredCoder(api_key=api_key, model=model)
     if schema_path:
@@ -71,12 +88,13 @@ def analyse_code_structured(file_path: str, api_key: str, model: str) -> dict:
 
 def extract_structured(content_file: str, schema_path: str, api_key: str, model: str) -> dict:
     content = Path(content_file).read_text()
-    schema  = json.loads(Path(schema_path).read_text())
+    schema = json.loads(Path(schema_path).read_text())
     sc = StructuredCoder(api_key=api_key, model=model)
     return sc.extract(content, schema)
 
 
 # ── Citations & RAG ──────────────────────────────────────────────────────
+
 
 def cite_documents(question: str, doc_files: list, api_key: str, model: str) -> dict:
     """Returns {"result": dict|None, "missing": [str, ...]} — `missing`
@@ -97,40 +115,60 @@ def cite_documents(question: str, doc_files: list, api_key: str, model: str) -> 
     return {"result": cc.cite_documents(question, docs), "missing": missing}
 
 
-def rag_query(question: str, directory: str, api_key: str, model: str,
-              pattern: str = "*.md") -> dict:
+def rag_query(question: str, directory: str, api_key: str, model: str, pattern: str = "*.md") -> dict:
     cc = CitationsCoder(api_key=api_key, model=model)
     return cc.rag_from_directory(question, directory, pattern)
 
 
 # ── Extended / adaptive thinking ─────────────────────────────────────────
 
-def generate_thinking(prompt: str, api_key: str, model: str, budget: int,
-                       effort: Optional[str], adaptive: Optional[bool],
-                       show_thinking: bool, stream: bool, system: Optional[str] = None,
-                       display_omitted: bool = False, legacy_budget: bool = False,
-                       **callbacks):
+
+def generate_thinking(
+    prompt: str,
+    api_key: str,
+    model: str,
+    budget: int,
+    effort: str | None,
+    adaptive: bool | None,
+    show_thinking: bool,
+    stream: bool,
+    system: str | None = None,
+    display_omitted: bool = False,
+    legacy_budget: bool = False,
+    **callbacks,
+):
     """Returns the ThinkingCoder result — a dict from generate_with_thinking
     (non-streaming) or the response string from stream_with_thinking."""
     tc = ThinkingCoder(api_key=api_key, model=model)
     if stream:
         return tc.stream_with_thinking(
-            prompt, system=system, budget_tokens=budget, effort=effort,
-            adaptive=adaptive, legacy_budget=legacy_budget,
-            show_thinking=show_thinking, display_omitted=display_omitted,
+            prompt,
+            system=system,
+            budget_tokens=budget,
+            effort=effort,
+            adaptive=adaptive,
+            legacy_budget=legacy_budget,
+            show_thinking=show_thinking,
+            display_omitted=display_omitted,
             **callbacks,
         )
     return tc.generate_with_thinking(
-        prompt, system=system, budget_tokens=budget, effort=effort,
-        adaptive=adaptive, legacy_budget=legacy_budget,
-        show_thinking=show_thinking, display_omitted=display_omitted,
+        prompt,
+        system=system,
+        budget_tokens=budget,
+        effort=effort,
+        adaptive=adaptive,
+        legacy_budget=legacy_budget,
+        show_thinking=show_thinking,
+        display_omitted=display_omitted,
         **callbacks,
     )
 
 
-def resolve_thinking_mode_label(api_key: str, model: str, adaptive: Optional[bool],
-                                 legacy_budget: bool) -> str:
-    """"adaptive" or "manual budget_tokens" — used by the CLI layer to
+def resolve_thinking_mode_label(
+    api_key: str, model: str, adaptive: bool | None, legacy_budget: bool
+) -> str:
+    """ "adaptive" or "manual budget_tokens" — used by the CLI layer to
     print the mode banner before making the call."""
     tc = ThinkingCoder(api_key=api_key, model=model)
     return "adaptive" if tc._resolve_mode(adaptive, legacy_budget) else "manual budget_tokens"
@@ -138,12 +176,18 @@ def resolve_thinking_mode_label(api_key: str, model: str, adaptive: Optional[boo
 
 # ── Token counting ───────────────────────────────────────────────────────
 
-def count_tokens(prompt: str, api_key: str, model: str, system: Optional[str] = None,
-                  file_path: Optional[str] = None, budget: Optional[int] = None) -> dict:
+
+def count_tokens(
+    prompt: str,
+    api_key: str,
+    model: str,
+    system: str | None = None,
+    file_path: str | None = None,
+    budget: int | None = None,
+) -> dict:
     """Returns {"tokens": int, "estimate": dict, "budget": {...} | None}."""
     tc = TokenCounter(api_key=api_key, model=model)
-    result = tc.count_file(file_path, prompt, system=system) if file_path \
-        else tc.count(prompt, system=system)
+    result = tc.count_file(file_path, prompt, system=system) if file_path else tc.count(prompt, system=system)
 
     tokens = result.get("input_tokens", 0)
     estimate = tc.estimate_cost(tokens, model)
@@ -151,16 +195,22 @@ def count_tokens(prompt: str, api_key: str, model: str, system: Optional[str] = 
     budget_info = None
     if budget:
         pct = tokens / budget * 100
-        budget_info = {"pct": pct, "over": tokens > budget,
-                        "remaining": budget - tokens, "exceeded_by": tokens - budget}
+        budget_info = {
+            "pct": pct,
+            "over": tokens > budget,
+            "remaining": budget - tokens,
+            "exceeded_by": tokens - budget,
+        }
 
     return {"tokens": tokens, "estimate": estimate, "budget": budget_info}
 
 
 # ── zai-live REPL session ────────────────────────────────────────────────
 
-def create_live_session(api_key: str, model: str = "claude-sonnet-5",
-                         temperature: float = 0.7, personality_prompt: str = "") -> LiveSession:
+
+def create_live_session(
+    api_key: str, model: str = "claude-sonnet-5", temperature: float = 0.7, personality_prompt: str = ""
+) -> LiveSession:
     return LiveSession(api_key, model, temperature, personality_prompt)
 
 

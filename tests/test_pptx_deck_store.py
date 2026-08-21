@@ -40,7 +40,7 @@ def test_apply_code_denylist_blocks_dangerous_code():
 def test_apply_code_rolls_back_on_exception():
     s = PptxSession()
     s.apply_code('add_slide("first")')
-    ok, msg = s.apply_code('undefined_function_call()')
+    ok, msg = s.apply_code("undefined_function_call()")
     assert ok is False
     assert "ERROR" in msg
     # rollback: still just the one slide from before the failed turn
@@ -102,6 +102,7 @@ def test_summary_includes_table_and_chart_markers():
 
 def test_missing_python_pptx_raises_importerror(monkeypatch):
     import infrastructure.local_storage.pptx_deck_store as store
+
     monkeypatch.setattr(store, "Presentation", None)
     with pytest.raises(ImportError):
         store.PptxSession()

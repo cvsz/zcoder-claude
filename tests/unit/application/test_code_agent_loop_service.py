@@ -7,16 +7,16 @@ loop), migrated 2026-08-17. Fake gateway/store classes substituted in —
 no print() capture, no real network, no real filesystem outside
 tmp_path/monkeypatched env vars.
 """
+
 import json
 
 import application.code_agent_loop_service as service
 
-
 # ── Session lifecycle ────────────────────────────────────────────────────
 
+
 def test_load_or_create_session_no_id_creates_new():
-    session, resumed = service.load_or_create_session(None, ".", "claude-sonnet-5",
-                                                        "askPermission", None)
+    session, resumed = service.load_or_create_session(None, ".", "claude-sonnet-5", "askPermission", None)
     assert resumed is False
     assert session.model == "claude-sonnet-5"
 
@@ -26,11 +26,18 @@ def test_load_or_create_session_existing_id_resumes(monkeypatch):
         id = "abc123"
         turns = [1, 2]
 
-    monkeypatch.setattr(service, "CodeSession", type("S", (), {
-        "load": staticmethod(lambda sid: FakeSession()),
-    }))
-    session, resumed = service.load_or_create_session("abc123", ".", "claude-sonnet-5",
-                                                        "askPermission", None)
+    monkeypatch.setattr(
+        service,
+        "CodeSession",
+        type(
+            "S",
+            (),
+            {
+                "load": staticmethod(lambda sid: FakeSession()),
+            },
+        ),
+    )
+    session, resumed = service.load_or_create_session("abc123", ".", "claude-sonnet-5", "askPermission", None)
     assert resumed is True
     assert session.id == "abc123"
 
@@ -44,20 +51,28 @@ def test_load_or_create_session_missing_id_falls_back_to_new(monkeypatch):
     class FakeSessionCls:
         load = staticmethod(raise_not_found)
 
-        def __init__(self, session_id=None, cwd=".", model="claude-sonnet-5",
-                     permission_mode="askPermission", system_prompt=""):
+        def __init__(
+            self,
+            session_id=None,
+            cwd=".",
+            model="claude-sonnet-5",
+            permission_mode="askPermission",
+            system_prompt="",
+        ):
             self.id = session_id
             self.cwd = cwd
 
     monkeypatch.setattr(service, "CodeSession", FakeSessionCls)
-    session, resumed = service.load_or_create_session("missing-id", ".", "claude-sonnet-5",
-                                                        "askPermission", None)
+    session, resumed = service.load_or_create_session(
+        "missing-id", ".", "claude-sonnet-5", "askPermission", None
+    )
     assert resumed is False
     assert session.id == "missing-id"
     monkeypatch.setattr(service, "CodeSession", real_session_cls)
 
 
 # ── Output style ─────────────────────────────────────────────────────────
+
 
 def test_apply_output_style_appends_fragment(monkeypatch):
     import sys
@@ -75,6 +90,7 @@ def test_apply_output_style_appends_fragment(monkeypatch):
 
 def test_apply_output_style_missing_module_is_noop(monkeypatch):
     import builtins
+
     real_import = builtins.__import__
 
     def fake_import(name, *a, **k):
@@ -91,6 +107,7 @@ def test_apply_output_style_missing_module_is_noop(monkeypatch):
 
 # ── Sandbox / plugin bins ────────────────────────────────────────────────
 
+
 def test_enable_sandbox_sets_env_vars(monkeypatch, tmp_path):
     monkeypatch.delenv("AI_CODER_SANDBOX", raising=False)
     monkeypatch.delenv("AI_CODER_SANDBOX_NET", raising=False)
@@ -99,6 +116,7 @@ def test_enable_sandbox_sets_env_vars(monkeypatch, tmp_path):
     service.enable_sandbox(str(tmp_path), allow_net=True, extra_roots=["/extra"])
 
     import os
+
     assert os.environ["AI_CODER_SANDBOX"] == "1"
     assert os.environ["AI_CODER_SANDBOX_NET"] == "1"
     roots = json.loads(os.environ["AI_CODER_SANDBOX_ROOTS"])
@@ -109,10 +127,12 @@ def test_enable_sandbox_sets_env_vars(monkeypatch, tmp_path):
 def test_enable_sandbox_net_blocked_by_default(monkeypatch, tmp_path):
     service.enable_sandbox(str(tmp_path), allow_net=False)
     import os
+
     assert os.environ["AI_CODER_SANDBOX_NET"] == "0"
 
 
 # ── Context editing ──────────────────────────────────────────────────────
+
 
 def test_build_agent_context_editing_disabled_returns_none():
     assert service.build_agent_context_editing(False) is None
@@ -127,6 +147,7 @@ def test_build_agent_context_editing_enabled_builds_clear_tool_uses():
 
 # ── Agent query orchestration ────────────────────────────────────────────
 
+
 def test_run_agent_query_forwards_all_args_and_callbacks():
     captured = {}
 
@@ -136,8 +157,14 @@ def test_run_agent_query_forwards_all_args_and_callbacks():
             return "final text"
 
     result = service.run_agent_query(
-        FakeAgent(), "do it", session=object(), tools="all", permission="askPermission",
-        hooks=object(), output_mode="stream", context_management=None,
+        FakeAgent(),
+        "do it",
+        session=object(),
+        tools="all",
+        permission="askPermission",
+        hooks=object(),
+        output_mode="stream",
+        context_management=None,
         on_text=lambda t: None,
     )
     assert result == "final text"
@@ -172,9 +199,9 @@ def test_run_subagent_uses_safe_tools_and_accept_edits(monkeypatch, tmp_path):
 
 # ── Todo generation (both outcomes) ──────────────────────────────────────
 
+
 def test_generate_todos_parses_json_array(monkeypatch, tmp_path):
-    monkeypatch.setattr("infrastructure.local_storage.code_agent_store.TODO_FILE",
-                         tmp_path / "todos.json")
+    monkeypatch.setattr("infrastructure.local_storage.code_agent_store.TODO_FILE", tmp_path / "todos.json")
 
     class FakeAgent:
         def __init__(self, api_key, model):
@@ -193,8 +220,7 @@ def test_generate_todos_no_match_returns_nothing_silently(monkeypatch, tmp_path)
     """Matches the original's exact (arguably surprising) behavior: if
     the response contains no '[...]' at all, nothing is printed and
     nothing is added — this is neither a match nor an exception."""
-    monkeypatch.setattr("infrastructure.local_storage.code_agent_store.TODO_FILE",
-                         tmp_path / "todos.json")
+    monkeypatch.setattr("infrastructure.local_storage.code_agent_store.TODO_FILE", tmp_path / "todos.json")
 
     class FakeAgent:
         def __init__(self, api_key, model):
@@ -210,8 +236,7 @@ def test_generate_todos_no_match_returns_nothing_silently(monkeypatch, tmp_path)
 
 
 def test_generate_todos_malformed_json_returns_raw_text(monkeypatch, tmp_path):
-    monkeypatch.setattr("infrastructure.local_storage.code_agent_store.TODO_FILE",
-                         tmp_path / "todos.json")
+    monkeypatch.setattr("infrastructure.local_storage.code_agent_store.TODO_FILE", tmp_path / "todos.json")
 
     class FakeAgent:
         def __init__(self, api_key, model):
@@ -227,6 +252,7 @@ def test_generate_todos_malformed_json_returns_raw_text(monkeypatch, tmp_path):
 
 
 # ── Slash-command helpers ────────────────────────────────────────────────
+
 
 def test_find_custom_command_in_commands_dir(tmp_path, monkeypatch):
     commands_dir = tmp_path / ".claude" / "commands"
@@ -259,14 +285,14 @@ def test_run_custom_command_combines_content_and_prompt(monkeypatch, tmp_path):
             return "done"
 
     monkeypatch.setattr(service, "CodeAgent", FakeAgent)
-    service.run_custom_command("Review this code", "focus on security", "k",
-                                "claude-sonnet-5", str(tmp_path))
+    service.run_custom_command("Review this code", "focus on security", "k", "claude-sonnet-5", str(tmp_path))
     assert captured["prompt"] == "Review this code\n\nfocus on security"
     assert captured["tools"] == "code"
     assert captured["permission"] == "acceptEdits"
 
 
 # ── Session listing / diagnostics ────────────────────────────────────────
+
 
 def test_list_session_files_skips_unparseable(tmp_path, monkeypatch):
     # list_session_files() resolves SESSIONS_DIR from application/

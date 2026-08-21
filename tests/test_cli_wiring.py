@@ -9,6 +9,7 @@ way claude_github.py, claude_metrics.py, claude_prompt_optimizer.py,
 and claude_router.py were before this cycle: fully written, fully
 tested at the function level, and never given a CLI flag.
 """
+
 import ast
 import glob
 import os
@@ -35,8 +36,11 @@ KNOWN_EXCEPTIONS = {
 def _cmd_functions(path):
     """Top-level `def cmd_*` function names in a Python source file."""
     tree = ast.parse(open(path, encoding="utf-8").read(), filename=path)
-    return [node.name for node in ast.iter_child_nodes(tree)
-            if isinstance(node, ast.FunctionDef) and node.name.startswith("cmd_")]
+    return [
+        node.name
+        for node in ast.iter_child_nodes(tree)
+        if isinstance(node, ast.FunctionDef) and node.name.startswith("cmd_")
+    ]
 
 
 def _all_claude_modules():
@@ -53,8 +57,7 @@ def main_source():
     return "\n".join(sources)
 
 
-@pytest.mark.parametrize("module_path", _all_claude_modules(),
-                         ids=lambda p: os.path.basename(p))
+@pytest.mark.parametrize("module_path", _all_claude_modules(), ids=lambda p: os.path.basename(p))
 def test_every_cmd_function_is_referenced_in_main(module_path, main_source):
     module_name = os.path.basename(module_path)
     for fn in _cmd_functions(module_path):
@@ -76,9 +79,9 @@ def test_known_exceptions_still_point_at_real_functions():
     for module_name, fn in KNOWN_EXCEPTIONS:
         module_path = os.path.join(REPO_ROOT, module_name)
         assert os.path.exists(module_path), f"{module_name} no longer exists"
-        assert fn in _cmd_functions(module_path), (
-            f"{module_name}.{fn} no longer defined — remove from KNOWN_EXCEPTIONS"
-        )
+        assert fn in _cmd_functions(
+            module_path
+        ), f"{module_name}.{fn} no longer defined — remove from KNOWN_EXCEPTIONS"
 
 
 # ── Targeted dispatch tests for the four newly-wired modules ────────────
@@ -87,10 +90,12 @@ def test_known_exceptions_still_point_at_real_functions():
 @pytest.fixture
 def parsed_args():
     import main as main_mod
+
     parser = main_mod.build_parser()
 
     def _parse(argv):
         return parser.parse_args(argv)
+
     return _parse
 
 
@@ -124,8 +129,9 @@ def test_optimize_flag_parses(parsed_args):
 
 
 def test_ab_test_flags_parse(parsed_args):
-    args = parsed_args(["--ab-test", "--prompt", "variant A", "--ab-prompt-b", "variant B",
-                        "--ab-task", "summarize a doc"])
+    args = parsed_args(
+        ["--ab-test", "--prompt", "variant A", "--ab-prompt-b", "variant B", "--ab-task", "summarize a doc"]
+    )
     assert args.ab_test is True
     assert args.prompt == "variant A"
     assert args.ab_prompt_b == "variant B"
@@ -149,6 +155,7 @@ def test_metrics_export_flag_parses(parsed_args):
 
 def _run_main_with(monkeypatch, argv, api_key="sk-ant-test"):
     import main as main_mod
+
     monkeypatch.setattr("sys.argv", ["main.py"] + argv)
     monkeypatch.setenv("ANTHROPIC_API_KEY", api_key)
     main_mod.main()
@@ -156,6 +163,7 @@ def _run_main_with(monkeypatch, argv, api_key="sk-ant-test"):
 
 def test_route_list_dispatches_to_cmd_route_list(monkeypatch):
     import claude_router
+
     called = {}
     monkeypatch.setattr(claude_router, "cmd_route_list", lambda *a, **k: called.setdefault("hit", True))
     _run_main_with(monkeypatch, ["--route-list"])
@@ -164,32 +172,36 @@ def test_route_list_dispatches_to_cmd_route_list(monkeypatch):
 
 def test_prompt_lib_list_dispatches(monkeypatch):
     import claude_prompt_optimizer
+
     called = {}
-    monkeypatch.setattr(claude_prompt_optimizer, "cmd_prompt_lib_list",
-                        lambda *a, **k: called.setdefault("hit", True))
+    monkeypatch.setattr(
+        claude_prompt_optimizer, "cmd_prompt_lib_list", lambda *a, **k: called.setdefault("hit", True)
+    )
     _run_main_with(monkeypatch, ["--prompt-lib-list"])
     assert called.get("hit") is True
 
 
 def test_metrics_clear_dispatches(monkeypatch):
     import claude_metrics
+
     called = {}
-    monkeypatch.setattr(claude_metrics, "cmd_metrics_clear",
-                        lambda *a, **k: called.setdefault("hit", True))
+    monkeypatch.setattr(claude_metrics, "cmd_metrics_clear", lambda *a, **k: called.setdefault("hit", True))
     _run_main_with(monkeypatch, ["--metrics-clear"])
     assert called.get("hit") is True
 
 
 def test_gh_triage_dispatches_with_positional_order(monkeypatch):
     import claude_github
+
     seen = {}
 
     def fake_triage(repo, max_items, token, api_key, model):
         seen.update(repo=repo, max_items=max_items, token=token)
 
     monkeypatch.setattr(claude_github, "cmd_gh_triage", fake_triage)
-    _run_main_with(monkeypatch, ["--gh-triage-issues", "acme/widgets",
-                                "--gh-max-items", "5", "--gh-token", "ghp_x"])
+    _run_main_with(
+        monkeypatch, ["--gh-triage-issues", "acme/widgets", "--gh-max-items", "5", "--gh-token", "ghp_x"]
+    )
     assert seen == {"repo": "acme/widgets", "max_items": 5, "token": "ghp_x"}
 
 
@@ -220,8 +232,15 @@ def test_member_role_set_flag_parses(parsed_args):
 
 
 def test_invite_create_with_rbac_groups_parses(parsed_args):
-    args = parsed_args(["--invite-create", "jane@example.com", "managed",
-                        "--invite-rbac-groups", "rbac_group_01Ab,rbac_group_02Cd"])
+    args = parsed_args(
+        [
+            "--invite-create",
+            "jane@example.com",
+            "managed",
+            "--invite-rbac-groups",
+            "rbac_group_01Ab,rbac_group_02Cd",
+        ]
+    )
     assert args.invite_create == ["jane@example.com", "managed"]
     assert args.invite_rbac_groups == "rbac_group_01Ab,rbac_group_02Cd"
 
@@ -248,6 +267,7 @@ def test_ce_user_management_dispatch_requires_admin_key(monkeypatch, capsys):
 
 def test_members_list_dispatches_to_cmd(monkeypatch):
     import claude_admin_api
+
     seen = {}
 
     def fake_members_list(admin_key, limit=20, email=None):

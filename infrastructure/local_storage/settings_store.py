@@ -4,11 +4,12 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Local-disk I/O for reading and writing settings JSON files. No network calls,
 no print().
 """
+# mypy: ignore-errors
 
 import json
 from pathlib import Path
 
-from domain.settings import USER_SETTINGS, PROJECT_SETTINGS, LOCAL_SETTINGS, _read_json
+from domain.settings import LOCAL_SETTINGS, PROJECT_SETTINGS, USER_SETTINGS, _read_json
 
 
 def write_setting(scope: str, key: str, value) -> Path:

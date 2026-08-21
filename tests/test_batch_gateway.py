@@ -62,8 +62,9 @@ class FakeAnthropicClient:
 def test_init_warns_when_model_ineligible_for_300k(monkeypatch):
     monkeypatch.setattr(gateway.anthropic, "Anthropic", FakeAnthropicClient)
     warnings = []
-    gateway.BatchCoder(api_key="key", model="claude-haiku-4-5-20251001",
-                        use_300k_output=True, on_warning=warnings.append)
+    gateway.BatchCoder(
+        api_key="key", model="claude-haiku-4-5-20251001", use_300k_output=True, on_warning=warnings.append
+    )
     assert len(warnings) == 1
     assert "OUTPUT_300K_MODELS" in warnings[0]
 
@@ -71,24 +72,25 @@ def test_init_warns_when_model_ineligible_for_300k(monkeypatch):
 def test_init_no_warning_for_eligible_model(monkeypatch):
     monkeypatch.setattr(gateway.anthropic, "Anthropic", FakeAnthropicClient)
     warnings = []
-    gateway.BatchCoder(api_key="key", model="claude-sonnet-5",
-                        use_300k_output=True, on_warning=warnings.append)
+    gateway.BatchCoder(
+        api_key="key", model="claude-sonnet-5", use_300k_output=True, on_warning=warnings.append
+    )
     assert warnings == []
 
 
 def test_init_no_warning_when_300k_not_requested(monkeypatch):
     monkeypatch.setattr(gateway.anthropic, "Anthropic", FakeAnthropicClient)
     warnings = []
-    gateway.BatchCoder(api_key="key", model="claude-haiku-4-5-20251001",
-                        use_300k_output=False, on_warning=warnings.append)
+    gateway.BatchCoder(
+        api_key="key", model="claude-haiku-4-5-20251001", use_300k_output=False, on_warning=warnings.append
+    )
     assert warnings == []
 
 
 def test_default_on_warning_is_noop_when_unspecified(monkeypatch):
     monkeypatch.setattr(gateway.anthropic, "Anthropic", FakeAnthropicClient)
     # Should not raise or print — default callback is a true no-op.
-    gateway.BatchCoder(api_key="key", model="claude-haiku-4-5-20251001",
-                        use_300k_output=True)
+    gateway.BatchCoder(api_key="key", model="claude-haiku-4-5-20251001", use_300k_output=True)
 
 
 def test_wait_calls_on_progress_and_stops_when_ended(monkeypatch):

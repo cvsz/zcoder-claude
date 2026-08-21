@@ -20,15 +20,21 @@ existing imports keep working unmodified.
 """
 
 from domain.advisor import (
-    ADVISOR_TOOL_TYPE, ADVISOR_TOOL_BETA, ADVISOR_EXECUTOR_MODELS,
-    build_advisor_tool, strip_advisor_blocks,
+    ADVISOR_EXECUTOR_MODELS,
+    ADVISOR_TOOL_BETA,
+    ADVISOR_TOOL_TYPE,
+    build_advisor_tool,
+    strip_advisor_blocks,
 )
 from infrastructure.anthropic_api.advisor_gateway import AdvisorGateway
 from interfaces.cli.commands.advisor_commands import cmd_advisor
 
 __all__ = [
-    "ADVISOR_TOOL_TYPE", "ADVISOR_TOOL_BETA", "ADVISOR_EXECUTOR_MODELS",
-    "build_advisor_tool", "strip_advisor_blocks",
+    "ADVISOR_TOOL_TYPE",
+    "ADVISOR_TOOL_BETA",
+    "ADVISOR_EXECUTOR_MODELS",
+    "build_advisor_tool",
+    "strip_advisor_blocks",
     "AdvisorGateway",
     "cmd_advisor",
 ]

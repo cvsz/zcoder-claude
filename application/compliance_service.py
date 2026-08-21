@@ -14,35 +14,46 @@ That choice now lives here as list_activities_page() / iterate_all_activities()
 rather than duplicated if a second interface needs the same behavior.
 """
 
-from typing import Iterator, Optional
+from collections.abc import Iterator
 
 from infrastructure.anthropic_api.compliance_gateway import ComplianceApiClient
 
-
 # ── Activity Feed ────────────────────────────────────────────────────────
 
-def list_activities_page(api_key: str, since: Optional[str] = None,
-                         until: Optional[str] = None,
-                         activity_types: Optional[list] = None,
-                         limit: int = 100) -> dict:
+
+def list_activities_page(
+    api_key: str,
+    since: str | None = None,
+    until: str | None = None,
+    activity_types: list | None = None,
+    limit: int = 100,
+) -> dict:
     return ComplianceApiClient(api_key).list_activities(
-        limit=limit, activity_types=activity_types,
-        created_at_gte=since, created_at_lte=until,
+        limit=limit,
+        activity_types=activity_types,
+        created_at_gte=since,
+        created_at_lte=until,
     )
 
 
-def iterate_all_activities(api_key: str, since: Optional[str] = None,
-                           until: Optional[str] = None,
-                           activity_types: Optional[list] = None,
-                           limit: int = 100) -> Iterator[dict]:
+def iterate_all_activities(
+    api_key: str,
+    since: str | None = None,
+    until: str | None = None,
+    activity_types: list | None = None,
+    limit: int = 100,
+) -> Iterator[dict]:
     client = ComplianceApiClient(api_key)
     yield from client.iterate_activities(
-        activity_types=activity_types, created_at_gte=since, created_at_lte=until,
+        activity_types=activity_types,
+        created_at_gte=since,
+        created_at_lte=until,
         page_size=min(limit, 5000) or 100,
     )
 
 
 # ── Chats ────────────────────────────────────────────────────────────────
+
 
 def list_chats(api_key: str, user_ids: list, limit: int = 100) -> dict:
     return ComplianceApiClient(api_key).list_chats(user_ids, limit=limit)
@@ -58,6 +69,7 @@ def delete_chat(api_key: str, chat_id: str) -> dict:
 
 # ── Files ────────────────────────────────────────────────────────────────
 
+
 def download_file(api_key: str, file_id: str) -> tuple:
     """(content_bytes, filename, mime_type). Writing to disk stays in the
     CLI layer — this just fetches."""
@@ -69,6 +81,7 @@ def delete_file(api_key: str, file_id: str) -> dict:
 
 
 # ── Projects ─────────────────────────────────────────────────────────────
+
 
 def list_projects(api_key: str, limit: int = 100) -> dict:
     return ComplianceApiClient(api_key).list_projects(limit=limit)
@@ -90,6 +103,7 @@ def delete_project(api_key: str, project_id: str) -> dict:
 
 # ── Organizations / roles / settings ────────────────────────────────────
 
+
 def list_organizations(api_key: str) -> dict:
     return ComplianceApiClient(api_key).list_organizations()
 
@@ -108,6 +122,7 @@ def get_effective_settings(api_key: str, org_uuid: str) -> dict:
 
 # ── Groups ───────────────────────────────────────────────────────────────
 
+
 def list_groups(api_key: str) -> dict:
     return ComplianceApiClient(api_key).list_groups()
 
@@ -118,10 +133,13 @@ def list_group_members(api_key: str, group_id: str) -> dict:
 
 # ── Session transcripts (local: Cowork/Claude Code on-device; remote: Cowork cloud) ──
 
-def list_local_sessions(api_key: str, since: Optional[str] = None,
-                        until: Optional[str] = None, limit: int = 100) -> dict:
+
+def list_local_sessions(
+    api_key: str, since: str | None = None, until: str | None = None, limit: int = 100
+) -> dict:
     return ComplianceApiClient(api_key).list_local_sessions(
-        created_at_gte=since, created_at_lt=until, limit=limit)
+        created_at_gte=since, created_at_lt=until, limit=limit
+    )
 
 
 def get_local_session(api_key: str, session_id: str) -> dict:
@@ -132,14 +150,20 @@ def get_local_session_messages(api_key: str, session_id: str) -> dict:
     return ComplianceApiClient(api_key).get_local_session_messages(session_id)
 
 
-def list_remote_sessions(api_key: str, since: Optional[str] = None,
-                         until: Optional[str] = None,
-                         user_ids: Optional[list] = None,
-                         organization_ids: Optional[list] = None,
-                         limit: int = 100) -> dict:
+def list_remote_sessions(
+    api_key: str,
+    since: str | None = None,
+    until: str | None = None,
+    user_ids: list | None = None,
+    organization_ids: list | None = None,
+    limit: int = 100,
+) -> dict:
     return ComplianceApiClient(api_key).list_remote_sessions(
-        organization_ids=organization_ids, user_ids=user_ids,
-        created_at_gte=since, created_at_lt=until, limit=limit,
+        organization_ids=organization_ids,
+        user_ids=user_ids,
+        created_at_gte=since,
+        created_at_lt=until,
+        limit=limit,
     )
 
 

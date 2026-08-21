@@ -69,8 +69,9 @@ def test_delete_file_delegates(monkeypatch):
 
 def test_ask_about_file_forwards_media_type(monkeypatch):
     monkeypatch.setattr(service, "FilesAPI", FakeFilesAPI)
-    result = service.ask_about_file("file_123", "what is this?", "key",
-                                     "claude-sonnet-5", media_type="image/png")
+    result = service.ask_about_file(
+        "file_123", "what is this?", "key", "claude-sonnet-5", media_type="image/png"
+    )
     assert result == "the answer"
     assert FakeFilesAPI.instances[0].asked == ("file_123", "what is this?", "image/png")
 

@@ -6,15 +6,16 @@ Orchestrates domain/settings.py + infrastructure/local_storage/settings_store.py
 """
 
 from pathlib import Path
-from typing import Optional
 
 from domain.settings import (
-    load_settings, load_settings_with_provenance, render_status_line,
+    load_settings,
+    load_settings_with_provenance,
+    render_status_line,
 )
 from infrastructure.local_storage.settings_store import write_setting
 
 
-def get_merged_settings(cli_overrides: Optional[dict] = None) -> dict:
+def get_merged_settings(cli_overrides: dict | None = None) -> dict:
     return load_settings(cli_overrides)
 
 
@@ -26,7 +27,7 @@ def update_setting(scope: str, key: str, value) -> Path:
     return write_setting(scope, key, value)
 
 
-def render_status_line_text(session_state: dict, settings: Optional[dict] = None) -> str:
+def render_status_line_text(session_state: dict, settings: dict | None = None) -> str:
     sl = (settings or load_settings()).get("statusLine", {})
     command = sl.get("command") if isinstance(sl, dict) else None
     return render_status_line(session_state, command)

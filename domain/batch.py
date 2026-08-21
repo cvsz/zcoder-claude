@@ -18,7 +18,10 @@ infrastructure/anthropic_api/batch_gateway.py ever puts it on the wire.
 # synchronous Messages API max_output values are unaffected.
 OUTPUT_300K_BETA = "output-300k-2026-03-24"
 OUTPUT_300K_MODELS = {
-    "claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6",
-    "claude-sonnet-5", "claude-sonnet-4-6",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
+    "claude-opus-4-6",
+    "claude-sonnet-5",
+    "claude-sonnet-4-6",
 }
 OUTPUT_300K_MAX_TOKENS = 300_000

@@ -12,13 +12,25 @@ this shim.
 """
 
 from infrastructure.anthropic_api.vision_gateway import (
-    VisionCoder, SUPPORTED_IMAGE_TYPES, SUPPORTED_DOC_TYPES,
+    SUPPORTED_DOC_TYPES,
+    SUPPORTED_IMAGE_TYPES,
+    VisionCoder,
 )
 from interfaces.cli.commands.tools_commands import (
-    cmd_vision, cmd_vision_url, cmd_vision_pdf, cmd_vision_compare, cmd_vision_ocr,
+    cmd_vision,
+    cmd_vision_compare,
+    cmd_vision_ocr,
+    cmd_vision_pdf,
+    cmd_vision_url,
 )
 
 __all__ = [
-    "VisionCoder", "SUPPORTED_IMAGE_TYPES", "SUPPORTED_DOC_TYPES",
-    "cmd_vision", "cmd_vision_url", "cmd_vision_pdf", "cmd_vision_compare", "cmd_vision_ocr",
+    "VisionCoder",
+    "SUPPORTED_IMAGE_TYPES",
+    "SUPPORTED_DOC_TYPES",
+    "cmd_vision",
+    "cmd_vision_url",
+    "cmd_vision_pdf",
+    "cmd_vision_compare",
+    "cmd_vision_ocr",
 ]

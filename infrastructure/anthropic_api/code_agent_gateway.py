@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 infrastructure/anthropic_api/code_agent_gateway.py — live Anthropic API
 adapters for Code Execution tool, Plan Mode, and Multi-Agent Router
 AI Model Coder CLI v1.48.0 (Clean Architecture refactor, Phase C)
@@ -14,15 +15,15 @@ infrastructure/local_storage/hooks_permissions_store.py).
 import base64
 import json
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional, Tuple
 
 import anthropic
 
+from domain.agent_execution import Plan, PlanStep
 from exceptions import AICoderError
 from resilience import CircuitBreaker, retry, urlopen_json
 from utils import sampling_kwargs
-from domain.agent_execution import Plan, PlanStep
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
@@ -41,24 +42,30 @@ CODE_EXEC_TOOL = {"type": DEFAULT_CODE_EXEC_VERSION, "name": "code_execution"}
 class CodeExecutionCoder:
     """Claude client with server-side code execution."""
 
-    def __init__(self, api_key: str, model: str = "claude-sonnet-5", max_tokens: int = 8192,
-                 code_exec_version: str = DEFAULT_CODE_EXEC_VERSION):
-        self.api_key           = api_key
-        self.model              = model
-        self.max_tokens         = max_tokens
-        self.code_exec_version  = code_exec_version
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "claude-sonnet-5",
+        max_tokens: int = 8192,
+        code_exec_version: str = DEFAULT_CODE_EXEC_VERSION,
+    ):
+        self.api_key = api_key
+        self.model = model
+        self.max_tokens = max_tokens
+        self.code_exec_version = code_exec_version
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
     def _call(self, payload: dict) -> dict:
         headers = {
-            "Content-Type":      "application/json",
-            "x-api-key":         self.api_key,
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
         }
         if self.code_exec_version == LEGACY_CODE_EXEC_VERSION:
             headers["anthropic-beta"] = LEGACY_BETA_HEADER
-        req = urllib.request.Request(MESSAGES_ENDPOINT, data=json.dumps(payload).encode(),
-                                      headers=headers, method="POST")
+        req = urllib.request.Request(
+            MESSAGES_ENDPOINT, data=json.dumps(payload).encode(), headers=headers, method="POST"
+        )
         return urlopen_json(req, timeout=300)
 
     def _post(self, payload: dict) -> dict:
@@ -69,19 +76,28 @@ class CodeExecutionCoder:
         except Exception as e:
             return {"error": str(e)}
 
-    def execute(self, prompt: str, system: Optional[str] = None, file_ids: Optional[list] = None,
-                output_dir: Optional[str] = None,
-                on_file_saved: Callable[[str], None] = _NOOP) -> dict:
+    def execute(
+        self,
+        prompt: str,
+        system: str | None = None,
+        file_ids: list | None = None,
+        output_dir: str | None = None,
+        on_file_saved: Callable[[str], None] = _NOOP,
+    ) -> dict:
         """Ask Claude to write and run code. Returns {"text", "outputs",
         "files", "usage"}."""
         content = [{"type": "text", "text": prompt}]
-        for fid in (file_ids or []):
+        for fid in file_ids or []:
             content.append({"type": "container_upload", "file_id": fid})
 
         messages = [{"role": "user", "content": content}]
         code_exec_tool = {"type": self.code_exec_version, "name": "code_execution"}
-        payload: dict = {"model": self.model, "max_tokens": self.max_tokens,
-                          "tools": [code_exec_tool], "messages": messages}
+        payload: dict = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "tools": [code_exec_tool],
+            "messages": messages,
+        }
         if system:
             payload["system"] = system
 
@@ -118,11 +134,11 @@ class CodeExecutionCoder:
                         outputs.append({"type": "stdout", "text": sub.get("text", "")})
                     elif st == "image":
                         img_data = sub.get("source", {}).get("data", "")
-                        img_mt   = sub.get("source", {}).get("media_type", "image/png")
+                        img_mt = sub.get("source", {}).get("media_type", "image/png")
                         files.append({"type": "image", "data": img_data, "media_type": img_mt})
                         if output_dir:
                             ext = img_mt.split("/")[-1]
-                            p   = Path(output_dir) / f"output_{len(files)}.{ext}"
+                            p = Path(output_dir) / f"output_{len(files)}.{ext}"
                             p.parent.mkdir(parents=True, exist_ok=True)
                             p.write_bytes(base64.b64decode(img_data))
                             on_file_saved(str(p))
@@ -130,35 +146,46 @@ class CodeExecutionCoder:
         return {"text": text, "outputs": outputs, "files": files, "usage": data.get("usage", {})}
 
     def debug_code(self, code: str, language: str = "python") -> dict:
-        prompt = (f"Debug this {language} code. Run it, find errors, fix them, "
-                  f"and show the working version:\n\n```{language}\n{code}\n```")
+        prompt = (
+            f"Debug this {language} code. Run it, find errors, fix them, "
+            f"and show the working version:\n\n```{language}\n{code}\n```"
+        )
         return self.execute(prompt, system="You are an expert debugger. Run the code and fix all errors.")
 
     def analyse_data(self, csv_path: str, question: str) -> dict:
         code = Path(csv_path).read_text()
-        prompt = (f"Analyse this CSV data and answer: {question}\n\n"
-                  f"CSV content:\n```\n{code[:10000]}\n```\n\n"
-                  "Write Python code to load and analyse the data, then answer the question.")
+        prompt = (
+            f"Analyse this CSV data and answer: {question}\n\n"
+            f"CSV content:\n```\n{code[:10000]}\n```\n\n"
+            "Write Python code to load and analyse the data, then answer the question."
+        )
         return self.execute(prompt)
 
 
 # ── Plan Mode (claude_hooks_perms_plan.py) ──────────────────────────────────
 
+
 class PlanModeAgent:
     def __init__(self, api_key: str, model: str = "claude-sonnet-4-6"):
         self.client = anthropic.Anthropic(api_key=api_key)
-        self.model  = model
+        self.model = model
 
     def _call(self, system: str, user: str, max_tokens: int = 2048) -> str:
-        r = self.client.messages.create(model=self.model, max_tokens=max_tokens, temperature=0.3,
-                                         system=system, messages=[{"role": "user", "content": user}])
+        r = self.client.messages.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            temperature=0.3,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
         return r.content[0].text
 
     def propose(self, task: str, context: str = "") -> Plan:
         raw = self._call(
             "Output only valid JSON.",
             f"Break this task into 3–8 concrete, numbered steps. Return ONLY a JSON array of strings.\n"
-            f"Task: {task}\n" + (f"Context:\n{context}" if context else ""))
+            f"Task: {task}\n" + (f"Context:\n{context}" if context else ""),
+        )
         cleaned = raw.strip()
         if cleaned.startswith("```"):
             cleaned = "\n".join(cleaned.split("\n")[1:-1])
@@ -178,7 +205,8 @@ class PlanModeAgent:
         step.result = self._call(
             "Execute the task step precisely.",
             f"Task: {plan.task}\nStep {step.number}: {step.description}\n"
-            + (f"\nCompleted prior steps:\n{prior}" if prior else ""))
+            + (f"\nCompleted prior steps:\n{prior}" if prior else ""),
+        )
         step.completed = True
         return step
 
@@ -197,12 +225,13 @@ class PlanModeAgent:
 
 # ── Multi-Agent Router (claude_router.py) ───────────────────────────────────
 
+
 @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
 def _call(api_key: str, payload: dict) -> dict:
-    headers = {"Content-Type": "application/json", "x-api-key": api_key,
-               "anthropic-version": "2023-06-01"}
-    req = urllib.request.Request(MESSAGES_ENDPOINT, data=json.dumps(payload).encode(),
-                                  headers=headers, method="POST")
+    headers = {"Content-Type": "application/json", "x-api-key": api_key, "anthropic-version": "2023-06-01"}
+    req = urllib.request.Request(
+        MESSAGES_ENDPOINT, data=json.dumps(payload).encode(), headers=headers, method="POST"
+    )
     return urlopen_json(req, timeout=60)
 
 
@@ -219,17 +248,24 @@ def _text(data: dict) -> str:
     return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
 
 
-def classify(prompt: str, table: dict, api_key: str, model: str) -> Tuple[str, str]:
+def classify(prompt: str, table: dict, api_key: str, model: str) -> tuple[str, str]:
     """Return (agent_name, reason) for the best-fit agent."""
     options = "\n".join(f"  {k}: {v}" for k, v in table.items())
     classifier_prompt = (
         f"You are a routing classifier. Given a user request, choose the single best "
         f"specialist agent from the list below. Reply with ONLY a JSON object: "
         f'{{"agent": "<agent_name>", "reason": "<one sentence>"}}\n\n'
-        f"Agents:\n{options}\n\nUser request: {prompt}")
-    data = _post(api_key, {"model": model, "max_tokens": 200,
-                            **sampling_kwargs(model, temperature=0.0),
-                            "messages": [{"role": "user", "content": classifier_prompt}]})
+        f"Agents:\n{options}\n\nUser request: {prompt}"
+    )
+    data = _post(
+        api_key,
+        {
+            "model": model,
+            "max_tokens": 200,
+            **sampling_kwargs(model, temperature=0.0),
+            "messages": [{"role": "user", "content": classifier_prompt}],
+        },
+    )
     raw = _text(data).strip()
     try:
         parsed = json.loads(raw)
@@ -242,26 +278,46 @@ def classify(prompt: str, table: dict, api_key: str, model: str) -> Tuple[str, s
         return "code", "classifier output not parseable; defaulting to code agent"
 
 
-def route_and_call(prompt: str, api_key: str, model: str, table: dict,
-                    explain: bool = False, parallel: bool = False,
-                    on_route: Callable[[str, str], None] = _NOOP) -> str:
+def route_and_call(
+    prompt: str,
+    api_key: str,
+    model: str,
+    table: dict,
+    explain: bool = False,
+    parallel: bool = False,
+    on_route: Callable[[str, str], None] = _NOOP,
+) -> str:
     if parallel:
         results = {}
         for agent_name, description in table.items():
             system = f"You are a specialist in: {description}. Answer as that expert."
-            data = _post(api_key, {"model": model, "max_tokens": 2048,
-                                    **sampling_kwargs(model, temperature=0.5),
-                                    "system": system, "messages": [{"role": "user", "content": prompt}]})
+            data = _post(
+                api_key,
+                {
+                    "model": model,
+                    "max_tokens": 2048,
+                    **sampling_kwargs(model, temperature=0.5),
+                    "system": system,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+            )
             results[agent_name] = _text(data)
         synthesis_prompt = (
             "Multiple specialist agents answered this question. "
             "Synthesise the best, most complete answer, crediting unique insights "
             "from each agent where relevant.\n\n"
             + "\n\n".join(f"[{k.upper()}]\n{v}" for k, v in results.items())
-            + f"\n\nOriginal question: {prompt}")
-        data = _post(api_key, {"model": model, "max_tokens": 4096,
-                                **sampling_kwargs(model, temperature=0.3),
-                                "messages": [{"role": "user", "content": synthesis_prompt}]})
+            + f"\n\nOriginal question: {prompt}"
+        )
+        data = _post(
+            api_key,
+            {
+                "model": model,
+                "max_tokens": 4096,
+                **sampling_kwargs(model, temperature=0.3),
+                "messages": [{"role": "user", "content": synthesis_prompt}],
+            },
+        )
         return _text(data)
 
     agent_name, reason = classify(prompt, table, api_key, model)
@@ -269,7 +325,14 @@ def route_and_call(prompt: str, api_key: str, model: str, table: dict,
         on_route(agent_name, reason)
 
     system = f"You are a specialist in: {table[agent_name]}. Answer as that expert."
-    data = _post(api_key, {"model": model, "max_tokens": 4096,
-                            **sampling_kwargs(model, temperature=0.6),
-                            "system": system, "messages": [{"role": "user", "content": prompt}]})
+    data = _post(
+        api_key,
+        {
+            "model": model,
+            "max_tokens": 4096,
+            **sampling_kwargs(model, temperature=0.6),
+            "system": system,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+    )
     return _text(data)

@@ -9,31 +9,48 @@ claude_code_exec.py, claude_hooks_perms_plan.py, claude_router.py.
 """
 
 from pathlib import Path
-from typing import Optional
 
 from application import code_agent_service as service
 
 __all__ = [
-    "cmd_code_exec", "cmd_code_debug",
-    "cmd_hooks_add", "cmd_hooks_list", "cmd_hooks_remove",
-    "cmd_perms_list", "cmd_perms_add",
-    "cmd_plan", "cmd_route", "cmd_route_list",
+    "cmd_code_exec",
+    "cmd_code_debug",
+    "cmd_hooks_add",
+    "cmd_hooks_list",
+    "cmd_hooks_remove",
+    "cmd_perms_list",
+    "cmd_perms_add",
+    "cmd_plan",
+    "cmd_route",
+    "cmd_route_list",
 ]
 
 
 # ── Code Execution tool ──────────────────────────────────────────────────
 
-def cmd_code_exec(prompt: str, api_key: str, model: str, file_ids: Optional[list] = None,
-                   output_dir: Optional[str] = None,
-                   code_exec_version: str = "code_execution_20260521"):
+
+def cmd_code_exec(
+    prompt: str,
+    api_key: str,
+    model: str,
+    file_ids: list | None = None,
+    output_dir: str | None = None,
+    code_exec_version: str = "code_execution_20260521",
+):
     print("\033[94mℹ Code Execution Tool (Anthropic sandbox)\033[0m\n")
 
     def on_file_saved(path):
         print(f"  \033[92m✓ Image saved: {path}\033[0m")
 
-    result = service.run_code_exec(prompt, api_key, model, file_ids=file_ids,
-                                    output_dir=output_dir, code_exec_version=code_exec_version,
-                                    on_file_saved=on_file_saved)
+    result = service.run_code_exec(
+        prompt,
+        api_key,
+        model,
+        file_ids=file_ids,
+        output_dir=output_dir,
+        code_exec_version=code_exec_version,
+        on_file_saved=on_file_saved,
+    )
     print(result["text"])
     if result["outputs"]:
         print("\n\033[90m── Execution Trace ─────────────────────\033[0m")
@@ -51,8 +68,9 @@ def cmd_code_exec(prompt: str, api_key: str, model: str, file_ids: Optional[list
     return result
 
 
-def cmd_code_debug(file_path: str, api_key: str, model: str,
-                    code_exec_version: str = "code_execution_20260521"):
+def cmd_code_debug(
+    file_path: str, api_key: str, model: str, code_exec_version: str = "code_execution_20260521"
+):
     print(f"\033[94mℹ Debugging {file_path} with live execution…\033[0m\n")
     result = service.debug_code(file_path, api_key, model, code_exec_version=code_exec_version)
     print(result["text"])
@@ -61,7 +79,8 @@ def cmd_code_debug(file_path: str, api_key: str, model: str,
 
 # ── Hooks ────────────────────────────────────────────────────────────────
 
-def cmd_hooks_add(event: str, command: str, tool_match: Optional[str] = None):
+
+def cmd_hooks_add(event: str, command: str, tool_match: str | None = None):
     service.hooks_add(event, command, tool_match)
     print(f"✓ Hook registered for {event}: {command}")
 
@@ -85,6 +104,7 @@ def cmd_hooks_remove(idx: int):
 
 # ── Permissions ──────────────────────────────────────────────────────────
 
+
 def cmd_perms_list():
     rules = service.perms_list()
     print(f"{'Pattern':<25} {'Decision':<8} Reason")
@@ -100,8 +120,15 @@ def cmd_perms_add(pattern: str, decision: str, reason: str = ""):
 
 # ── Plan Mode ────────────────────────────────────────────────────────────
 
-def cmd_plan(task: str, api_key: str, model: str, context: str = "",
-             execute: bool = False, output: Optional[str] = None):
+
+def cmd_plan(
+    task: str,
+    api_key: str,
+    model: str,
+    context: str = "",
+    execute: bool = False,
+    output: str | None = None,
+):
     plan = service.plan_propose(task, api_key, model, context)
     print(plan.to_markdown())
     if execute:
@@ -115,8 +142,11 @@ def cmd_plan(task: str, api_key: str, model: str, context: str = "",
 
         service.plan_execute_all(plan, api_key, model, on_step_start=on_step_start, on_step=on_step)
         if output:
-            md = plan.to_markdown() + "\n\n" + "\n\n".join(
-                f"## Step {s.number}\n{s.result or ''}" for s in plan.steps)
+            md = (
+                plan.to_markdown()
+                + "\n\n"
+                + "\n\n".join(f"## Step {s.number}\n{s.result or ''}" for s in plan.steps)
+            )
             Path(output).write_text(md)
             print(f"✓ Saved to {output}")
     else:
@@ -125,17 +155,25 @@ def cmd_plan(task: str, api_key: str, model: str, context: str = "",
 
 # ── Multi-Agent Router ───────────────────────────────────────────────────
 
-def cmd_route(prompt: str, api_key: str, model: str, explain: bool = False,
-              parallel: bool = False, extra_table: Optional[dict] = None):
+
+def cmd_route(
+    prompt: str,
+    api_key: str,
+    model: str,
+    explain: bool = False,
+    parallel: bool = False,
+    extra_table: dict | None = None,
+):
     def on_route(agent_name, reason):
         print(f"\033[90m→ Routing to [{agent_name}]: {reason}\033[0m\n")
 
-    answer = service.route_query(prompt, api_key, model, explain=explain, parallel=parallel,
-                                  extra_table=extra_table, on_route=on_route)
+    answer = service.route_query(
+        prompt, api_key, model, explain=explain, parallel=parallel, extra_table=extra_table, on_route=on_route
+    )
     print(answer)
 
 
-def cmd_route_list(extra_table: Optional[dict] = None):
+def cmd_route_list(extra_table: dict | None = None):
     table = service.route_list_table(extra_table)
     print("\n\033[94mRouting Table\033[0m")
     for name, desc in sorted(table.items()):

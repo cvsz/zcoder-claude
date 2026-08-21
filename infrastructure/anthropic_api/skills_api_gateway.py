@@ -7,11 +7,14 @@ container.skills). No print().
 
 import json
 import urllib.request
-from typing import Optional
 
 from domain.skills_api import (
-    CODE_EXECUTION_BETA, SKILLS_BETA, FILES_API_BETA, MESSAGES_ENDPOINT,
-    SkillRef, build_container_skills,
+    CODE_EXECUTION_BETA,
+    FILES_API_BETA,
+    MESSAGES_ENDPOINT,
+    SKILLS_BETA,
+    SkillRef,
+    build_container_skills,
 )
 from exceptions import AICoderError
 from resilience import CircuitBreaker, retry, urlopen_json
@@ -34,8 +37,10 @@ class SkillsApiGateway:
             "anthropic-beta": ",".join(betas),
         }
         req = urllib.request.Request(
-            MESSAGES_ENDPOINT, data=json.dumps(payload).encode(),
-            headers=headers, method="POST",
+            MESSAGES_ENDPOINT,
+            data=json.dumps(payload).encode(),
+            headers=headers,
+            method="POST",
         )
         return urlopen_json(req, timeout=300)
 
@@ -47,8 +52,7 @@ class SkillsApiGateway:
         except Exception as e:
             return {"error": str(e)}
 
-    def call_with_skills(self, prompt: str, skills: list,
-                         system: Optional[str] = None) -> dict:
+    def call_with_skills(self, prompt: str, skills: list, system: str | None = None) -> dict:
         refs = [s if isinstance(s, SkillRef) else SkillRef.prebuilt(s) for s in skills]
         payload = {
             "model": self.model,
@@ -61,10 +65,14 @@ class SkillsApiGateway:
             payload["system"] = system
         return self._post(payload, betas=[CODE_EXECUTION_BETA, SKILLS_BETA])
 
-    def call_with_skills_turn(self, messages: list, skills: list,
-                              container_id: Optional[str] = None,
-                              has_file_uploads: bool = False,
-                              system: Optional[str] = None) -> dict:
+    def call_with_skills_turn(
+        self,
+        messages: list,
+        skills: list,
+        container_id: str | None = None,
+        has_file_uploads: bool = False,
+        system: str | None = None,
+    ) -> dict:
         refs = [s if isinstance(s, SkillRef) else SkillRef.prebuilt(s) for s in skills]
         container = build_container_skills(refs)
         if container_id:

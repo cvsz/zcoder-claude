@@ -5,7 +5,6 @@ Only print() lives here — all real work delegated to
 application/wif_service.py.
 """
 
-
 from application import wif_service as service
 
 
@@ -21,24 +20,30 @@ def cmd_wif_status():
     if status.get("active"):
         print("\\033[92m✓ Federation would activate\\033[0m (all required vars present)")
     else:
-        print("\\033[93mℹ Federation would NOT activate\\033[0m — falls through to a "
-              "static API key. Required: ANTHROPIC_FEDERATION_RULE_ID, "
-              "ANTHROPIC_ORGANIZATION_ID, ANTHROPIC_SERVICE_ACCOUNT_ID, and one of "
-              "ANTHROPIC_IDENTITY_TOKEN_FILE / ANTHROPIC_IDENTITY_TOKEN.")
+        print(
+            "\\033[93mℹ Federation would NOT activate\\033[0m — falls through to a "
+            "static API key. Required: ANTHROPIC_FEDERATION_RULE_ID, "
+            "ANTHROPIC_ORGANIZATION_ID, ANTHROPIC_SERVICE_ACCOUNT_ID, and one of "
+            "ANTHROPIC_IDENTITY_TOKEN_FILE / ANTHROPIC_IDENTITY_TOKEN."
+        )
     return status
 
 
 def cmd_wif_exchange_token():
     result = service.exchange_token()
     if not result:
-        print("\\033[91m✗ WIF is not fully configured in the environment.\\033[0m "
-              "Run --wif-status to see which variables are missing.")
+        print(
+            "\\033[91m✗ WIF is not fully configured in the environment.\\033[0m "
+            "Run --wif-status to see which variables are missing."
+        )
         return None
     access_token = result.get("access_token", "")
     preview = f"{access_token[:14]}...{access_token[-4:]}" if len(access_token) > 20 else "***"
-    print(f"\\033[92m✓ Exchanged for a Claude API access token\\033[0m  "
-          f"token={preview}  expires_in={result.get('expires_in')}s  "
-          f"scope={result.get('scope')}")
+    print(
+        f"\\033[92m✓ Exchanged for a Claude API access token\\033[0m  "
+        f"token={preview}  expires_in={result.get('expires_in')}s  "
+        f"scope={result.get('scope')}"
+    )
     return result
 
 
@@ -80,10 +85,15 @@ def cmd_wif_list_issuers(org_admin_token: str):
     return data
 
 
-def cmd_wif_create_rule(name: str, issuer_id: str, service_account_id: str,
-                        subject_prefix: str, org_admin_token: str):
+def cmd_wif_create_rule(
+    name: str, issuer_id: str, service_account_id: str, subject_prefix: str, org_admin_token: str
+):
     data = service.create_federation_rule(
-        name, issuer_id, service_account_id, subject_prefix, org_admin_token,
+        name,
+        issuer_id,
+        service_account_id,
+        subject_prefix,
+        org_admin_token,
     )
     if "error" in data:
         print(f"\\033[91m✗ Failed to create federation rule: {data['error']}\\033[0m")

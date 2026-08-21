@@ -9,7 +9,6 @@ types are not interchangeable.
 import json
 import urllib.parse
 import urllib.request
-from typing import Optional
 
 from domain.enterprise_analytics import build_analytics_query
 
@@ -21,7 +20,7 @@ class EnterpriseAnalyticsGateway:
         self.api_key = api_key
         self.timeout = timeout
 
-    def _get(self, path: str, params: Optional[dict] = None) -> dict:
+    def _get(self, path: str, params: dict | None = None) -> dict:
         query = urllib.parse.urlencode(params or {}, doseq=True)
         url = f"{BASE_URL}{path}" + (f"?{query}" if query else "")
         req = urllib.request.Request(

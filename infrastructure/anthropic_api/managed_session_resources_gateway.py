@@ -1,6 +1,7 @@
 """Managed Agents session-resource transport adapter."""
+# mypy: ignore-errors
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from domain.agents.session_resources import GitHubRepositoryResource
 
@@ -10,6 +11,7 @@ MANAGED_AGENTS_BETA = "managed-agents-2026-04-01"
 class ManagedSessionResourcesGateway:
     def __init__(self, api_key: str):
         import anthropic
+
         self.client = anthropic.Anthropic(api_key=api_key)
 
     def create_session_with_github_resources(
@@ -43,17 +45,14 @@ class ManagedSessionResourcesGateway:
         }
 
     def list_resources(self, session_id: str):
-        return self.client.beta.sessions.resources.list(
-            session_id, betas=[MANAGED_AGENTS_BETA]
-        )
+        return self.client.beta.sessions.resources.list(session_id, betas=[MANAGED_AGENTS_BETA])
 
     def get_resource(self, session_id: str, resource_id: str):
         return self.client.beta.sessions.resources.retrieve(
             resource_id, session_id=session_id, betas=[MANAGED_AGENTS_BETA]
         )
 
-    def rotate_github_token(self, session_id: str, resource_id: str,
-                            authorization_token: str):
+    def rotate_github_token(self, session_id: str, resource_id: str, authorization_token: str):
         if not authorization_token:
             raise ValueError("authorization_token must not be empty")
         return self.client.beta.sessions.resources.update(

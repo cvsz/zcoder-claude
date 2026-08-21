@@ -4,9 +4,10 @@ Wraps the official SDK beta.skills and beta.skills.versions surfaces.  This
 module contains network I/O only; local SKILL.md parsing/validation belongs in
 domain.skills.
 """
+# mypy: ignore-errors
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Optional
 
 SKILLS_BETA = "skills-2025-10-02"
 
@@ -14,6 +15,7 @@ SKILLS_BETA = "skills-2025-10-02"
 class SkillsManagementGateway:
     def __init__(self, api_key: str):
         import anthropic
+
         self.client = anthropic.Anthropic(api_key=api_key)
 
     @staticmethod
@@ -28,7 +30,7 @@ class SkillsManagementGateway:
                 handle.close()
             raise
 
-    def create_skill(self, file_paths: Iterable[str], display_title: Optional[str] = None):
+    def create_skill(self, file_paths: Iterable[str], display_title: str | None = None):
         handles = self._open_files(file_paths)
         try:
             kwargs = {"files": handles, "betas": [SKILLS_BETA]}
@@ -39,8 +41,7 @@ class SkillsManagementGateway:
             for handle in handles:
                 handle.close()
 
-    def list_skills(self, *, limit: int = 20, page: Optional[str] = None,
-                    source: Optional[str] = None):
+    def list_skills(self, *, limit: int = 20, page: str | None = None, source: str | None = None):
         kwargs = {"limit": limit, "betas": [SKILLS_BETA]}
         if page is not None:
             kwargs["page"] = page
@@ -57,31 +58,22 @@ class SkillsManagementGateway:
     def create_version(self, skill_id: str, file_paths: Iterable[str]):
         handles = self._open_files(file_paths)
         try:
-            return self.client.beta.skills.versions.create(
-                skill_id, files=handles, betas=[SKILLS_BETA]
-            )
+            return self.client.beta.skills.versions.create(skill_id, files=handles, betas=[SKILLS_BETA])
         finally:
             for handle in handles:
                 handle.close()
 
-    def list_versions(self, skill_id: str, *, limit: int = 20,
-                      page: Optional[str] = None):
+    def list_versions(self, skill_id: str, *, limit: int = 20, page: str | None = None):
         kwargs = {"limit": limit, "betas": [SKILLS_BETA]}
         if page is not None:
             kwargs["page"] = page
         return self.client.beta.skills.versions.list(skill_id, **kwargs)
 
     def get_version(self, skill_id: str, version: str):
-        return self.client.beta.skills.versions.retrieve(
-            version, skill_id=skill_id, betas=[SKILLS_BETA]
-        )
+        return self.client.beta.skills.versions.retrieve(version, skill_id=skill_id, betas=[SKILLS_BETA])
 
     def download_version(self, skill_id: str, version: str):
-        return self.client.beta.skills.versions.download(
-            version, skill_id=skill_id, betas=[SKILLS_BETA]
-        )
+        return self.client.beta.skills.versions.download(version, skill_id=skill_id, betas=[SKILLS_BETA])
 
     def delete_version(self, skill_id: str, version: str):
-        return self.client.beta.skills.versions.delete(
-            version, skill_id=skill_id, betas=[SKILLS_BETA]
-        )
+        return self.client.beta.skills.versions.delete(version, skill_id=skill_id, betas=[SKILLS_BETA])

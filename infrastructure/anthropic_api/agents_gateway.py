@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 infrastructure/anthropic_api/agents_gateway.py — Live Anthropic API adapters for the Agent SDK
 AI Model Coder CLI v1.42.0 (Clean Architecture refactor)
 
@@ -10,19 +11,24 @@ interfaces/cli/commands/agent_commands.py) in one 2,300+ line file.
 """
 
 import json
-import urllib.request
 import urllib.error
-from typing import Callable, Optional
+import urllib.request
+from collections.abc import Callable
 
+from domain.agents.agent_config import (
+    DREAMING_BETA,
+    FILES_API_BETA,
+    MEMORY_STORE_BETA,
+    AgentSession,
+    McpServerConfig,
+    _budget_to_dict,
+    _encode_session_budget,
+    _list_cost_cents,
+)
 from exceptions import AICoderError
 from resilience import CircuitBreaker, raise_for_http_error, retry, urlopen_json
-from domain.agents.agent_config import (
-    AgentSession, McpServerConfig,
-    MEMORY_STORE_BETA, DREAMING_BETA, FILES_API_BETA,
-    _encode_session_budget, _budget_to_dict, _list_cost_cents,
-)
 
-ENDPOINT     = "https://api.anthropic.com/v1/messages"
+ENDPOINT = "https://api.anthropic.com/v1/messages"
 MCP_TUNNELS_BETA = "mcp-tunnels-2026-06-22"
 TUNNELS_ENDPOINT = "https://api.anthropic.com/v1/tunnels"
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
@@ -39,8 +45,8 @@ class McpTunnel:
 
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self.tunnel_id: Optional[str] = None
-        self.public_url: Optional[str] = None
+        self.tunnel_id: str | None = None
+        self.public_url: str | None = None
 
     def _headers(self) -> dict:
         return {
@@ -50,7 +56,7 @@ class McpTunnel:
             "anthropic-beta": MCP_TUNNELS_BETA,
         }
 
-    def open(self, local_port: int, name: Optional[str] = None) -> dict:
+    def open(self, local_port: int, name: str | None = None) -> dict:
         """Open a tunnel to a local MCP server listening on local_port.
         Returns the API response, which includes the tunnel id and the
         public URL to hand to McpServerConfig.sse()/http()."""
@@ -58,8 +64,10 @@ class McpTunnel:
         if name:
             payload["name"] = name
         req = urllib.request.Request(
-            TUNNELS_ENDPOINT, data=json.dumps(payload).encode(),
-            headers=self._headers(), method="POST",
+            TUNNELS_ENDPOINT,
+            data=json.dumps(payload).encode(),
+            headers=self._headers(),
+            method="POST",
         )
         try:
             data = self._call(req)
@@ -72,7 +80,7 @@ class McpTunnel:
         return data
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-    def _call(self, req: "urllib.request.Request") -> dict:
+    def _call(self, req: urllib.request.Request) -> dict:
         return urlopen_json(req, timeout=30)
 
     def close(self) -> dict:
@@ -81,7 +89,8 @@ class McpTunnel:
             return {"error": "No open tunnel to close"}
         req = urllib.request.Request(
             f"{TUNNELS_ENDPOINT}/{self.tunnel_id}",
-            headers=self._headers(), method="DELETE",
+            headers=self._headers(),
+            method="DELETE",
         )
         try:
             return self._call_delete(req)
@@ -91,7 +100,7 @@ class McpTunnel:
             return {"error": str(e)}
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-    def _call_delete(self, req: "urllib.request.Request") -> dict:
+    def _call_delete(self, req: urllib.request.Request) -> dict:
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
                 return {"status": r.status}
@@ -106,18 +115,20 @@ class McpTunnel:
             raise RuntimeError("Tunnel not open yet — call open() first")
         return McpServerConfig(transport, name, url=self.public_url)
 
+
 class ManagedAgent:
     """
     Claude Managed Agents via the Messages API.
     Uses agentic tool loops with session persistence.
     """
 
-    def __init__(self, api_key: str, model: str = "claude-sonnet-5",
-                 max_tokens: int = 8192, system_prompt: str = None):
-        self.api_key     = api_key
-        self.model       = model
-        self.max_tokens  = max_tokens
-        self.system      = system_prompt or (
+    def __init__(
+        self, api_key: str, model: str = "claude-sonnet-5", max_tokens: int = 8192, system_prompt: str = None
+    ):
+        self.api_key = api_key
+        self.model = model
+        self.max_tokens = max_tokens
+        self.system = system_prompt or (
             "You are an expert software agent. You have access to tools for "
             "reading files, running code, and searching the web. "
             "Complete tasks step-by-step, using tools as needed. "
@@ -127,8 +138,8 @@ class ManagedAgent:
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
     def _call(self, payload: dict, beta: str = "") -> dict:
         headers = {
-            "Content-Type":      "application/json",
-            "x-api-key":         self.api_key,
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
         }
         if beta:
@@ -151,16 +162,15 @@ class ManagedAgent:
 
     # ── Simple session-aware call ──────────────────────────────────────────
 
-    def chat(self, prompt: str, session: AgentSession,
-             tools: list[dict] = None) -> str:
+    def chat(self, prompt: str, session: AgentSession, tools: list[dict] = None) -> str:
         """Add a turn to the session and get a response."""
         session.add_turn("user", prompt)
 
         payload: dict = {
-            "model":      self.model,
+            "model": self.model,
             "max_tokens": self.max_tokens,
-            "system":     self.system,
-            "messages":   session.messages(),
+            "system": self.system,
+            "messages": session.messages(),
         }
         if tools:
             payload["tools"] = tools
@@ -169,18 +179,14 @@ class ManagedAgent:
         if "error" in data:
             return f"[ERROR] {data['error']}"
 
-        resp = "".join(
-            b.get("text", "") for b in data.get("content", [])
-            if b.get("type") == "text"
-        )
+        resp = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
         session.add_turn("assistant", resp)
         session.save()
         return resp
 
     # ── Subagent spawner ──────────────────────────────────────────────────
 
-    def spawn_subagent(self, task: str, context: str = "",
-                       tools: list[dict] = None) -> str:
+    def spawn_subagent(self, task: str, context: str = "", tools: list[dict] = None) -> str:
         """
         Spawn a focused subagent for a specific sub-task.
         Returns the subagent's result as a string.
@@ -191,10 +197,10 @@ class ManagedAgent:
         )
         prompt = f"Context: {context}\n\nTask: {task}" if context else task
         payload: dict = {
-            "model":      self.model,
+            "model": self.model,
             "max_tokens": self.max_tokens,
-            "system":     sub_system,
-            "messages":   [{"role": "user", "content": prompt}],
+            "system": sub_system,
+            "messages": [{"role": "user", "content": prompt}],
         }
         if tools:
             payload["tools"] = tools
@@ -202,16 +208,17 @@ class ManagedAgent:
         data = self._post(payload)
         if "error" in data:
             return f"[SUBAGENT ERROR] {data['error']}"
-        return "".join(
-            b.get("text", "") for b in data.get("content", [])
-            if b.get("type") == "text"
-        )
+        return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
 
     # ── Orchestrator ──────────────────────────────────────────────────────
 
-    def orchestrate(self, goal: str, session: AgentSession,
-                    max_steps: int = 8,
-                    on_step: Callable[[str, dict], None] = _NOOP) -> dict:
+    def orchestrate(
+        self,
+        goal: str,
+        session: AgentSession,
+        max_steps: int = 8,
+        on_step: Callable[[str, dict], None] = _NOOP,
+    ) -> dict:
         """
         High-level orchestrator: decompose goal into steps, run subagents,
         synthesise results.
@@ -236,7 +243,8 @@ class ManagedAgent:
         steps = []
         try:
             import re
-            m = re.search(r'\[.*\]', raw, re.DOTALL)
+
+            m = re.search(r"\[.*\]", raw, re.DOTALL)
             if m:
                 steps = json.loads(m.group(0))
         except Exception:
@@ -248,12 +256,11 @@ class ManagedAgent:
         step_results: dict[int, str] = {}
         for s in steps[:max_steps]:
             step_n = s.get("step", 0)
-            task   = s.get("task", "")
-            deps   = s.get("depends_on", [])
+            task = s.get("task", "")
+            deps = s.get("depends_on", [])
 
             context = "\n".join(
-                f"Step {d} result: {step_results.get(d, '')[:500]}"
-                for d in deps if d in step_results
+                f"Step {d} result: {step_results.get(d, '')[:500]}" for d in deps if d in step_results
             )
             on_step("step_start", {"step": step_n, "task": task})
             result = self.spawn_subagent(task, context=context)
@@ -268,10 +275,10 @@ class ManagedAgent:
         final = self.chat(synthesis_prompt, session)
 
         return {
-            "goal":         goal,
-            "steps":        steps,
+            "goal": goal,
+            "steps": steps,
             "step_results": step_results,
-            "final":        final,
+            "final": final,
         }
 
 
@@ -292,6 +299,7 @@ MANAGED_AGENTS_BETA = "managed-agents-2026-04-01"
 # validation constant, used by _encode_session_budget there) — imported
 # above rather than duplicated here.
 
+
 class ManagedAgentsClient:
     """Thin wrapper around the real Claude Managed Agents API
     (agent → environment → session), as distinct from the local
@@ -301,14 +309,19 @@ class ManagedAgentsClient:
 
     def __init__(self, api_key: str):
         import anthropic
+
         self.client = anthropic.Anthropic(api_key=api_key)
 
-    def create_agent(self, name: str, model: str = "claude-opus-4-8",
-                     system: str = "You are a helpful coding assistant.",
-                     tools: Optional[list] = None,
-                     multiagent: Optional[dict] = None,
-                     effort: Optional[str] = None,
-                     inference_geo: Optional[str] = None) -> dict:
+    def create_agent(
+        self,
+        name: str,
+        model: str = "claude-opus-4-8",
+        system: str = "You are a helpful coding assistant.",
+        tools: list | None = None,
+        multiagent: dict | None = None,
+        effort: str | None = None,
+        inference_geo: str | None = None,
+    ) -> dict:
         """Create a persisted, versioned Agent config. tools defaults to the
         full pre-built agent_toolset_20260401 (bash, file ops, web search,
         etc.) if not given.
@@ -353,18 +366,25 @@ class ManagedAgentsClient:
             model_config["effort"] = effort
         if inference_geo is not None:
             if inference_geo not in ("us", "global"):
-                raise ValueError(
-                    f"inference_geo must be 'us' or 'global', got {inference_geo!r}"
-                )
+                raise ValueError(f"inference_geo must be 'us' or 'global', got {inference_geo!r}")
             model_config["inference_geo"] = inference_geo
         agent = self.client.beta.agents.create(
-            name=name, model=model_config, system=system, tools=tools,
-            betas=[MANAGED_AGENTS_BETA], **kwargs,
+            name=name,
+            model=model_config,
+            system=system,
+            tools=tools,
+            betas=[MANAGED_AGENTS_BETA],
+            **kwargs,
         )
-        return {"id": agent.id, "name": name, "model": model, "effort": effort,
-                "inference_geo": inference_geo}
+        return {
+            "id": agent.id,
+            "name": name,
+            "model": model,
+            "effort": effort,
+            "inference_geo": inference_geo,
+        }
 
-    def get_agent(self, agent_id: str, version: Optional[int] = None) -> dict:
+    def get_agent(self, agent_id: str, version: int | None = None) -> dict:
         """Retrieve an agent's stored config. GET /v1/agents/{id}, or
         GET /v1/agents/{id}/versions/{version} when `version` is given to
         read a specific prior version rather than the current one (v1.38.0,
@@ -372,13 +392,15 @@ class ManagedAgentsClient:
         kwargs = {"betas": [MANAGED_AGENTS_BETA]}
         if version is not None:
             agent = self.client.beta.agents.versions.retrieve(
-                agent_id, version, **kwargs,
+                agent_id,
+                version,
+                **kwargs,
             )
         else:
             agent = self.client.beta.agents.retrieve(agent_id, **kwargs)
         return {"id": agent_id, "version": version, "raw": agent}
 
-    def list_agents(self, limit: int = 50, page: Optional[str] = None) -> dict:
+    def list_agents(self, limit: int = 50, page: str | None = None) -> dict:
         """List agents in the workspace, newest first (v1.38.0, public
         beta). GET /v1/agents. Pass the `page` cursor from a previous call
         to continue paginating."""
@@ -388,12 +410,18 @@ class ManagedAgentsClient:
         result = self.client.beta.agents.list(**kwargs)
         return {"raw": result}
 
-    def update_agent(self, agent_id: str, name: Optional[str] = None,
-                     model: Optional[str] = None, effort: Optional[str] = None,
-                     system: Optional[str] = None, tools: Optional[list] = None,
-                     multiagent: Optional[dict] = None,
-                     inference_geo: Optional[str] = None,
-                     version: Optional[int] = None) -> dict:
+    def update_agent(
+        self,
+        agent_id: str,
+        name: str | None = None,
+        model: str | None = None,
+        effort: str | None = None,
+        system: str | None = None,
+        tools: list | None = None,
+        multiagent: dict | None = None,
+        inference_geo: str | None = None,
+        version: int | None = None,
+    ) -> dict:
         """Update a persisted agent's config, creating a new version. POST
         /v1/agents/{id} (v1.38.0, public beta). Any field left as None is
         left unchanged from the agent's current version — only fields
@@ -436,18 +464,22 @@ class ManagedAgentsClient:
                 model_config["effort"] = effort
             if inference_geo is not None:
                 if inference_geo not in ("us", "global"):
-                    raise ValueError(
-                        f"inference_geo must be 'us' or 'global', got {inference_geo!r}"
-                    )
+                    raise ValueError(f"inference_geo must be 'us' or 'global', got {inference_geo!r}")
                 model_config["inference_geo"] = inference_geo
             kwargs["model"] = model_config
         agent = self.client.beta.agents.update(agent_id, **kwargs)
-        return {"id": agent_id, "name": name, "model": model, "effort": effort,
-                "inference_geo": inference_geo,
-                "version": getattr(agent, "version", None)}
+        return {
+            "id": agent_id,
+            "name": name,
+            "model": model,
+            "effort": effort,
+            "inference_geo": inference_geo,
+            "version": getattr(agent, "version", None),
+        }
 
-    def create_environment(self, name: str, networking: str = "unrestricted",
-                           env_type: str = "cloud") -> dict:
+    def create_environment(
+        self, name: str, networking: str = "unrestricted", env_type: str = "cloud"
+    ) -> dict:
         """Create a sandbox environment for an agent to run in.
         networking: "unrestricted" or "limited" (safer if the agent only
         needs to touch its own filesystem) — ignored when env_type is
@@ -470,7 +502,9 @@ class ManagedAgentsClient:
         else:
             config = {"type": "cloud", "networking": {"type": networking}}
         env = self.client.beta.environments.create(
-            name=name, config=config, betas=[MANAGED_AGENTS_BETA],
+            name=name,
+            config=config,
+            betas=[MANAGED_AGENTS_BETA],
         )
         return {"id": env.id, "name": name, "type": env_type}
 
@@ -496,7 +530,7 @@ class ManagedAgentsClient:
             "workers_polling": stats.workers_polling,
         }
 
-    def create_memory_store(self, name: str, description: Optional[str] = None) -> dict:
+    def create_memory_store(self, name: str, description: str | None = None) -> dict:
         """Create a workspace-scoped, persistent Managed Agents memory
         store — a versioned collection of text documents that survives
         across sessions. Distinct from `claude_memory.py`'s client-side
@@ -533,19 +567,22 @@ class ManagedAgentsClient:
         endpoint, so MEMORY_STORE_BETA alone (see create_memory_store()'s
         docstring for why not MANAGED_AGENTS_BETA too)."""
         store = self.client.beta.memory_stores.retrieve(
-            memory_store_id, betas=[MEMORY_STORE_BETA],
+            memory_store_id,
+            betas=[MEMORY_STORE_BETA],
         )
         return {"id": getattr(store, "id", memory_store_id), "raw": store}
 
-    def list_memory_stores(self, include_archived: bool = False,
-                           limit: int = 50, page: Optional[str] = None) -> dict:
+    def list_memory_stores(
+        self, include_archived: bool = False, limit: int = 50, page: str | None = None
+    ) -> dict:
         """List memory stores in the workspace. GET /v1/memory_stores —
         memory store endpoint, MEMORY_STORE_BETA alone."""
         params = {"limit": limit, "include_archived": include_archived}
         if page is not None:
             params["page"] = page
         result = self.client.beta.memory_stores.list(
-            betas=[MEMORY_STORE_BETA], **params,
+            betas=[MEMORY_STORE_BETA],
+            **params,
         )
         return {"raw": result}
 
@@ -555,7 +592,8 @@ class ManagedAgentsClient:
         POST /v1/memory_stores/{id}/archive — memory store endpoint,
         MEMORY_STORE_BETA alone."""
         store = self.client.beta.memory_stores.archive(
-            memory_store_id, betas=[MEMORY_STORE_BETA],
+            memory_store_id,
+            betas=[MEMORY_STORE_BETA],
         )
         return {"id": memory_store_id, "raw": store}
 
@@ -566,13 +604,19 @@ class ManagedAgentsClient:
         should confirm before invoking (see cmd_agent_memory_store_delete
         for the CLI's confirmation gate)."""
         self.client.beta.memory_stores.delete(
-            memory_store_id, betas=[MEMORY_STORE_BETA],
+            memory_store_id,
+            betas=[MEMORY_STORE_BETA],
         )
         return {"id": memory_store_id, "deleted": True}
 
-    def list_memories(self, memory_store_id: str, path_prefix: Optional[str] = None,
-                      depth: Optional[int] = None, limit: int = 50,
-                      page: Optional[str] = None) -> dict:
+    def list_memories(
+        self,
+        memory_store_id: str,
+        path_prefix: str | None = None,
+        depth: int | None = None,
+        limit: int = 50,
+        page: str | None = None,
+    ) -> dict:
         """List the individual memory entries inside a memory store (v1.24.0)
         — distinct from create_memory_store(), which only creates the store
         itself. GET /v1/memory_stores/{memory_store_id}/memories, sent with
@@ -608,11 +652,15 @@ class ManagedAgentsClient:
         if page is not None:
             params["page"] = page
         result = self.client.beta.memory_stores.memories.list(
-            memory_store_id, betas=[MEMORY_STORE_BETA], **params,
+            memory_store_id,
+            betas=[MEMORY_STORE_BETA],
+            **params,
         )
         return {
-            "memory_store_id": memory_store_id, "path_prefix": path_prefix,
-            "depth": depth, "raw": result,
+            "memory_store_id": memory_store_id,
+            "path_prefix": path_prefix,
+            "depth": depth,
+            "raw": result,
         }
 
     def create_memory(self, memory_store_id: str, path: str, content: str) -> dict:
@@ -623,7 +671,10 @@ class ManagedAgentsClient:
         at 100 kB (~25k tokens) by the platform; larger content should be
         split into multiple focused memories rather than one large one."""
         mem = self.client.beta.memory_stores.memories.create(
-            memory_store_id, path=path, content=content, betas=[MEMORY_STORE_BETA],
+            memory_store_id,
+            path=path,
+            content=content,
+            betas=[MEMORY_STORE_BETA],
         )
         return {"id": getattr(mem, "id", None), "path": path, "raw": mem}
 
@@ -632,13 +683,20 @@ class ManagedAgentsClient:
         /v1/memory_stores/{id}/memories/{memory_id} — memory store
         endpoint, MEMORY_STORE_BETA alone."""
         mem = self.client.beta.memory_stores.memories.retrieve(
-            memory_store_id, memory_id, betas=[MEMORY_STORE_BETA],
+            memory_store_id,
+            memory_id,
+            betas=[MEMORY_STORE_BETA],
         )
         return {"id": memory_id, "raw": mem}
 
-    def update_memory(self, memory_store_id: str, memory_id: str,
-                      content: Optional[str] = None, path: Optional[str] = None,
-                      content_sha256: Optional[str] = None) -> dict:
+    def update_memory(
+        self,
+        memory_store_id: str,
+        memory_id: str,
+        content: str | None = None,
+        path: str | None = None,
+        content_sha256: str | None = None,
+    ) -> dict:
         """Update an existing memory's content and/or rename it (path).
         POST /v1/memory_stores/{id}/memories/{memory_id} — memory store
         endpoint, MEMORY_STORE_BETA alone. Pass `content_sha256` (the
@@ -655,7 +713,9 @@ class ManagedAgentsClient:
         if content_sha256 is not None:
             kwargs["precondition"] = {"type": "content_sha256", "content_sha256": content_sha256}
         mem = self.client.beta.memory_stores.memories.update(
-            memory_store_id, memory_id, **kwargs,
+            memory_store_id,
+            memory_id,
+            **kwargs,
         )
         return {"id": memory_id, "raw": mem}
 
@@ -665,16 +725,23 @@ class ManagedAgentsClient:
         /v1/memory_stores/{id}/memories/{memory_id} — memory store
         endpoint, MEMORY_STORE_BETA alone."""
         self.client.beta.memory_stores.memories.delete(
-            memory_store_id, memory_id, betas=[MEMORY_STORE_BETA],
+            memory_store_id,
+            memory_id,
+            betas=[MEMORY_STORE_BETA],
         )
         return {"id": memory_id, "deleted": True}
 
-    def create_session(self, agent_id: str, environment_id: str, title: str = "",
-                       memory_store_id: Optional[str] = None,
-                       vault_ids: Optional[list] = None,
-                       agent_overrides: Optional[dict] = None,
-                       initial_events: Optional[list] = None,
-                       budget_usd_cents: Optional[int] = None) -> dict:
+    def create_session(
+        self,
+        agent_id: str,
+        environment_id: str,
+        title: str = "",
+        memory_store_id: str | None = None,
+        vault_ids: list | None = None,
+        agent_overrides: dict | None = None,
+        initial_events: list | None = None,
+        budget_usd_cents: int | None = None,
+    ) -> dict:
         """Create a session. If `memory_store_id` is given, mount that
         memory store as a session resource so the agent can read/write it
         through normal file tools — no memory-tool handler code required
@@ -745,10 +812,7 @@ class ManagedAgentsClient:
             kwargs["vault_ids"] = vault_ids
         if initial_events:
             if len(initial_events) > 50:
-                raise ValueError(
-                    f"initial_events supports at most 50 events "
-                    f"(got {len(initial_events)})"
-                )
+                raise ValueError(f"initial_events supports at most 50 events " f"(got {len(initial_events)})")
             kwargs["initial_events"] = initial_events
         budget = None
         if budget_usd_cents is not None:
@@ -758,14 +822,22 @@ class ManagedAgentsClient:
         if agent_overrides:
             agent_param = {"type": "agent_with_overrides", "id": agent_id, **agent_overrides}
         session = self.client.beta.sessions.create(
-            agent=agent_param, environment_id=environment_id, title=title,
-            resources=resources, betas=betas, **kwargs,
+            agent=agent_param,
+            environment_id=environment_id,
+            title=title,
+            resources=resources,
+            betas=betas,
+            **kwargs,
         )
         return {
-            "id": session.id, "agent_id": agent_id,
-            "environment_id": environment_id, "memory_store_id": memory_store_id,
-            "vault_ids": vault_ids, "agent_overrides": agent_overrides,
-            "initial_events": initial_events, "budget": budget,
+            "id": session.id,
+            "agent_id": agent_id,
+            "environment_id": environment_id,
+            "memory_store_id": memory_store_id,
+            "vault_ids": vault_ids,
+            "agent_overrides": agent_overrides,
+            "initial_events": initial_events,
+            "budget": budget,
         }
 
     def get_session(self, session_id: str) -> dict:
@@ -776,7 +848,8 @@ class ManagedAgentsClient:
         budget), and its current budget (None if never set or removed).
         GET /v1/sessions/{id} — v1.39.0, public beta."""
         session = self.client.beta.sessions.retrieve(
-            session_id, betas=[MANAGED_AGENTS_BETA],
+            session_id,
+            betas=[MANAGED_AGENTS_BETA],
         )
         return {
             "id": session_id,
@@ -787,8 +860,7 @@ class ManagedAgentsClient:
             "raw": session,
         }
 
-    def update_session_budget(self, session_id: str,
-                              budget_usd_cents: Optional[int] = "__unset__") -> dict:
+    def update_session_budget(self, session_id: str, budget_usd_cents: int | None = "__unset__") -> dict:
         """Replace or remove a session's spend budget (v1.39.0, public
         beta) — POST-equivalent of `client.beta.sessions.update`. Pass an
         int to replace the cap with a new max_list_cost (must be strictly
@@ -806,38 +878,44 @@ class ManagedAgentsClient:
                 "update_session_budget requires an explicit budget_usd_cents: "
                 "an int to replace the cap, or None to remove the budget."
             )
-        budget = (_encode_session_budget(budget_usd_cents)
-                 if budget_usd_cents is not None else None)
+        budget = _encode_session_budget(budget_usd_cents) if budget_usd_cents is not None else None
         session = self.client.beta.sessions.update(
-            session_id, budget=budget, betas=[MANAGED_AGENTS_BETA],
+            session_id,
+            budget=budget,
+            betas=[MANAGED_AGENTS_BETA],
         )
         return {
-            "id": session_id, "budget": budget,
+            "id": session_id,
+            "budget": budget,
             "status": getattr(session, "status", None),
         }
 
     # ── Vaults & credentials (v1.21.0, public beta) ──────────────────────
-    def create_vault(self, display_name: str, external_user_id: Optional[str] = None) -> dict:
+    def create_vault(self, display_name: str, external_user_id: str | None = None) -> dict:
         """Create a workspace-scoped vault — the collection of credentials
         for one end user. `external_user_id`, if given, is stored as
         metadata so the vault can be mapped back to your own user
         records; it isn't a structural field the API requires."""
         metadata = {"external_user_id": external_user_id} if external_user_id else None
         vault = self.client.beta.vaults.create(
-            display_name=display_name, metadata=metadata,
+            display_name=display_name,
+            metadata=metadata,
             betas=[MANAGED_AGENTS_BETA],
         )
-        return {"id": vault.id, "display_name": display_name,
-                "external_user_id": external_user_id}
+        return {"id": vault.id, "display_name": display_name, "external_user_id": external_user_id}
 
     VALID_INJECTION_LOCATIONS = ("headers", "body", "both")
 
-    def add_credential(self, vault_id: str, credential_type: str,
-                       mcp_server_url: Optional[str] = None,
-                       secret_name: Optional[str] = None,
-                       secret_value: str = "",
-                       allowed_domains: Optional[list] = None,
-                       injection_location: Optional[str] = None) -> dict:
+    def add_credential(
+        self,
+        vault_id: str,
+        credential_type: str,
+        mcp_server_url: str | None = None,
+        secret_name: str | None = None,
+        secret_value: str = "",
+        allowed_domains: list | None = None,
+        injection_location: str | None = None,
+    ) -> dict:
         """Add a credential to a vault. credential_type is one of
         "mcp_oauth", "static_bearer" (both keyed by mcp_server_url — the
         token is injected automatically when the agent connects to an MCP
@@ -858,10 +936,7 @@ class ManagedAgentsClient:
         returned by the API, and must never appear in any exception
         message raised from this method."""
         if injection_location is not None and credential_type != "environment_variable":
-            raise ValueError(
-                "injection_location is only valid for credential_type="
-                "'environment_variable'"
-            )
+            raise ValueError("injection_location is only valid for credential_type=" "'environment_variable'")
         if injection_location is not None and injection_location not in self.VALID_INJECTION_LOCATIONS:
             raise ValueError(
                 f"injection_location must be one of {self.VALID_INJECTION_LOCATIONS}, "
@@ -869,14 +944,16 @@ class ManagedAgentsClient:
             )
         if credential_type in ("mcp_oauth", "static_bearer"):
             if not mcp_server_url:
-                raise ValueError(
-                    f"credential_type={credential_type!r} requires mcp_server_url"
-                )
-            auth = {"type": credential_type, "token": secret_value} \
-                if credential_type == "static_bearer" \
+                raise ValueError(f"credential_type={credential_type!r} requires mcp_server_url")
+            auth = (
+                {"type": credential_type, "token": secret_value}
+                if credential_type == "static_bearer"
                 else {"type": credential_type, "access_token": secret_value}
+            )
             cred = self.client.beta.vaults.credentials.create(
-                vault_id=vault_id, mcp_server_url=mcp_server_url, auth=auth,
+                vault_id=vault_id,
+                mcp_server_url=mcp_server_url,
+                auth=auth,
                 betas=[MANAGED_AGENTS_BETA],
             )
         elif credential_type == "environment_variable":
@@ -884,12 +961,13 @@ class ManagedAgentsClient:
                 raise ValueError("credential_type='environment_variable' requires secret_name")
             if not allowed_domains:
                 raise ValueError("credential_type='environment_variable' requires allowed_domains")
-            auth = {"type": credential_type, "secret_value": secret_value,
-                    "allowed_domains": allowed_domains}
+            auth = {"type": credential_type, "secret_value": secret_value, "allowed_domains": allowed_domains}
             if injection_location is not None:
                 auth["injection_location"] = injection_location
             cred = self.client.beta.vaults.credentials.create(
-                vault_id=vault_id, secret_name=secret_name, auth=auth,
+                vault_id=vault_id,
+                secret_name=secret_name,
+                auth=auth,
                 betas=[MANAGED_AGENTS_BETA],
             )
         else:
@@ -897,13 +975,19 @@ class ManagedAgentsClient:
                 f"Unknown credential_type {credential_type!r}: expected "
                 f"'mcp_oauth', 'static_bearer', or 'environment_variable'"
             )
-        return {"id": cred.id, "vault_id": vault_id, "credential_type": credential_type,
-                "mcp_server_url": mcp_server_url, "secret_name": secret_name}
+        return {
+            "id": cred.id,
+            "vault_id": vault_id,
+            "credential_type": credential_type,
+            "mcp_server_url": mcp_server_url,
+            "secret_name": secret_name,
+        }
 
     def list_vaults(self, include_archived: bool = False) -> list:
         """List non-archived vaults in the workspace, newest first."""
         page = self.client.beta.vaults.list(
-            include_archived=include_archived, betas=[MANAGED_AGENTS_BETA],
+            include_archived=include_archived,
+            betas=[MANAGED_AGENTS_BETA],
         )
         return [{"id": v.id, "display_name": v.display_name} for v in page]
 
@@ -919,12 +1003,15 @@ class ManagedAgentsClient:
         credential's key (mcp_server_url or secret_name) stays visible and
         is freed for a replacement credential."""
         cred = self.client.beta.vaults.credentials.archive(
-            vault_id, credential_id, betas=[MANAGED_AGENTS_BETA],
+            vault_id,
+            credential_id,
+            betas=[MANAGED_AGENTS_BETA],
         )
         return {"id": cred.id, "vault_id": vault_id, "archived": True}
 
-    def run_task(self, session_id: str, task: str, stream_deltas: bool = False,
-                on_delta: Callable[[str], None] = _NOOP) -> dict:
+    def run_task(
+        self, session_id: str, task: str, stream_deltas: bool = False, on_delta: Callable[[str], None] = _NOOP
+    ) -> dict:
         """Send a task as a user.message event and stream until the session
         goes idle. Returns the accumulated assistant text and tool calls.
 
@@ -968,10 +1055,14 @@ class ManagedAgentsClient:
                     break
         return {"text": "".join(text_parts), "tool_calls": tool_calls}
 
-
     # ── Dreaming (v1.20.0, research preview) ────────────────────────────
-    def create_dream(self, memory_store_id: str, session_ids: Optional[list] = None,
-                     model: str = "claude-opus-4-8", instructions: Optional[str] = None) -> dict:
+    def create_dream(
+        self,
+        memory_store_id: str,
+        session_ids: list | None = None,
+        model: str = "claude-opus-4-8",
+        instructions: str | None = None,
+    ) -> dict:
         """Start a dream: curate `memory_store_id` (optionally alongside past
         `session_ids` transcripts) into a new output memory store. The input
         store is never modified — the dream produces a separate output store
@@ -990,7 +1081,9 @@ class ManagedAgentsClient:
         if session_ids:
             inputs.append({"type": "sessions", "session_ids": session_ids})
         dream = self.client.beta.dreams.create(
-            inputs=inputs, model=model, instructions=instructions,
+            inputs=inputs,
+            model=model,
+            instructions=instructions,
             betas=[MANAGED_AGENTS_BETA, DREAMING_BETA],
         )
         return {"id": dream.id, "status": dream.status}
@@ -1008,7 +1101,8 @@ class ManagedAgentsClient:
         were dropped by the original v1.20.0 implementation, which only
         extracted id/status/output_store_id/error."""
         dream = self.client.beta.dreams.retrieve(
-            dream_id, betas=[MANAGED_AGENTS_BETA, DREAMING_BETA],
+            dream_id,
+            betas=[MANAGED_AGENTS_BETA, DREAMING_BETA],
         )
         output_store_id = None
         for output in getattr(dream, "outputs", None) or []:
@@ -1022,24 +1116,32 @@ class ManagedAgentsClient:
             "error": getattr(dream, "error", None),
             "session_id": getattr(dream, "session_id", None),
             "archived_at": getattr(dream, "archived_at", None),
-            "usage": {
-                "input_tokens": getattr(usage, "input_tokens", 0),
-                "output_tokens": getattr(usage, "output_tokens", 0),
-                "cache_creation_input_tokens": getattr(usage, "cache_creation_input_tokens", 0),
-                "cache_read_input_tokens": getattr(usage, "cache_read_input_tokens", 0),
-            } if usage is not None else None,
+            "usage": (
+                {
+                    "input_tokens": getattr(usage, "input_tokens", 0),
+                    "output_tokens": getattr(usage, "output_tokens", 0),
+                    "cache_creation_input_tokens": getattr(usage, "cache_creation_input_tokens", 0),
+                    "cache_read_input_tokens": getattr(usage, "cache_read_input_tokens", 0),
+                }
+                if usage is not None
+                else None
+            ),
         }
 
-    def list_dreams(self, include_archived: bool = False, limit: int = 20,
-                     page: Optional[str] = None) -> list:
+    def list_dreams(
+        self, include_archived: bool = False, limit: int = 20, page: str | None = None
+    ) -> list:
         """List dreams in the workspace, newest first. `limit` defaults to
         20 (platform max 100); pass the `page` cursor from a previous call
         to continue paginating — both added in v1.35.0, matching
         `client.beta.dreams.list(limit=...)`'s documented signature (the
         original v1.20.0 implementation always fetched the platform's
         default page with no way to see more than the first one)."""
-        kwargs = {"include_archived": include_archived, "limit": limit,
-                  "betas": [MANAGED_AGENTS_BETA, DREAMING_BETA]}
+        kwargs = {
+            "include_archived": include_archived,
+            "limit": limit,
+            "betas": [MANAGED_AGENTS_BETA, DREAMING_BETA],
+        }
         if page is not None:
             kwargs["page"] = page
         page_result = self.client.beta.dreams.list(**kwargs)
@@ -1048,7 +1150,8 @@ class ManagedAgentsClient:
     def cancel_dream(self, dream_id: str) -> dict:
         """Move a pending/running dream to canceled immediately."""
         dream = self.client.beta.dreams.cancel(
-            dream_id, betas=[MANAGED_AGENTS_BETA, DREAMING_BETA],
+            dream_id,
+            betas=[MANAGED_AGENTS_BETA, DREAMING_BETA],
         )
         return {"id": dream.id, "status": dream.status}
 
@@ -1065,16 +1168,22 @@ class ManagedAgentsClient:
         id. Does not touch the dream's output memory store — manage that
         separately via the Memory Stores API."""
         dream = self.client.beta.dreams.archive(
-            dream_id, betas=[MANAGED_AGENTS_BETA, DREAMING_BETA],
+            dream_id,
+            betas=[MANAGED_AGENTS_BETA, DREAMING_BETA],
         )
-        return {"id": dream.id, "status": dream.status,
-                "archived_at": getattr(dream, "archived_at", None)}
+        return {"id": dream.id, "status": dream.status, "archived_at": getattr(dream, "archived_at", None)}
 
     # ── Scheduled deployments (v1.21.0, public beta) ─────────────────────
-    def create_scheduled_deployment(self, agent_id: str, environment_id: str,
-                                    cron_expression: str, timezone: str = "UTC",
-                                    task: str = "", memory_store_id: Optional[str] = None,
-                                    name: str = "") -> dict:
+    def create_scheduled_deployment(
+        self,
+        agent_id: str,
+        environment_id: str,
+        cron_expression: str,
+        timezone: str = "UTC",
+        task: str = "",
+        memory_store_id: str | None = None,
+        name: str = "",
+    ) -> dict:
         """Attach a cron schedule to an agent + environment pair. Each time
         the schedule fires, Managed Agents starts a brand-new session,
         sends `task` as its initial user.message, and runs it to
@@ -1087,15 +1196,21 @@ class ManagedAgentsClient:
             resources = [{"type": "memory_store", "memory_store_id": memory_store_id}]
         deployment = self.client.beta.deployments.create(
             name=name or f"scheduled-{agent_id}",
-            agent=agent_id, environment_id=environment_id,
+            agent=agent_id,
+            environment_id=environment_id,
             schedule={"type": "cron", "expression": cron_expression, "timezone": timezone},
             initial_events=[{"type": "user.message", "content": [{"type": "text", "text": task}]}],
             resources=resources,
             betas=[MANAGED_AGENTS_BETA],
         )
-        return {"id": deployment.id, "agent_id": agent_id, "environment_id": environment_id,
-                "cron_expression": cron_expression, "timezone": timezone,
-                "status": getattr(deployment, "status", None)}
+        return {
+            "id": deployment.id,
+            "agent_id": agent_id,
+            "environment_id": environment_id,
+            "cron_expression": cron_expression,
+            "timezone": timezone,
+            "status": getattr(deployment, "status", None),
+        }
 
     def list_scheduled_deployments(self) -> list:
         """List scheduled deployments in the workspace, newest first."""
@@ -1105,8 +1220,7 @@ class ManagedAgentsClient:
     def get_scheduled_deployment(self, deployment_id: str) -> dict:
         """Retrieve one scheduled deployment's current status/schedule."""
         d = self.client.beta.deployments.retrieve(deployment_id, betas=[MANAGED_AGENTS_BETA])
-        return {"id": d.id, "status": getattr(d, "status", None),
-                "schedule": getattr(d, "schedule", None)}
+        return {"id": d.id, "status": getattr(d, "status", None), "schedule": getattr(d, "schedule", None)}
 
     def cancel_scheduled_deployment(self, deployment_id: str) -> dict:
         """Archive a scheduled deployment, stopping future scheduled runs
@@ -1115,10 +1229,14 @@ class ManagedAgentsClient:
         return {"id": d.id, "status": getattr(d, "status", None)}
 
     # ── Outcomes (v1.20.0, public beta; file_id rubric form v1.21.0) ─────
-    def define_outcome(self, session_id: str, description: str,
-                       rubric_text: Optional[str] = None,
-                       rubric_file_id: Optional[str] = None,
-                       max_iterations: int = 3) -> dict:
+    def define_outcome(
+        self,
+        session_id: str,
+        description: str,
+        rubric_text: str | None = None,
+        rubric_file_id: str | None = None,
+        max_iterations: int = 3,
+    ) -> dict:
         """Send a user.define_outcome event: the agent starts working
         immediately toward `description`, revising until a grader (running
         in its own context window, independent of the agent's reasoning)
@@ -1131,8 +1249,7 @@ class ManagedAgentsClient:
         by id across many outcome-oriented sessions) must be given."""
         if bool(rubric_text) == bool(rubric_file_id):
             raise ValueError(
-                "define_outcome requires exactly one of rubric_text or "
-                "rubric_file_id, not both or neither"
+                "define_outcome requires exactly one of rubric_text or " "rubric_file_id, not both or neither"
             )
         if rubric_file_id:
             rubric = {"type": "file", "file_id": rubric_file_id}
@@ -1142,18 +1259,21 @@ class ManagedAgentsClient:
             betas = [MANAGED_AGENTS_BETA]
         result = self.client.beta.sessions.events.send(
             session_id,
-            events=[{
-                "type": "user.define_outcome",
-                "description": description,
-                "rubric": rubric,
-                "max_iterations": max_iterations,
-            }],
+            events=[
+                {
+                    "type": "user.define_outcome",
+                    "description": description,
+                    "rubric": rubric,
+                    "max_iterations": max_iterations,
+                }
+            ],
             betas=betas,
         )
         return {"session_id": session_id, "sent": True, "raw": result}
 
-    def wait_for_outcome(self, session_id: str, stream_deltas: bool = False,
-                        on_delta: Callable[[str], None] = _NOOP) -> dict:
+    def wait_for_outcome(
+        self, session_id: str, stream_deltas: bool = False, on_delta: Callable[[str], None] = _NOOP
+    ) -> dict:
         """Stream a session's events until the outcome reaches a terminal
         span.outcome_evaluation_end (satisfied / needs_revision loop exhaustion
         / max_iterations_reached / failed / interrupted), returning the
@@ -1186,9 +1306,13 @@ class ManagedAgentsClient:
                     break
         return {"text": "".join(text_parts), "result": result_state}
 
-    def stream_thread(self, session_id: str, thread_id: str,
-                      stream_deltas: bool = True,
-                      on_delta: Callable[[str], None] = _NOOP) -> dict:
+    def stream_thread(
+        self,
+        session_id: str,
+        thread_id: str,
+        stream_deltas: bool = True,
+        on_delta: Callable[[str], None] = _NOOP,
+    ) -> dict:
         """Stream a single subagent thread's own event feed within a
         multiagent/coordinator session (v1.38.0, public beta) — GET
         /v1/sessions/{id}/threads/{thread_id}/stream, distinct from
@@ -1229,16 +1353,21 @@ class ManagedAgentsClient:
                 elif event.type == "thread.status_failed":
                     thread_status = "failed"
                     break
-        return {"session_id": session_id, "thread_id": thread_id,
-                "text": "".join(text_parts), "status": thread_status}
+        return {
+            "session_id": session_id,
+            "thread_id": thread_id,
+            "text": "".join(text_parts),
+            "status": thread_status,
+        }
 
     # ── Webhooks (v1.20.0, public beta) ─────────────────────────────────
-    def register_webhook(self, url: str, event_types: Optional[list] = None) -> dict:
+    def register_webhook(self, url: str, event_types: list | None = None) -> dict:
         """Subscribe a URL to Managed Agents lifecycle events (session,
         outcome, dream). If event_types is omitted, subscribes to all
         event types the endpoint supports."""
         webhook = self.client.beta.webhooks.create(
-            url=url, event_types=event_types or None,
+            url=url,
+            event_types=event_types or None,
             betas=[MANAGED_AGENTS_BETA],
         )
         return {"id": webhook.id, "url": url, "event_types": event_types}

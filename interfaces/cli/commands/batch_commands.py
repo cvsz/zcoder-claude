@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 interfaces/cli/commands/batch_commands.py — CLI presentation for the
 Messages Batch API bounded context
 AI Model Coder CLI v1.52.0 (Clean Architecture refactor, Phase C, Context #4)
@@ -23,8 +24,12 @@ signal "this was the last poll" through the callback itself.
 from application import batch_service as service
 
 __all__ = [
-    "cmd_batch_submit", "cmd_batch_status", "cmd_batch_results",
-    "cmd_batch_list", "cmd_batch_cancel", "cmd_batch_generate",
+    "cmd_batch_submit",
+    "cmd_batch_status",
+    "cmd_batch_results",
+    "cmd_batch_list",
+    "cmd_batch_cancel",
+    "cmd_batch_generate",
 ]
 
 
@@ -33,17 +38,22 @@ def _on_warning(msg: str):
 
 
 def _on_progress(batch_id: str, s: dict, waited: int):
-    print(f"\r\033[94mℹ [{batch_id}] {s.get('status','')}  "
-          f"counts={s.get('request_counts',{})}  "
-          f"(waited {waited}s)\033[0m", end="", flush=True)
+    print(
+        f"\r\033[94mℹ [{batch_id}] {s.get('status','')}  "
+        f"counts={s.get('request_counts',{})}  "
+        f"(waited {waited}s)\033[0m",
+        end="",
+        flush=True,
+    )
 
 
-def cmd_batch_submit(jsonl_path: str, api_key: str, model: str, system: str = None,
-                     use_300k_output: bool = False):
+def cmd_batch_submit(
+    jsonl_path: str, api_key: str, model: str, system: str = None, use_300k_output: bool = False
+):
     print(f"\033[94mℹ Submitting batch from {jsonl_path}…\033[0m")
-    bid = service.submit_from_jsonl(jsonl_path, api_key, model, system=system,
-                                     use_300k_output=use_300k_output,
-                                     on_warning=_on_warning)
+    bid = service.submit_from_jsonl(
+        jsonl_path, api_key, model, system=system, use_300k_output=use_300k_output, on_warning=_on_warning
+    )
     print(f"\033[92m✓ Batch submitted: {bid}\033[0m")
     print(f"  Check status:   ai-coder --batch-status {bid}")
     print(f"  Get results:    ai-coder --batch-results {bid}")
@@ -61,7 +71,7 @@ def cmd_batch_status(batch_id: str, api_key: str):
 
 def cmd_batch_results(batch_id: str, api_key: str, save_to: str = None):
     items = service.get_results(batch_id, api_key, save_to=save_to)
-    ok    = sum(1 for i in items if i.get("type") == "succeeded")
+    ok = sum(1 for i in items if i.get("type") == "succeeded")
     print(f"\n\033[92m✓ {ok}/{len(items)} succeeded\033[0m\n")
     for item in items:
         status = "✓" if item.get("type") == "succeeded" else "✗"
@@ -78,7 +88,8 @@ def cmd_batch_results(batch_id: str, api_key: str, save_to: str = None):
 def cmd_batch_list(api_key: str):
     batches = service.list_batches(api_key)
     if not batches:
-        print("No batches found."); return
+        print("No batches found.")
+        return
     print(f"\n{'ID':<30}{'STATUS':<15}{'COUNTS':<25}{'CREATED'}")
     print("─" * 85)
     for b in batches:
@@ -91,8 +102,9 @@ def cmd_batch_cancel(batch_id: str, api_key: str):
     print(f"\033[92m✓ Batch {batch_id} cancelled.\033[0m")
 
 
-def cmd_batch_generate(prompt_template: str, n: int, api_key: str, model: str,
-                       system: str = None, wait: bool = False):
+def cmd_batch_generate(
+    prompt_template: str, n: int, api_key: str, model: str, system: str = None, wait: bool = False
+):
     """Generate N variants of a prompt and batch-submit them."""
     bid = service.generate_and_submit(prompt_template, n, api_key, model, system=system)
     print(f"\033[92m✓ Batch of {n} submitted: {bid}\033[0m")

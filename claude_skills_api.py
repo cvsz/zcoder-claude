@@ -22,25 +22,38 @@ existing imports keep working unmodified.
 """
 
 from domain.skills_api import (
-    MESSAGES_ENDPOINT, CODE_EXECUTION_BETA, SKILLS_BETA, FILES_API_BETA,
+    CODE_EXECUTION_BETA,
+    FILES_API_BETA,
+    MESSAGES_ENDPOINT,
     PREBUILT_SKILLS,
-    SkillRef, build_container_skills,
-    build_user_content, extract_output_file_ids, list_prebuilt_skills,
+    SKILLS_BETA,
+    SkillRef,
+    build_container_skills,
+    build_user_content,
+    extract_output_file_ids,
+    list_prebuilt_skills,
 )
 from infrastructure.anthropic_api.skills_api_gateway import SkillsApiGateway
 from interfaces.cli.commands.skills_api_commands import (
-    cmd_skills_list, cmd_skills_info,
+    cmd_skills_info,
+    cmd_skills_list,
 )
 
 __all__ = [
-    "MESSAGES_ENDPOINT", "CODE_EXECUTION_BETA", "SKILLS_BETA", "FILES_API_BETA",
+    "MESSAGES_ENDPOINT",
+    "CODE_EXECUTION_BETA",
+    "SKILLS_BETA",
+    "FILES_API_BETA",
     "PREBUILT_SKILLS",
-    "SkillRef", "build_container_skills",
-    "build_user_content", "extract_output_file_ids",
+    "SkillRef",
+    "build_container_skills",
+    "build_user_content",
+    "extract_output_file_ids",
     "list_skills",
     "SkillsApiGateway",
     "SkillsApiClient",
-    "cmd_skills_list", "cmd_skills_info",
+    "cmd_skills_list",
+    "cmd_skills_info",
 ]
 
 list_skills = list_prebuilt_skills

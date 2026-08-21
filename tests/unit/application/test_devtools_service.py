@@ -6,11 +6,12 @@ Context #8). Per this project's DoD (exec-planning.md §6), every function
 here needs direct unit test coverage, not only indirect coverage via a
 CLI test capturing stdout.
 """
+
 import application.devtools_service as service
 from domain.devtools import BrowseStep
 
-
 # ── git ───────────────────────────────────────────────────────────────
+
 
 def test_staged_diff_delegates_to_store(monkeypatch):
     monkeypatch.setattr(service, "get_staged_diff", lambda cwd: "the diff")
@@ -23,6 +24,7 @@ def test_commit_message_builds_prompt_and_calls_gateway(monkeypatch):
     def fake_git_generate(api_key, model, prompt, max_tokens=1024):
         seen.update(api_key=api_key, model=model, prompt=prompt, max_tokens=max_tokens)
         return "feat: add thing"
+
     monkeypatch.setattr(service, "git_generate", fake_git_generate)
 
     result = service.commit_message("diff text", "key", "claude-sonnet-5")
@@ -39,6 +41,7 @@ def test_pr_description_combines_log_and_diff_stat(monkeypatch):
     def fake_git_generate(api_key, model, prompt, max_tokens=1024):
         seen["prompt"] = prompt
         return "PR text"
+
     monkeypatch.setattr(service, "git_generate", fake_git_generate)
     result = service.pr_description("main", "feat", "/repo", "key", "claude-sonnet-5")
     assert result == "PR text"
@@ -70,6 +73,7 @@ def test_explain_blame_combines_blame_and_code(monkeypatch):
     def fake_git_generate(api_key, model, prompt, max_tokens=1024):
         seen["prompt"] = prompt
         return "explanation"
+
     monkeypatch.setattr(service, "git_generate", fake_git_generate)
     result = service.explain_blame("f.py", 1, 10, "/repo", "key", "m")
     assert result == "explanation"
@@ -90,6 +94,7 @@ def test_save_text_delegates_to_store(monkeypatch):
 
 # ── github ────────────────────────────────────────────────────────────
 
+
 def test_resolve_github_token_delegates(monkeypatch):
     monkeypatch.setattr(service, "resolve_token", lambda explicit: "resolved-token")
     assert service.resolve_github_token(None) == "resolved-token"
@@ -103,6 +108,7 @@ def test_review_pr_fetches_pr_and_diff_then_generates(monkeypatch):
     def fake_github_generate(api_key, model, system, user, **k):
         seen["user"] = user
         return "review"
+
     monkeypatch.setattr(service, "github_generate", fake_github_generate)
     result = service.review_pr("o/r", 5, "tok", "key", "m")
     assert result == "review"
@@ -116,8 +122,9 @@ def test_triage_issues_returns_unexpected_message_on_bad_shape(monkeypatch):
 
 
 def test_triage_issues_delegates_to_gateway_on_valid_shape(monkeypatch):
-    monkeypatch.setattr(service, "gh_get", lambda path, token: [
-        {"number": 1, "labels": [], "title": "t", "body": "b"}])
+    monkeypatch.setattr(
+        service, "gh_get", lambda path, token: [{"number": 1, "labels": [], "title": "t", "body": "b"}]
+    )
     monkeypatch.setattr(service, "github_generate", lambda *a, **k: "triage result")
     assert service.triage_issues("o/r", 10, "tok", "key", "m") == "triage result"
 
@@ -129,8 +136,16 @@ def test_summarise_commits_returns_unexpected_message_on_bad_shape(monkeypatch):
 
 
 def test_summarise_commits_delegates_to_gateway_on_valid_shape(monkeypatch):
-    monkeypatch.setattr(service, "gh_get", lambda path, token: [
-        {"sha": "abc1234", "commit": {"message": "m", "author": {"name": "a", "date": "2026-01-01T00:00:00Z"}}}])
+    monkeypatch.setattr(
+        service,
+        "gh_get",
+        lambda path, token: [
+            {
+                "sha": "abc1234",
+                "commit": {"message": "m", "author": {"name": "a", "date": "2026-01-01T00:00:00Z"}},
+            }
+        ],
+    )
     monkeypatch.setattr(service, "github_generate", lambda *a, **k: "summary result")
     assert service.summarise_commits("o/r", 10, "tok", "key", "m") == "summary result"
 
@@ -144,6 +159,7 @@ def test_generate_pr_description_gh_fetches_and_generates(monkeypatch):
 
 # ── browse ────────────────────────────────────────────────────────────
 
+
 class FakeCoder:
     model = "claude-sonnet-5"
 
@@ -151,7 +167,9 @@ class FakeCoder:
 def test_browse_session_answer_returns_immediately(monkeypatch):
     monkeypatch.setattr(service, "make_coder", lambda *a, **k: FakeCoder())
     monkeypatch.setattr(service, "fetch_page", lambda url: ("page text", [], None))
-    monkeypatch.setattr(service, "browse_decide", lambda coder, prompt: '{"action": "answer", "text": "the answer"}')
+    monkeypatch.setattr(
+        service, "browse_decide", lambda coder, prompt: '{"action": "answer", "text": "the answer"}'
+    )
 
     steps = []
     result = service.browse_session("key", "m", "https://x.com", "find X", on_step=steps.append)
@@ -164,10 +182,12 @@ def test_browse_session_navigate_then_answer(monkeypatch):
     monkeypatch.setattr(service, "make_coder", lambda *a, **k: FakeCoder())
     monkeypatch.setattr(service, "fetch_page", lambda url: ("page text", [], None))
 
-    replies = iter([
-        '{"action": "navigate", "url": "/next", "reason": "looks relevant"}',
-        '{"action": "answer", "text": "done"}',
-    ])
+    replies = iter(
+        [
+            '{"action": "navigate", "url": "/next", "reason": "looks relevant"}',
+            '{"action": "answer", "text": "done"}',
+        ]
+    )
     monkeypatch.setattr(service, "browse_decide", lambda coder, prompt: next(replies))
 
     steps = []
@@ -183,12 +203,14 @@ def test_browse_session_loop_detected_hits_max_steps_tail(monkeypatch):
     monkeypatch.setattr(service, "make_coder", lambda *a, **k: FakeCoder())
     monkeypatch.setattr(service, "fetch_page", lambda url: ("page text", [], None))
     # Always navigate right back to the start URL -> visited-set loop.
-    monkeypatch.setattr(service, "browse_decide",
-                        lambda coder, prompt: '{"action": "navigate", "url": "https://x.com", "reason": "r"}')
+    monkeypatch.setattr(
+        service,
+        "browse_decide",
+        lambda coder, prompt: '{"action": "navigate", "url": "https://x.com", "reason": "r"}',
+    )
 
     steps = []
-    result = service.browse_session("key", "m", "https://x.com", "find X",
-                                    max_steps=3, on_step=steps.append)
+    result = service.browse_session("key", "m", "https://x.com", "find X", max_steps=3, on_step=steps.append)
     assert result is None
     actions = [s.action for s in steps]
     assert actions == ["start", "fetching", "navigate", "loop_detected", "max_steps"]
@@ -197,8 +219,9 @@ def test_browse_session_loop_detected_hits_max_steps_tail(monkeypatch):
 def test_browse_session_blocked_domain_hits_max_steps_tail(monkeypatch):
     monkeypatch.setattr(service, "make_coder", lambda *a, **k: FakeCoder())
     steps = []
-    result = service.browse_session("key", "m", "https://evil.com", "find X",
-                                    allowed_domains=["good.com"], on_step=steps.append)
+    result = service.browse_session(
+        "key", "m", "https://evil.com", "find X", allowed_domains=["good.com"], on_step=steps.append
+    )
     assert result is None
     assert [s.action for s in steps] == ["start", "blocked", "max_steps"]
 

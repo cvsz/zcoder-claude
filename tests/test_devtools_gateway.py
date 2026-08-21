@@ -6,6 +6,7 @@ for the Dev-tool Integrations bounded context, extracted 2026-08-20
 and a monkeypatched urllib.request.urlopen are substituted in — no real
 network, no real SDK calls.
 """
+
 import urllib.error
 
 import infrastructure.anthropic_api.devtools_gateway as gateway
@@ -46,6 +47,7 @@ def _install_fake_anthropic(monkeypatch, text):
 
 # ── git_generate / github_generate ───────────────────────────────────
 
+
 def test_git_generate_returns_stripped_text(monkeypatch):
     _install_fake_anthropic(monkeypatch, "  a commit message  \n")
     assert gateway.git_generate("key", "claude-sonnet-5", "prompt") == "a commit message"
@@ -60,14 +62,18 @@ def test_github_generate_uses_given_system_prompt(monkeypatch):
             return super().create(**kwargs)
 
     _install_fake_anthropic(monkeypatch, "review text")
-    monkeypatch.setattr(gateway.anthropic.Anthropic, "__init__",
-                        lambda self, api_key=None: setattr(self, "messages", RecordingMessages("review text")))
+    monkeypatch.setattr(
+        gateway.anthropic.Anthropic,
+        "__init__",
+        lambda self, api_key=None: setattr(self, "messages", RecordingMessages("review text")),
+    )
     result = gateway.github_generate("key", "claude-sonnet-5", "SYSTEM X", "user text")
     assert result == "review text"
     assert seen["system"] == "SYSTEM X"
 
 
 # ── fetch_page / _fetch_retrying ──────────────────────────────────────
+
 
 class FakeHTTPResp:
     def __init__(self, body: bytes):
@@ -96,6 +102,7 @@ def test_fetch_page_success(monkeypatch):
 def test_fetch_page_http_error_returns_error_string(monkeypatch):
     def fake_urlopen(req, timeout=None):
         raise urllib.error.HTTPError(req.full_url, 404, "not found", {}, None)
+
     monkeypatch.setattr(gateway.urllib.request, "urlopen", fake_urlopen)
     text, links, error = gateway.fetch_page("https://example.com/missing")
     assert text is None
@@ -106,6 +113,7 @@ def test_fetch_page_http_error_returns_error_string(monkeypatch):
 def test_fetch_page_connection_error_returns_error_string(monkeypatch):
     def fake_urlopen(req, timeout=None):
         raise ConnectionError("refused")
+
     monkeypatch.setattr(gateway.urllib.request, "urlopen", fake_urlopen)
     text, links, error = gateway.fetch_page("https://example.com/down")
     assert text is None
@@ -113,6 +121,7 @@ def test_fetch_page_connection_error_returns_error_string(monkeypatch):
 
 
 # ── make_coder / browse_decide ────────────────────────────────────────
+
 
 def test_make_coder_constructs_real_coder(monkeypatch):
     coder = gateway.make_coder("key", "claude-sonnet-5", temperature=0.5, max_tokens=512)

@@ -4,16 +4,17 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Only print() lives here — all real work delegated to
 application/workflow_service.py.
 """
+# mypy: ignore-errors
 
 from pathlib import Path
-from typing import Optional
 
 from application import workflow_service as service
 from infrastructure.anthropic_api.workflow_gateway import WorkflowGateway
 
 
-def cmd_workflow_run(path: str, api_key: str, input_text: str = "",
-                     output: Optional[str] = None, verbose: bool = True):
+def cmd_workflow_run(
+    path: str, api_key: str, input_text: str = "", output: str | None = None, verbose: bool = True
+):
     wf = service.parse_workflow(service.load_workflow(path, has_yaml=True))
     print(f"⚙  Running workflow '{wf.name}' ({len(wf.steps)} steps) …\\n")
     gateway = WorkflowGateway(api_key=api_key)

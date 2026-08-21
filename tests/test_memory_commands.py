@@ -30,8 +30,7 @@ def test_cmd_memory_recall_no_hits(monkeypatch, capsys):
 
 
 def test_cmd_memory_recall_prints_hits_with_tags(monkeypatch, capsys):
-    hit = MemEntry(mid="m1", content="likes tea", mtype=MemType.PREFERENCE,
-                   tags=["drink"], importance=6)
+    hit = MemEntry(mid="m1", content="likes tea", mtype=MemType.PREFERENCE, tags=["drink"], importance=6)
     monkeypatch.setattr(cmds.service, "recall_memories", lambda query, ns, limit: [hit])
     cmds.cmd_memory_recall("tea")
     out = capsys.readouterr().out
@@ -52,9 +51,15 @@ def test_cmd_memory_forget_not_found(monkeypatch, capsys):
 
 
 def test_cmd_memory_stats_prints_breakdown(monkeypatch, capsys):
-    monkeypatch.setattr(cmds.service, "get_stats", lambda ns: {
-        "namespace": "default", "total": 3, "by_type": {"fact": 2, "task": 1},
-    })
+    monkeypatch.setattr(
+        cmds.service,
+        "get_stats",
+        lambda ns: {
+            "namespace": "default",
+            "total": 3,
+            "by_type": {"fact": 2, "task": 1},
+        },
+    )
     cmds.cmd_memory_stats()
     out = capsys.readouterr().out
     assert "Total: 3" in out
@@ -62,8 +67,11 @@ def test_cmd_memory_stats_prints_breakdown(monkeypatch, capsys):
 
 
 def test_cmd_memory_retention_prints_summary(monkeypatch, capsys):
-    monkeypatch.setattr(cmds.service, "apply_retention",
-                        lambda ns, max_age_days, max_entries: ({"removed_age": 2, "removed_cap": 1}, 7))
+    monkeypatch.setattr(
+        cmds.service,
+        "apply_retention",
+        lambda ns, max_age_days, max_entries: ({"removed_age": 2, "removed_cap": 1}, 7),
+    )
     cmds.cmd_memory_retention()
     out = capsys.readouterr().out
     assert "removed 2 by age" in out

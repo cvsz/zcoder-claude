@@ -8,9 +8,18 @@ def fractional_cents_to_usd(amount: str) -> Decimal:
     return Decimal(amount) / Decimal("100")
 
 
-def build_analytics_query(*, date=None, starting_date=None, ending_date=None,
-                          limit=None, page=None, group_by=None, filters=None,
-                          products=None, order_by=None) -> dict:
+def build_analytics_query(
+    *,
+    date=None,
+    starting_date=None,
+    ending_date=None,
+    limit=None,
+    page=None,
+    group_by=None,
+    filters=None,
+    products=None,
+    order_by=None,
+) -> dict:
     if date and (starting_date or ending_date):
         raise ValueError("date cannot be combined with starting_date/ending_date")
     if ending_date and not starting_date:

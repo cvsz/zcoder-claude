@@ -7,12 +7,11 @@ application/plugins_service.py.
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 from application import plugins_service as service
 
 
-def cmd_plugin_marketplace_add(source: str, name: Optional[str] = None):
+def cmd_plugin_marketplace_add(source: str, name: str | None = None):
     try:
         info = service.add_marketplace(source, name)
         print(f"\\033[92m✓ Marketplace added: {name or Path(source.rstrip('/')).stem}\\033[0m")
@@ -89,9 +88,14 @@ def cmd_plugin_info(name: str):
     print(f"  marketplace: {info.get('marketplace') or 'local'}")
     print(f"  path: {info['path']}")
     plug_dir = Path(info["path"])
-    for sub, label in [("skills", "Skills"), ("commands", "Commands"),
-                        ("agents", "Agents"), ("output-styles", "Output styles"),
-                        ("hooks", "Hooks"), (".mcp.json", "MCP servers")]:
+    for sub, label in [
+        ("skills", "Skills"),
+        ("commands", "Commands"),
+        ("agents", "Agents"),
+        ("output-styles", "Output styles"),
+        ("hooks", "Hooks"),
+        (".mcp.json", "MCP servers"),
+    ]:
         p = plug_dir / sub
         if p.exists():
             print(f"  • {label}: {p}")

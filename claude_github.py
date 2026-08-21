@@ -46,20 +46,46 @@ used by main.py) keep working unmodified. See exec-planning.md §5
 (migration playbook).
 """
 
-from infrastructure.github_api.github_gateway import (
-    GITHUB_API, resolve_token as _gh_token, get as _gh_get, fetch_diff as _gh_fetch_diff,
-)
-from infrastructure.anthropic_api.devtools_gateway import github_generate as _call
 from application.devtools_service import (
-    review_pr, triage_issues, summarise_commits,
     generate_pr_description_gh as generate_pr_description,
 )
+from application.devtools_service import (
+    review_pr,
+    summarise_commits,
+    triage_issues,
+)
+from infrastructure.anthropic_api.devtools_gateway import github_generate as _call
+from infrastructure.github_api.github_gateway import (
+    GITHUB_API,
+)
+from infrastructure.github_api.github_gateway import (
+    fetch_diff as _gh_fetch_diff,
+)
+from infrastructure.github_api.github_gateway import (
+    get as _gh_get,
+)
+from infrastructure.github_api.github_gateway import (
+    resolve_token as _gh_token,
+)
 from interfaces.cli.commands.devtools_commands import (
-    cmd_gh_review_pr, cmd_gh_triage, cmd_gh_commits, cmd_gh_pr_description,
+    cmd_gh_commits,
+    cmd_gh_pr_description,
+    cmd_gh_review_pr,
+    cmd_gh_triage,
 )
 
 __all__ = [
-    "GITHUB_API", "_gh_token", "_gh_get", "_gh_fetch_diff", "_call",
-    "review_pr", "triage_issues", "summarise_commits", "generate_pr_description",
-    "cmd_gh_review_pr", "cmd_gh_triage", "cmd_gh_commits", "cmd_gh_pr_description",
+    "GITHUB_API",
+    "_gh_token",
+    "_gh_get",
+    "_gh_fetch_diff",
+    "_call",
+    "review_pr",
+    "triage_issues",
+    "summarise_commits",
+    "generate_pr_description",
+    "cmd_gh_review_pr",
+    "cmd_gh_triage",
+    "cmd_gh_commits",
+    "cmd_gh_pr_description",
 ]

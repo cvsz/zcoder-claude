@@ -4,7 +4,7 @@ Covers domain/powerpoint.py — pure constants for the PowerPoint chat
 bounded context, extracted 2026-08-18 (Phase C, Context #4).
 """
 
-from domain.powerpoint import SYSTEM_PROMPT, _CODE_BLOCK, _DENYLIST, HELP_TEXT
+from domain.powerpoint import _CODE_BLOCK, _DENYLIST, HELP_TEXT, SYSTEM_PROMPT
 
 
 def test_code_block_extracts_python_fence():

@@ -29,12 +29,17 @@ main.py) keep working unmodified. See exec-planning.md §5 (migration
 playbook).
 """
 
-from domain.excel import SYSTEM_PROMPT, _CODE_BLOCK, _DENYLIST, HELP_TEXT
+from domain.excel import _CODE_BLOCK, _DENYLIST, HELP_TEXT, SYSTEM_PROMPT
 from infrastructure.local_storage.excel_workbook_store import ExcelSession, pd
-from interfaces.cli.commands.excel_commands import cmd_excel_chat, _cmd_excel_chat_native
+from interfaces.cli.commands.excel_commands import _cmd_excel_chat_native, cmd_excel_chat
 
 __all__ = [
-    "SYSTEM_PROMPT", "_CODE_BLOCK", "_DENYLIST", "HELP_TEXT",
-    "ExcelSession", "pd",
-    "cmd_excel_chat", "_cmd_excel_chat_native",
+    "SYSTEM_PROMPT",
+    "_CODE_BLOCK",
+    "_DENYLIST",
+    "HELP_TEXT",
+    "ExcelSession",
+    "pd",
+    "cmd_excel_chat",
+    "_cmd_excel_chat_native",
 ]

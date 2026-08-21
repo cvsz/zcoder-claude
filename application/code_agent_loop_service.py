@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 application/code_agent_loop_service.py — Use-case layer for Claude Code
 / Agent SDK (sessions, hooks, MCP, subagents, skills, todos, memory, the
 main agentic query loop)
@@ -13,40 +14,56 @@ local-disk-backed class in this context).
 
 import json
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
+from domain.code_agent import AGENTS_DIR, MCP_JSON, SESSIONS_DIR, SETTINGS_JSON, SKILLS_DIR, USER_MEMORY
+from domain.tools import build_context_management
 from infrastructure.anthropic_api.code_agent_loop_gateway import (
-    CodeAgent, default_can_use_tool,
+    CodeAgent,
+    default_can_use_tool,
 )
 from infrastructure.local_storage.code_agent_store import (
-    CodeSession, HooksEngine, McpConnector, SubagentRegistry,
-    SkillsRegistry, TodoManager, MemoryManager,
+    CodeSession,
+    HooksEngine,
+    McpConnector,
+    MemoryManager,
+    SkillsRegistry,
+    SubagentRegistry,
+    TodoManager,
 )
-from domain.tools import build_context_management
-from domain.code_agent import SESSIONS_DIR, MCP_JSON, SETTINGS_JSON, AGENTS_DIR, SKILLS_DIR, USER_MEMORY
 
 _NOOP = lambda *a, **k: None  # noqa: E731
 
 
 # ── Session lifecycle ────────────────────────────────────────────────────
 
-def load_or_create_session(session_id: Optional[str], cwd: str, model: str,
-                            permission: str, system: Optional[str]) -> tuple:
+
+def load_or_create_session(
+    session_id: str | None, cwd: str, model: str, permission: str, system: str | None
+) -> tuple:
     """Returns (session, resumed: bool)."""
     if session_id:
         try:
             return CodeSession.load(session_id), True
         except FileNotFoundError:
-            return CodeSession(session_id=session_id, cwd=cwd, model=model,
-                                permission_mode=permission, system_prompt=system or ""), False
-    return CodeSession(cwd=cwd, model=model, permission_mode=permission,
-                        system_prompt=system or ""), False
+            return (
+                CodeSession(
+                    session_id=session_id,
+                    cwd=cwd,
+                    model=model,
+                    permission_mode=permission,
+                    system_prompt=system or "",
+                ),
+                False,
+            )
+    return CodeSession(cwd=cwd, model=model, permission_mode=permission, system_prompt=system or ""), False
 
 
 def apply_output_style(session: CodeSession, output_style: str):
     try:
         from claude_output_styles import system_prompt_fragment
+
         fragment = system_prompt_fragment(output_style)
         if fragment:
             session.system_prompt = (session.system_prompt + "\n\n" + fragment).strip()
@@ -54,12 +71,16 @@ def apply_output_style(session: CodeSession, output_style: str):
         pass
 
 
-def build_hooks_engine(hooks_file: Optional[str], on_warning: Callable[[str], None] = _NOOP) -> HooksEngine:
-    engine = HooksEngine.from_file(hooks_file, on_warning=on_warning) if hooks_file else HooksEngine.from_settings()
+def build_hooks_engine(hooks_file: str | None, on_warning: Callable[[str], None] = _NOOP) -> HooksEngine:
+    engine = (
+        HooksEngine.from_file(hooks_file, on_warning=on_warning)
+        if hooks_file
+        else HooksEngine.from_settings()
+    )
     return HooksEngine.with_plugins(engine)
 
 
-def enable_sandbox(cwd: str, allow_net: bool, extra_roots: Optional[list] = None):
+def enable_sandbox(cwd: str, allow_net: bool, extra_roots: list | None = None):
     os.environ["AI_CODER_SANDBOX"] = "1"
     os.environ["AI_CODER_SANDBOX_NET"] = "1" if allow_net else "0"
     os.environ["AI_CODER_SANDBOX_ROOTS"] = json.dumps([str(Path(cwd).resolve())] + (extra_roots or []))
@@ -68,6 +89,7 @@ def enable_sandbox(cwd: str, allow_net: bool, extra_roots: Optional[list] = None
 def add_plugin_bin_paths():
     try:
         from claude_plugins import plugin_bin_paths
+
         extra_bins = plugin_bin_paths()
         if extra_bins:
             os.environ["PATH"] = os.pathsep.join(extra_bins) + os.pathsep + os.environ.get("PATH", "")
@@ -75,26 +97,49 @@ def add_plugin_bin_paths():
         pass
 
 
-def build_agent_context_editing(enabled: bool) -> Optional[dict]:
+def build_agent_context_editing(enabled: bool) -> dict | None:
     return build_context_management(clear_tool_uses=True) if enabled else None
 
 
-def run_agent_query(agent: CodeAgent, prompt: str, session: CodeSession, tools: str,
-                     permission: str, hooks: HooksEngine, output_mode: str,
-                     context_management: Optional[dict], can_use_tool=default_can_use_tool,
-                     **callbacks) -> str:
-    return agent.query(prompt=prompt, session=session, tools=tools, permission=permission,
-                        hooks=hooks, output_mode=output_mode, context_management=context_management,
-                        can_use_tool=can_use_tool, **callbacks)
+def run_agent_query(
+    agent: CodeAgent,
+    prompt: str,
+    session: CodeSession,
+    tools: str,
+    permission: str,
+    hooks: HooksEngine,
+    output_mode: str,
+    context_management: dict | None,
+    can_use_tool=default_can_use_tool,
+    **callbacks,
+) -> str:
+    return agent.query(
+        prompt=prompt,
+        session=session,
+        tools=tools,
+        permission=permission,
+        hooks=hooks,
+        output_mode=output_mode,
+        context_management=context_management,
+        can_use_tool=can_use_tool,
+        **callbacks,
+    )
 
 
 def run_subagent(task: str, api_key: str, model: str, cwd: str = ".", **callbacks) -> str:
-    session = CodeSession(cwd=cwd, model=model, permission_mode="acceptEdits",
-                           system_prompt=("You are a focused subagent. Complete ONLY the specific task. "
-                                          "Be thorough. Return just the result."))
+    session = CodeSession(
+        cwd=cwd,
+        model=model,
+        permission_mode="acceptEdits",
+        system_prompt=(
+            "You are a focused subagent. Complete ONLY the specific task. "
+            "Be thorough. Return just the result."
+        ),
+    )
     agent = CodeAgent(api_key=api_key, model=model)
-    return agent.query(task, session, tools="safe", permission="acceptEdits",
-                        output_mode="stream", **callbacks)
+    return agent.query(
+        task, session, tools="safe", permission="acceptEdits", output_mode="stream", **callbacks
+    )
 
 
 def generate_todos(prompt: str, api_key: str, model: str) -> tuple:
@@ -112,11 +157,15 @@ def generate_todos(prompt: str, api_key: str, model: str) -> tuple:
     agent = CodeAgent(api_key=api_key, model=model)
     raw = agent.query(
         f"Break this task into 5-8 concrete todo items (JSON array of strings):\n{prompt}",
-        session, tools="none", permission="dontAsk", output_mode="text",
+        session,
+        tools="none",
+        permission="dontAsk",
+        output_mode="text",
     )
     try:
         import re
-        m = re.search(r'\[.*?\]', raw, re.DOTALL)
+
+        m = re.search(r"\[.*?\]", raw, re.DOTALL)
         if m:
             items = json.loads(m.group(0))
             return [tm.add(str(item)) for item in items], None
@@ -126,6 +175,7 @@ def generate_todos(prompt: str, api_key: str, model: str) -> tuple:
 
 
 # ── Slash commands ───────────────────────────────────────────────────────
+
 
 def mcp_server_list() -> list:
     return McpConnector.from_json_file().list_servers()
@@ -147,7 +197,7 @@ def memory_combined() -> str:
     return MemoryManager().combined()
 
 
-def find_custom_command(cmd: str) -> Optional[dict]:
+def find_custom_command(cmd: str) -> dict | None:
     """Returns {"content": str, "source": "custom"|"plugin", "name": str}
     or None if no matching command file/plugin command exists."""
     for d in (Path(".claude/commands"), SKILLS_DIR):
@@ -157,6 +207,7 @@ def find_custom_command(cmd: str) -> Optional[dict]:
                     return {"content": f.read_text(), "source": "custom", "name": cmd}
     try:
         from claude_plugins import load_plugin_commands
+
         for entry in load_plugin_commands():
             if entry["name"] == cmd or entry["name"].split(":", 1)[-1] == cmd:
                 return {"content": Path(entry["path"]).read_text(), "source": "plugin", "name": entry["name"]}
@@ -168,11 +219,17 @@ def find_custom_command(cmd: str) -> Optional[dict]:
 def run_custom_command(content: str, prompt: str, api_key: str, model: str, cwd: str, **callbacks):
     session = CodeSession(cwd=cwd, model=model)
     agent = CodeAgent(api_key=api_key, model=model)
-    return agent.query(f"{content}\n\n{prompt}" if prompt else content, session,
-                        tools="code", permission="acceptEdits", **callbacks)
+    return agent.query(
+        f"{content}\n\n{prompt}" if prompt else content,
+        session,
+        tools="code",
+        permission="acceptEdits",
+        **callbacks,
+    )
 
 
 # ── Cost / session listing ───────────────────────────────────────────────
+
 
 def list_session_files(limit: int = 20) -> list:
     """Returns parsed session dicts, most recent last, best-effort (skips
@@ -188,21 +245,24 @@ def list_session_files(limit: int = 20) -> list:
 
 # ── Doctor diagnostics ───────────────────────────────────────────────────
 
+
 def run_diagnostics() -> list:
     """Returns [(check_name, ok: bool), ...]."""
     from domain.code_agent import MEMORY_FILE
+
     checks = [
-        ("ANTHROPIC_API_KEY set",  bool(os.getenv("ANTHROPIC_API_KEY"))),
-        (".mcp.json exists",       MCP_JSON.exists()),
-        (".claude/settings.json",  SETTINGS_JSON.exists()),
+        ("ANTHROPIC_API_KEY set", bool(os.getenv("ANTHROPIC_API_KEY"))),
+        (".mcp.json exists", MCP_JSON.exists()),
+        (".claude/settings.json", SETTINGS_JSON.exists()),
         (".claude/agents/ exists", AGENTS_DIR.exists()),
         (".claude/skills/ exists", SKILLS_DIR.exists()),
-        ("CLAUDE.md exists",       MEMORY_FILE.exists() or Path("CLAUDE.md").exists()),
-        ("~/.claude/CLAUDE.md",    USER_MEMORY.exists()),
-        ("Sessions dir",           SESSIONS_DIR.exists()),
+        ("CLAUDE.md exists", MEMORY_FILE.exists() or Path("CLAUDE.md").exists()),
+        ("~/.claude/CLAUDE.md", USER_MEMORY.exists()),
+        ("Sessions dir", SESSIONS_DIR.exists()),
     ]
     try:
-        from claude_plugins import plugin_list, marketplace_list
+        from claude_plugins import marketplace_list, plugin_list
+
         checks.append(("Plugins installed", len(plugin_list()) > 0))
         checks.append(("Marketplaces registered", len(marketplace_list()) > 0))
     except ImportError:

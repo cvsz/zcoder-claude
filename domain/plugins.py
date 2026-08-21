@@ -14,11 +14,23 @@ INSTALLED_DIR = PLUGINS_ROOT / "installed"
 REGISTRY_FILE = PLUGINS_ROOT / "registry.json"
 
 DEFAULT_MANIFEST_FIELDS = {
-    "name": "", "displayName": "", "version": "0.0.0", "description": "",
-    "author": {}, "homepage": "", "repository": "", "license": "",
-    "keywords": [], "skills": None, "commands": None, "agents": None,
-    "hooks": None, "mcpServers": None, "outputStyles": None,
-    "lspServers": None, "dependencies": [],
+    "name": "",
+    "displayName": "",
+    "version": "0.0.0",
+    "description": "",
+    "author": {},
+    "homepage": "",
+    "repository": "",
+    "license": "",
+    "keywords": [],
+    "skills": None,
+    "commands": None,
+    "agents": None,
+    "hooks": None,
+    "mcpServers": None,
+    "outputStyles": None,
+    "lspServers": None,
+    "dependencies": [],
 }
 
 
@@ -28,7 +40,7 @@ def read_manifest(plugin_dir: Path) -> dict:
         try:
             data = json.loads(manifest_path.read_text())
         except Exception as e:
-            raise ValueError(f"invalid plugin.json: {e}")
+            raise ValueError(f"invalid plugin.json: {e}") from e
         merged = {**DEFAULT_MANIFEST_FIELDS, **data}
         if not merged["name"]:
             raise ValueError("plugin.json must include a 'name' field")
@@ -54,8 +66,17 @@ def validate_plugin(plugin_dir: Path) -> list:
     if not (plugin_dir / ".claude-plugin" / "plugin.json").exists():
         findings.append(("info", "no manifest found; using auto-discovery"))
 
-    known_dirs = {"skills", "commands", "agents", "output-styles", "themes",
-                  "monitors", "hooks", "bin", "scripts"}
+    known_dirs = {
+        "skills",
+        "commands",
+        "agents",
+        "output-styles",
+        "themes",
+        "monitors",
+        "hooks",
+        "bin",
+        "scripts",
+    }
     for child in plugin_dir.iterdir():
         if child.is_dir() and child.name not in known_dirs and child.name != ".claude-plugin":
             findings.append(("warn", f"unrecognised top-level directory: {child.name}/"))
@@ -143,11 +164,13 @@ def load_plugin_commands(plugin_dirs: list) -> list:
         if not cmd_dir.exists():
             continue
         for f in cmd_dir.rglob("*.md"):
-            out.append({
-                "name": f"{plug_dir.name}:{f.stem}",
-                "path": str(f),
-                "plugin": plug_dir.name,
-            })
+            out.append(
+                {
+                    "name": f"{plug_dir.name}:{f.stem}",
+                    "path": str(f),
+                    "plugin": plug_dir.name,
+                }
+            )
     return out
 
 

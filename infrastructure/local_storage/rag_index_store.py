@@ -15,9 +15,8 @@ this file is only the "touches disk" half.
 
 import json
 from pathlib import Path
-from typing import Optional
 
-from domain.tools import RAGIndex, SUPPORTED_RAG_EXTS, chunk_text, tokenize, build_idf
+from domain.tools import SUPPORTED_RAG_EXTS, RAGIndex, build_idf, chunk_text, tokenize
 
 INDEX_DIR = Path.home() / ".ai-coder" / "rag_indexes"
 
@@ -47,7 +46,7 @@ def save_index(idx: RAGIndex):
     (INDEX_DIR / f"{idx.name}.json").write_text(json.dumps(idx.to_dict(), indent=2))
 
 
-def load_index(name: str) -> Optional[RAGIndex]:
+def load_index(name: str) -> RAGIndex | None:
     p = INDEX_DIR / f"{name}.json"
     if not p.exists():
         return None

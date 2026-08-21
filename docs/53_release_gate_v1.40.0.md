@@ -145,3 +145,25 @@ scoped-out item (retrofitting all `urlopen_json` call sites to preserve
 headers) is a enhancement/hardening item, not a compatibility defect — no
 existing behavior regresses without it, and the new capability is available
 via the header-preserving variant for any call site that adopts it.
+
+---
+
+## v1.41.0 Phase F completion (2026-08-21)
+
+This section records what happened *after* the v1.40.0 release gate passed.
+
+**Phase F — Enterprise/production-readiness hardening** completed 2026-08-21.
+All items from `exec-planning.md` §4 are now checked:
+
+| Item | Disposition |
+|---|---|
+| `ruff`/`black`/`mypy` | **COMPLETE** — ruff 0 errors, black formatted, mypy 0 errors |
+| mypy Python version bump | **COMPLETE** — pyproject.toml: 3.9 → 3.14 |
+| CI wiring | **COMPLETE** — `.github/workflows/ci.yml` |
+| `interfaces/web/` wiring | **COMPLETE** — server.py imports from dispatcher, not main |
+| Dependency floor audit | **COMPLETE** — all pins verified; web deps in `webapp/requirements-web.txt` |
+| Final docs pass | **COMPLETE** — this file + exec-planning.md + CHANGELOG.md updated |
+| Git tag v1.41.0 | **COMPLETE** — signed tag created |
+
+**Test suite**: 1053/1053 passing (572 at v1.40.0 baseline + 481 from Clean
+Architecture migration Phases A–E).

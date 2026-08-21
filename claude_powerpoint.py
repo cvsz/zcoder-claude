@@ -29,12 +29,17 @@ by main.py) keep working unmodified. See exec-planning.md §5
 (migration playbook).
 """
 
-from domain.powerpoint import SYSTEM_PROMPT, _CODE_BLOCK, _DENYLIST, HELP_TEXT
+from domain.powerpoint import _CODE_BLOCK, _DENYLIST, HELP_TEXT, SYSTEM_PROMPT
 from infrastructure.local_storage.pptx_deck_store import PptxSession, Presentation
-from interfaces.cli.commands.pptx_commands import cmd_pptx_chat, _cmd_pptx_chat_native
+from interfaces.cli.commands.pptx_commands import _cmd_pptx_chat_native, cmd_pptx_chat
 
 __all__ = [
-    "SYSTEM_PROMPT", "_CODE_BLOCK", "_DENYLIST", "HELP_TEXT",
-    "PptxSession", "Presentation",
-    "cmd_pptx_chat", "_cmd_pptx_chat_native",
+    "SYSTEM_PROMPT",
+    "_CODE_BLOCK",
+    "_DENYLIST",
+    "HELP_TEXT",
+    "PptxSession",
+    "Presentation",
+    "cmd_pptx_chat",
+    "_cmd_pptx_chat_native",
 ]

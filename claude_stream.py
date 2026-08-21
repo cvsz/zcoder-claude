@@ -13,11 +13,15 @@ New code should import from those locations directly rather than through
 this shim.
 """
 
-from domain.messaging import FINE_GRAINED_TOOL_STREAMING_BETA, with_eager_input_streaming, handle_refusal
+from domain.messaging import FINE_GRAINED_TOOL_STREAMING_BETA, handle_refusal, with_eager_input_streaming
 from infrastructure.anthropic_api.messaging_gateway import StreamCoder
 from interfaces.cli.commands.messaging_commands import cmd_stream, cmd_stream_tools
 
 __all__ = [
-    "FINE_GRAINED_TOOL_STREAMING_BETA", "with_eager_input_streaming", "handle_refusal",
-    "StreamCoder", "cmd_stream", "cmd_stream_tools",
+    "FINE_GRAINED_TOOL_STREAMING_BETA",
+    "with_eager_input_streaming",
+    "handle_refusal",
+    "StreamCoder",
+    "cmd_stream",
+    "cmd_stream_tools",
 ]

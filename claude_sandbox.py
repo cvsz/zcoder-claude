@@ -12,11 +12,21 @@ through this shim.
 """
 
 from domain.agent_execution import (
-    SandboxViolation, NETWORK_BINARIES, NETWORK_PIP_NPM_FLAGS,
-    tokenize_command, check_network, check_filesystem, enforce,
+    NETWORK_BINARIES,
+    NETWORK_PIP_NPM_FLAGS,
+    SandboxViolation,
+    check_filesystem,
+    check_network,
+    enforce,
+    tokenize_command,
 )
 
 __all__ = [
-    "SandboxViolation", "NETWORK_BINARIES", "NETWORK_PIP_NPM_FLAGS",
-    "tokenize_command", "check_network", "check_filesystem", "enforce",
+    "SandboxViolation",
+    "NETWORK_BINARIES",
+    "NETWORK_PIP_NPM_FLAGS",
+    "tokenize_command",
+    "check_network",
+    "check_filesystem",
+    "enforce",
 ]

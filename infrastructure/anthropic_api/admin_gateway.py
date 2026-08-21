@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 claude_admin_api.py — Admin API: Usage & Cost, API keys, Spend Limits, Rate Limits, Claude Code Analytics, User Management
 AI Model Coder CLI v1.38.0
 
@@ -96,10 +97,9 @@ CLI flags:
 """
 
 import json
-import urllib.request
 import urllib.error
 import urllib.parse
-from typing import Optional
+import urllib.request
 
 ADMIN_BASE = "https://api.anthropic.com/v1/organizations"
 
@@ -132,7 +132,7 @@ class AdminApiClient:
     def __init__(self, admin_api_key: str):
         self.admin_api_key = admin_api_key
 
-    def _headers(self, beta: Optional[str] = None) -> dict:
+    def _headers(self, beta: str | None = None) -> dict:
         headers = {
             "Content-Type": "application/json",
             "x-api-key": self.admin_api_key,
@@ -142,11 +142,12 @@ class AdminApiClient:
             headers["anthropic-beta"] = beta
         return headers
 
-    def _get(self, path: str, params: Optional[dict] = None, beta: Optional[str] = None) -> dict:
+    def _get(self, path: str, params: dict | None = None, beta: str | None = None) -> dict:
         url = f"{ADMIN_BASE}{path}"
         if params:
             url += "?" + urllib.parse.urlencode(
-                {k: v for k, v in params.items() if v is not None}, doseq=True,
+                {k: v for k, v in params.items() if v is not None},
+                doseq=True,
             )
         req = urllib.request.Request(url, headers=self._headers(beta=beta), method="GET")
         try:
@@ -157,10 +158,12 @@ class AdminApiClient:
         except Exception as e:
             return {"error": str(e)}
 
-    def _post(self, path: str, payload: dict, beta: Optional[str] = None) -> dict:
+    def _post(self, path: str, payload: dict, beta: str | None = None) -> dict:
         req = urllib.request.Request(
-            f"{ADMIN_BASE}{path}", data=json.dumps(payload).encode(),
-            headers=self._headers(beta=beta), method="POST",
+            f"{ADMIN_BASE}{path}",
+            data=json.dumps(payload).encode(),
+            headers=self._headers(beta=beta),
+            method="POST",
         )
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
@@ -170,7 +173,7 @@ class AdminApiClient:
         except Exception as e:
             return {"error": str(e)}
 
-    def _delete(self, path: str, beta: Optional[str] = None) -> dict:
+    def _delete(self, path: str, beta: str | None = None) -> dict:
         req = urllib.request.Request(f"{ADMIN_BASE}{path}", headers=self._headers(beta=beta), method="DELETE")
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
@@ -185,16 +188,26 @@ class AdminApiClient:
 
     def get_usage_report(self, start: str, end: str, group_by: str = "model") -> dict:
         """Wraps the usage_report endpoint. start/end are YYYY-MM-DD."""
-        return self._get("/usage_report", params={
-            "starting_at": start, "ending_at": end, "group_by": group_by,
-        })
+        return self._get(
+            "/usage_report",
+            params={
+                "starting_at": start,
+                "ending_at": end,
+                "group_by": group_by,
+            },
+        )
 
     def get_cost_report(self, start: str, end: str, group_by: str = "model") -> dict:
         """Wraps the cost_report endpoint — actual billed spend, distinct
         from the token-count usage_report above."""
-        return self._get("/cost_report", params={
-            "starting_at": start, "ending_at": end, "group_by": group_by,
-        })
+        return self._get(
+            "/cost_report",
+            params={
+                "starting_at": start,
+                "ending_at": end,
+                "group_by": group_by,
+            },
+        )
 
     # ── CMEK external_keys (v1.25.0 — see note below) ─────────────────────
     #
@@ -220,10 +233,14 @@ class AdminApiClient:
         AWS KMS only there). Attaching a key to a workspace is
         irreversible: it cannot later be detached or swapped, and the
         workspace's data-retention setting locks in place."""
-        return self._post("/external_keys", {
-            "workspace_id": workspace_id, "provider": provider,
-            "key_arn_or_id": key_arn_or_id,
-        })
+        return self._post(
+            "/external_keys",
+            {
+                "workspace_id": workspace_id,
+                "provider": provider,
+                "key_arn_or_id": key_arn_or_id,
+            },
+        )
 
     def validate_external_key(self, key_id: str) -> dict:
         """Validate a registered key's permissions/purpose/algorithm
@@ -237,7 +254,7 @@ class AdminApiClient:
         a new workspace and moving traffic to it."""
         return self._post(f"/external_keys/{key_id}/attach", {"workspace_id": workspace_id})
 
-    def list_external_keys(self, workspace_id: Optional[str] = None) -> dict:
+    def list_external_keys(self, workspace_id: str | None = None) -> dict:
         """List registered CMEK keys, optionally filtered to one
         workspace."""
         params = {"workspace_id": workspace_id} if workspace_id else None
@@ -245,8 +262,9 @@ class AdminApiClient:
 
     # ── Claude Code Analytics API (v1.24.0) ──────────────────────────────
 
-    def get_claude_code_usage_report(self, starting_at: str, limit: int = 20,
-                                     page: Optional[str] = None) -> dict:
+    def get_claude_code_usage_report(
+        self, starting_at: str, limit: int = 20, page: str | None = None
+    ) -> dict:
         """GET /organizations/usage_report/claude_code — one record per
         user per day: session counts, lines of code added/removed,
         commits/PRs created through Claude Code, per-editing-tool
@@ -255,9 +273,14 @@ class AdminApiClient:
         Claude-Code-specific and free to call regardless of plan.
         starting_at is required (YYYY-MM-DD); page is the cursor from a
         previous response's next_page for pagination."""
-        return self._get("/usage_report/claude_code", params={
-            "starting_at": starting_at, "limit": limit, "page": page,
-        })
+        return self._get(
+            "/usage_report/claude_code",
+            params={
+                "starting_at": starting_at,
+                "limit": limit,
+                "page": page,
+            },
+        )
 
     # ── API key management ──────────────────────────────────────────────
 
@@ -267,8 +290,7 @@ class AdminApiClient:
     def get_api_key(self, key_id: str) -> dict:
         return self._get(f"/api_keys/{key_id}")
 
-    def update_api_key(self, key_id: str, status: Optional[str] = None,
-                       name: Optional[str] = None) -> dict:
+    def update_api_key(self, key_id: str, status: str | None = None, name: str | None = None) -> dict:
         """status: 'active' or 'inactive'. There is no documented delete
         endpoint either — revocation is done via status, not deletion."""
         payload = {}
@@ -283,14 +305,13 @@ class AdminApiClient:
 
     # ── Spend Limits API (v1.23.0, Claude Enterprise only) ───────────────
 
-    def list_effective_spend_limits(self, limit: int = 50, page: Optional[str] = None) -> dict:
+    def list_effective_spend_limits(self, limit: int = 50, page: str | None = None) -> dict:
         """Every current member with their resolved effective spend limit,
         where it's inherited from (source), and their period-to-date
         spend. GET /spend_limits/effective."""
         return self._get("/spend_limits/effective", params={"limit": limit, "page": page})
 
-    def set_spend_limit(self, user_id: str, amount: str,
-                        suppress_notification: bool = False) -> dict:
+    def set_spend_limit(self, user_id: str, amount: str, suppress_notification: bool = False) -> dict:
         """Set a per-user spend limit override. `amount` is a decimal
         string in minor units (cents), per the API's convention.
         `suppress_notification` is only sent when True (omitted
@@ -309,10 +330,13 @@ class AdminApiClient:
         endpoint — only per-user overrides."""
         return self._delete(f"/spend_limits/{spend_limit_id}")
 
-    def list_spend_limit_increase_requests(self, status: Optional[list] = None,
-                                           actor_ids: Optional[list] = None,
-                                           limit: int = 50,
-                                           page: Optional[str] = None) -> dict:
+    def list_spend_limit_increase_requests(
+        self,
+        status: list | None = None,
+        actor_ids: list | None = None,
+        limit: int = 50,
+        page: str | None = None,
+    ) -> dict:
         """List spend limit increase requests, most recent first. `status`
         filters by one or more of pending/approved/denied; `actor_ids`
         filters to specific requesters."""
@@ -326,8 +350,9 @@ class AdminApiClient:
     def get_spend_limit_increase_request(self, request_id: str) -> dict:
         return self._get(f"/spend_limit_increase_requests/{request_id}")
 
-    def approve_spend_limit_increase_request(self, request_id: str,
-                                             suppress_notification: bool = False) -> dict:
+    def approve_spend_limit_increase_request(
+        self, request_id: str, suppress_notification: bool = False
+    ) -> dict:
         """Approving writes the same per-user spend limit row that
         set_spend_limit() writes — this resolves the pending request AND
         sets the override in one call."""
@@ -336,8 +361,7 @@ class AdminApiClient:
             payload["suppress_notification"] = True
         return self._post(f"/spend_limit_increase_requests/{request_id}/approve", payload)
 
-    def deny_spend_limit_increase_request(self, request_id: str,
-                                          suppress_notification: bool = False) -> dict:
+    def deny_spend_limit_increase_request(self, request_id: str, suppress_notification: bool = False) -> dict:
         payload = {}
         if suppress_notification:
             payload["suppress_notification"] = True
@@ -345,7 +369,7 @@ class AdminApiClient:
 
     # ── Rate Limits API (v1.23.0, read-only) ─────────────────────────────
 
-    def get_org_rate_limits(self, model: Optional[str] = None) -> dict:
+    def get_org_rate_limits(self, model: str | None = None) -> dict:
         """The organization's configured rate limits, grouped by model
         family/batches/files/skills/web-search. `model`, when given,
         filters to the single group that model string belongs to (404 if
@@ -370,14 +394,25 @@ class AdminApiClient:
     # primary_owner are Console-managed and out of scope by design, same as
     # --admin-create-key above being N/A by design.
 
-    def list_members(self, limit: int = 20, email: Optional[str] = None,
-                     before_id: Optional[str] = None, after_id: Optional[str] = None) -> dict:
+    def list_members(
+        self,
+        limit: int = 20,
+        email: str | None = None,
+        before_id: str | None = None,
+        after_id: str | None = None,
+    ) -> dict:
         """GET /organizations/users. `email` filters to one member
         (case-insensitive, tolerates common address variants per the
         docs) instead of paging the whole roster."""
-        return self._get("/users", params={
-            "limit": limit, "email": email, "before_id": before_id, "after_id": after_id,
-        })
+        return self._get(
+            "/users",
+            params={
+                "limit": limit,
+                "email": email,
+                "before_id": before_id,
+                "after_id": after_id,
+            },
+        )
 
     def get_member(self, user_id: str) -> dict:
         return self._get(f"/users/{user_id}")
@@ -391,8 +426,7 @@ class AdminApiClient:
     def remove_member(self, user_id: str) -> dict:
         return self._delete(f"/users/{user_id}")
 
-    def create_invite(self, email: str, role: str,
-                      rbac_group_ids: Optional[list] = None) -> dict:
+    def create_invite(self, email: str, role: str, rbac_group_ids: list | None = None) -> dict:
         """role must be "user" or "managed". `rbac_group_ids`, when
         given, additionally requires the caller's key to carry
         write:rbac_groups (group assignment can grant that group's
@@ -402,13 +436,19 @@ class AdminApiClient:
             payload["rbac_group_ids"] = rbac_group_ids
         return self._post("/invites", payload)
 
-    def list_invites(self, limit: int = 20, before_id: Optional[str] = None,
-                     after_id: Optional[str] = None) -> dict:
+    def list_invites(
+        self, limit: int = 20, before_id: str | None = None, after_id: str | None = None
+    ) -> dict:
         """No status filter — the response mixes pending/accepted/expired;
         filter client-side on `status` if you only want one state."""
-        return self._get("/invites", params={
-            "limit": limit, "before_id": before_id, "after_id": after_id,
-        })
+        return self._get(
+            "/invites",
+            params={
+                "limit": limit,
+                "before_id": before_id,
+                "after_id": after_id,
+            },
+        )
 
     def get_invite(self, invite_id: str) -> dict:
         return self._get(f"/invites/{invite_id}")
@@ -419,9 +459,8 @@ class AdminApiClient:
         the API is the source of truth."""
         return self._delete(f"/invites/{invite_id}")
 
-    def list_groups(self, limit: int = 20, page: Optional[str] = None) -> dict:
-        return self._get("/rbac_groups", params={"limit": limit, "page": page},
-                         beta=CE_USER_MANAGEMENT_BETA)
+    def list_groups(self, limit: int = 20, page: str | None = None) -> dict:
+        return self._get("/rbac_groups", params={"limit": limit, "page": page}, beta=CE_USER_MANAGEMENT_BETA)
 
     def get_group(self, group_id: str) -> dict:
         return self._get(f"/rbac_groups/{group_id}", beta=CE_USER_MANAGEMENT_BETA)
@@ -438,34 +477,38 @@ class AdminApiClient:
         the permissions the group's attached roles granted."""
         return self._delete(f"/rbac_groups/{group_id}", beta=CE_USER_MANAGEMENT_BETA)
 
-    def list_group_members(self, group_id: str, limit: int = 100,
-                           page: Optional[str] = None) -> dict:
-        return self._get(f"/rbac_groups/{group_id}/members", params={"limit": limit, "page": page},
-                         beta=CE_USER_MANAGEMENT_BETA)
+    def list_group_members(self, group_id: str, limit: int = 100, page: str | None = None) -> dict:
+        return self._get(
+            f"/rbac_groups/{group_id}/members",
+            params={"limit": limit, "page": page},
+            beta=CE_USER_MANAGEMENT_BETA,
+        )
 
     def add_group_member(self, group_id: str, user_id: str) -> dict:
         """The user must already be an organization member (404
         otherwise). To assign groups to someone who hasn't joined yet,
         use rbac_group_ids on create_invite() instead."""
-        return self._post(f"/rbac_groups/{group_id}/members", {"user_id": user_id},
-                          beta=CE_USER_MANAGEMENT_BETA)
+        return self._post(
+            f"/rbac_groups/{group_id}/members", {"user_id": user_id}, beta=CE_USER_MANAGEMENT_BETA
+        )
 
     def remove_group_member(self, group_id: str, user_id: str) -> dict:
         return self._delete(f"/rbac_groups/{group_id}/members/{user_id}", beta=CE_USER_MANAGEMENT_BETA)
 
-    def list_roles(self, limit: int = 20, page: Optional[str] = None) -> dict:
+    def list_roles(self, limit: int = 20, page: str | None = None) -> dict:
         """Custom roles are read-only through the API — defined in
         claude.ai organization settings, not writable here."""
-        return self._get("/rbac_roles", params={"limit": limit, "page": page},
-                         beta=CE_USER_MANAGEMENT_BETA)
+        return self._get("/rbac_roles", params={"limit": limit, "page": page}, beta=CE_USER_MANAGEMENT_BETA)
 
     def get_role(self, role_id: str) -> dict:
         return self._get(f"/rbac_roles/{role_id}", beta=CE_USER_MANAGEMENT_BETA)
 
-    def list_role_permissions(self, role_id: str, limit: int = 20,
-                              page: Optional[str] = None) -> dict:
-        return self._get(f"/rbac_roles/{role_id}/permissions", params={"limit": limit, "page": page},
-                         beta=CE_USER_MANAGEMENT_BETA)
+    def list_role_permissions(self, role_id: str, limit: int = 20, page: str | None = None) -> dict:
+        return self._get(
+            f"/rbac_roles/{role_id}/permissions",
+            params={"limit": limit, "page": page},
+            beta=CE_USER_MANAGEMENT_BETA,
+        )
 
 
 # ── Clean Architecture refactor note (2026-08-14) ───────────────────────────

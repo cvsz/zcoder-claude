@@ -14,9 +14,13 @@ class FakeCachingCoder:
         self.api_key = api_key
         self.model = model
         self.ttl = ttl
-        self._stats = {"input_tokens": 10, "output_tokens": 5,
-                       "cache_creation_input_tokens": 0,
-                       "cache_read_input_tokens": 0, "cache_miss_reason": None}
+        self._stats = {
+            "input_tokens": 10,
+            "output_tokens": 5,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_miss_reason": None,
+        }
         FakeCachingCoder.instances.append(self)
 
     def generate_cached(self, prompt, system=None, cached_docs=None, diagnose=False):
@@ -62,8 +66,9 @@ def test_read_doc_files_empty_list():
 
 def test_generate_delegates_and_returns_stats(monkeypatch):
     monkeypatch.setattr(service, "CachingCoder", FakeCachingCoder)
-    result, stats = service.generate("hi", "key", "claude-sonnet-5",
-                                      system="be nice", docs=["doc1"], diagnose=True)
+    result, stats = service.generate(
+        "hi", "key", "claude-sonnet-5", system="be nice", docs=["doc1"], diagnose=True
+    )
     assert result == "generated text"
     assert stats["input_tokens"] == 10
     fc = FakeCachingCoder.instances[0]
@@ -72,8 +77,9 @@ def test_generate_delegates_and_returns_stats(monkeypatch):
 
 def test_multi_turn_delegates_and_builds_mid_system_updates(monkeypatch):
     monkeypatch.setattr(service, "CachingCoder", FakeCachingCoder)
-    responses, stats = service.multi_turn(["a", "b"], "key", "claude-opus-4-8",
-                                           mid_system="update", mid_system_after=0)
+    responses, stats = service.multi_turn(
+        ["a", "b"], "key", "claude-opus-4-8", mid_system="update", mid_system_after=0
+    )
     assert responses == ["reply 0", "reply 1"]
     fc = FakeCachingCoder.instances[0]
     assert fc.multi_turn_args == (["a", "b"], None, {0: "update"})
@@ -91,8 +97,7 @@ def test_warm_reads_files_and_delegates(monkeypatch, tmp_path):
     f = tmp_path / "doc.txt"
     f.write_text("cached content")
 
-    usage, stats, errors = service.warm("key", "claude-sonnet-5",
-                                         system="sys", doc_files=[str(f)])
+    usage, stats, errors = service.warm("key", "claude-sonnet-5", system="sys", doc_files=[str(f)])
     assert usage["cache_creation_input_tokens"] == 42
     assert errors == []
     fc = FakeCachingCoder.instances[0]
@@ -101,8 +106,7 @@ def test_warm_reads_files_and_delegates(monkeypatch, tmp_path):
 
 def test_warm_returns_read_errors_alongside_usage(monkeypatch):
     monkeypatch.setattr(service, "CachingCoder", FakeCachingCoder)
-    usage, stats, errors = service.warm("key", "claude-sonnet-5",
-                                         doc_files=["/nonexistent.txt"])
+    usage, stats, errors = service.warm("key", "claude-sonnet-5", doc_files=["/nonexistent.txt"])
     assert len(errors) == 1
     fc = FakeCachingCoder.instances[0]
     assert fc.warm_args == (None, [])

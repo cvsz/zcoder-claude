@@ -13,9 +13,8 @@ suite-file read/write halves of cmd_eval_run/cmd_eval_scaffold).
 """
 
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
 
 from domain.observability import EvalCase, EvalRun, price_lookup
 
@@ -28,15 +27,24 @@ def log_spend(model: str, in_tok: int, out_tok: int, cost: float, prompt_preview
     SPEND_LOG.parent.mkdir(parents=True, exist_ok=True)
     entries = []
     if SPEND_LOG.exists():
-        try: entries = json.loads(SPEND_LOG.read_text())
-        except Exception: pass
-    entries.append({"ts": datetime.now().isoformat(), "model": model,
-                   "in_tok": in_tok, "out_tok": out_tok, "cost_usd": round(cost, 6),
-                   "prompt": prompt_preview[:80]})
+        try:
+            entries = json.loads(SPEND_LOG.read_text())
+        except Exception:
+            pass
+    entries.append(
+        {
+            "ts": datetime.now().isoformat(),
+            "model": model,
+            "in_tok": in_tok,
+            "out_tok": out_tok,
+            "cost_usd": round(cost, 6),
+            "prompt": prompt_preview[:80],
+        }
+    )
     SPEND_LOG.write_text(json.dumps(entries[-5000:], indent=2))
 
 
-def read_spend_log() -> List[dict]:
+def read_spend_log() -> list[dict]:
     if not SPEND_LOG.exists():
         return []
     return json.loads(SPEND_LOG.read_text())
@@ -55,8 +63,14 @@ def clear_spend_log() -> bool:
 METRICS_LOG_PATH = Path.home() / ".ai-coder" / "metrics.jsonl"
 
 
-def record_metric(model: str, input_tokens: int, output_tokens: int,
-                  latency_seconds: float, command: str = "", stop_reason: str = "") -> None:
+def record_metric(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    latency_seconds: float,
+    command: str = "",
+    stop_reason: str = "",
+) -> None:
     """v1.11.0: a request that returns stop_reason:"refusal" with no
     generated output is documented as not billed on the Claude API — see
     domain/observability.py's price_lookup() delegation for the pricing
@@ -65,7 +79,7 @@ def record_metric(model: str, input_tokens: int, output_tokens: int,
     METRICS_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     not_billed = stop_reason == "refusal" and output_tokens == 0
     entry = {
-        "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "ts": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "model": model,
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
@@ -79,7 +93,7 @@ def record_metric(model: str, input_tokens: int, output_tokens: int,
         f.write(json.dumps(entry) + "\n")
 
 
-def load_metrics_log(today_only: bool = False, model_filter: Optional[str] = None) -> List[dict]:
+def load_metrics_log(today_only: bool = False, model_filter: str | None = None) -> list[dict]:
     if not METRICS_LOG_PATH.exists():
         return []
     today_str = date.today().isoformat()
@@ -106,7 +120,7 @@ def clear_metrics_log() -> None:
         METRICS_LOG_PATH.unlink()
 
 
-def write_metrics_export(output_path: str, entries: List[dict], summary: dict) -> None:
+def write_metrics_export(output_path: str, entries: list[dict], summary: dict) -> None:
     """claude_metrics.py's former cmd_metrics_export() had this write
     inline in the same function as the print() — split out here so the
     CLI layer stays print()-only."""
@@ -116,7 +130,7 @@ def write_metrics_export(output_path: str, entries: List[dict], summary: dict) -
 
 # ── Observability request log (claude_observability.py) ─────────────────
 
-OBS_DIR  = Path.home() / ".ai-coder" / "observability"
+OBS_DIR = Path.home() / ".ai-coder" / "observability"
 OBS_LOG_FILE = OBS_DIR / "requests.jsonl"
 
 
@@ -126,16 +140,19 @@ def log_observability_request(record: dict) -> None:
         f.write(json.dumps(record) + "\n")
 
 
-def read_observability_logs(hours: int = 24) -> List[dict]:
-    if not OBS_LOG_FILE.exists(): return []
+def read_observability_logs(hours: int = 24) -> list[dict]:
+    if not OBS_LOG_FILE.exists():
+        return []
     cutoff = (datetime.now() - timedelta(hours=hours)).isoformat()
     records = []
     with open(OBS_LOG_FILE) as f:
         for line in f:
             try:
                 r = json.loads(line)
-                if r.get("ts", "") >= cutoff: records.append(r)
-            except Exception: pass
+                if r.get("ts", "") >= cutoff:
+                    records.append(r)
+            except Exception:
+                pass
     return records
 
 
@@ -154,20 +171,35 @@ EVALS_DIR = Path.home() / ".ai-coder" / "evals"
 def save_eval_run(run: EvalRun) -> str:
     EVALS_DIR.mkdir(parents=True, exist_ok=True)
     p = EVALS_DIR / f"{run.run_id}.json"
-    p.write_text(json.dumps({
-        "run_id": run.run_id, "model": run.model, "ts": run.ts,
-        "cases": run.cases, "passed": run.passed,
-        "avg_score": run.avg_score, "avg_latency_ms": run.avg_latency_ms,
-        "results": [{
-            "case_id": r.case_id, "score": r.score, "passed": r.passed,
-            "latency_ms": r.latency_ms, "reason": r.reason,
-            "actual": r.actual[:500]
-        } for r in run.results]
-    }, indent=2))
+    p.write_text(
+        json.dumps(
+            {
+                "run_id": run.run_id,
+                "model": run.model,
+                "ts": run.ts,
+                "cases": run.cases,
+                "passed": run.passed,
+                "avg_score": run.avg_score,
+                "avg_latency_ms": run.avg_latency_ms,
+                "results": [
+                    {
+                        "case_id": r.case_id,
+                        "score": r.score,
+                        "passed": r.passed,
+                        "latency_ms": r.latency_ms,
+                        "reason": r.reason,
+                        "actual": r.actual[:500],
+                    }
+                    for r in run.results
+                ],
+            },
+            indent=2,
+        )
+    )
     return str(p)
 
 
-def load_eval_run_summaries(limit: int = 20) -> Optional[List[dict]]:
+def load_eval_run_summaries(limit: int = 20) -> list[dict] | None:
     """Parsed contents of the most recent `limit` saved eval-run JSON
     files, newest first. Silently skips any file that fails to parse
     (matches claude_eval.py's original cmd_eval_list behavior). Returns
@@ -187,7 +219,7 @@ def load_eval_run_summaries(limit: int = 20) -> Optional[List[dict]]:
     return summaries
 
 
-def load_eval_suite(path: str) -> List[EvalCase]:
+def load_eval_suite(path: str) -> list[EvalCase]:
     data = json.loads(Path(path).read_text())
     return [EvalCase(**c) for c in data]
 
@@ -203,25 +235,46 @@ def write_eval_first_result_json(output_path: str, run: EvalRun) -> None:
     pre-existing temperature=0 quirk alone).
     """
     import dataclasses
+
     payload = dataclasses.asdict(run.results[0]) if run.results else {}
     Path(output_path).write_text(json.dumps(payload, indent=2))
 
 
 def write_eval_suite_scaffold(output_path: str) -> None:
     suite = [
-        {"case_id": "greet_01", "prompt": "Say hello in one sentence.",
-         "expected": "Response is a friendly single-sentence greeting."},
-        {"case_id": "code_01",  "prompt": "Write a Python function to reverse a string.",
-         "expected": "Response contains a working Python function that reverses a string."},
+        {
+            "case_id": "greet_01",
+            "prompt": "Say hello in one sentence.",
+            "expected": "Response is a friendly single-sentence greeting.",
+        },
+        {
+            "case_id": "code_01",
+            "prompt": "Write a Python function to reverse a string.",
+            "expected": "Response contains a working Python function that reverses a string.",
+        },
     ]
     Path(output_path).write_text(json.dumps(suite, indent=2))
 
 
 __all__ = [
-    "SPEND_LOG", "log_spend", "read_spend_log", "clear_spend_log",
-    "METRICS_LOG_PATH", "record_metric", "load_metrics_log", "clear_metrics_log",
-    "OBS_DIR", "OBS_LOG_FILE", "log_observability_request", "read_observability_logs",
+    "SPEND_LOG",
+    "log_spend",
+    "read_spend_log",
+    "clear_spend_log",
+    "METRICS_LOG_PATH",
+    "record_metric",
+    "load_metrics_log",
+    "clear_metrics_log",
+    "OBS_DIR",
+    "OBS_LOG_FILE",
+    "log_observability_request",
+    "read_observability_logs",
     "clear_observability_log",
-    "EVALS_DIR", "save_eval_run", "load_eval_run_summaries", "load_eval_suite",
-    "write_eval_suite_scaffold", "write_metrics_export", "write_eval_first_result_json",
+    "EVALS_DIR",
+    "save_eval_run",
+    "load_eval_run_summaries",
+    "load_eval_suite",
+    "write_eval_suite_scaffold",
+    "write_metrics_export",
+    "write_eval_first_result_json",
 ]

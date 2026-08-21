@@ -12,7 +12,6 @@ the precedent this follows).
 
 import subprocess
 from pathlib import Path
-from typing import Tuple
 
 
 def run_git(cmd: str, cwd: str = ".") -> str:
@@ -45,15 +44,14 @@ def read_file_lines(cwd: str, file: str, line_start: int, line_end: int) -> str:
     """Returns the requested line range, or a placeholder string on any
     read failure (matches claude_git.py's original broad except)."""
     try:
-        return "\n".join(open(f"{cwd}/{file}").readlines()[line_start - 1:line_end])
+        return "\n".join(open(f"{cwd}/{file}").readlines()[line_start - 1 : line_end])
     except Exception:
         return "(could not read file)"
 
 
-def commit_with_message(message: str, cwd: str = ".") -> Tuple[bool, str]:
+def commit_with_message(message: str, cwd: str = ".") -> tuple[bool, str]:
     """Runs `git commit -m <message>`. Returns (success, stderr-or-empty)."""
-    result = subprocess.run(["git", "commit", "-m", message], cwd=cwd,
-                            capture_output=True, text=True)
+    result = subprocess.run(["git", "commit", "-m", message], cwd=cwd, capture_output=True, text=True)
     return result.returncode == 0, result.stderr
 
 

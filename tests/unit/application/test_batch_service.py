@@ -12,8 +12,7 @@ import application.batch_service as service
 class FakeBatchCoder:
     instances = []
 
-    def __init__(self, api_key, model="claude-sonnet-5", use_300k_output=False,
-                 on_warning=None):
+    def __init__(self, api_key, model="claude-sonnet-5", use_300k_output=False, on_warning=None):
         self.api_key = api_key
         self.model = model
         self.use_300k_output = use_300k_output
@@ -79,8 +78,9 @@ def test_submit_from_jsonl_delegates(monkeypatch):
 def test_submit_from_jsonl_forwards_300k_flag_and_warning_callback(monkeypatch):
     monkeypatch.setattr(service, "BatchCoder", FakeBatchCoder)
     captured_warning = []
-    service.submit_from_jsonl("tasks.jsonl", "key", "claude-opus-4-8",
-                               use_300k_output=True, on_warning=captured_warning.append)
+    service.submit_from_jsonl(
+        "tasks.jsonl", "key", "claude-opus-4-8", use_300k_output=True, on_warning=captured_warning.append
+    )
     fc = FakeBatchCoder.instances[0]
     assert fc.use_300k_output is True
     fc.on_warning("test message")

@@ -29,22 +29,38 @@ main.py) keep working unmodified. See exec-planning.md §5 (migration
 playbook).
 """
 
-from domain.devtools import GIT_SYSTEM_PROMPT as SYS
-from infrastructure.local_storage.devtools_store import run_git as _git
-from infrastructure.anthropic_api.devtools_gateway import git_generate as _call
 from application.devtools_service import (
-    staged_diff, commit_message, pr_description, changelog, diff_review,
+    changelog,
+    commit_message,
+    diff_review,
     explain_blame,
+    pr_description,
+    staged_diff,
 )
+from domain.devtools import GIT_SYSTEM_PROMPT as SYS
+from infrastructure.anthropic_api.devtools_gateway import git_generate as _call
+from infrastructure.local_storage.devtools_store import run_git as _git
 from interfaces.cli.commands.devtools_commands import (
-    cmd_git_commit, cmd_git_pr, cmd_git_changelog, cmd_git_review,
     cmd_git_blame_explain,
+    cmd_git_changelog,
+    cmd_git_commit,
+    cmd_git_pr,
+    cmd_git_review,
 )
 
 __all__ = [
-    "SYS", "_git", "_call",
-    "staged_diff", "commit_message", "pr_description", "changelog",
-    "diff_review", "explain_blame",
-    "cmd_git_commit", "cmd_git_pr", "cmd_git_changelog", "cmd_git_review",
+    "SYS",
+    "_git",
+    "_call",
+    "staged_diff",
+    "commit_message",
+    "pr_description",
+    "changelog",
+    "diff_review",
+    "explain_blame",
+    "cmd_git_commit",
+    "cmd_git_pr",
+    "cmd_git_changelog",
+    "cmd_git_review",
     "cmd_git_blame_explain",
 ]

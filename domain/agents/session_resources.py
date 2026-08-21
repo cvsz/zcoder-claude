@@ -1,7 +1,6 @@
 """Pure Managed Agents session-resource value objects."""
 
 from dataclasses import dataclass
-from typing import Optional
 from urllib.parse import urlparse
 
 
@@ -9,9 +8,9 @@ from urllib.parse import urlparse
 class GitHubRepositoryResource:
     url: str
     authorization_token: str
-    mount_path: Optional[str] = None
-    branch: Optional[str] = None
-    commit_sha: Optional[str] = None
+    mount_path: str | None = None
+    branch: str | None = None
+    commit_sha: str | None = None
 
     def validate(self) -> None:
         parsed = urlparse(self.url)
@@ -21,7 +20,9 @@ class GitHubRepositoryResource:
             raise ValueError("GitHub repository resource requires an authorization token")
         if self.branch and self.commit_sha:
             raise ValueError("choose either branch or commit_sha, not both")
-        if self.commit_sha and (len(self.commit_sha) != 40 or any(c not in "0123456789abcdefABCDEF" for c in self.commit_sha)):
+        if self.commit_sha and (
+            len(self.commit_sha) != 40 or any(c not in "0123456789abcdefABCDEF" for c in self.commit_sha)
+        ):
             raise ValueError("commit_sha must be a full 40-character hexadecimal SHA")
         if self.mount_path is not None and not self.mount_path.startswith("/"):
             raise ValueError("mount_path must be absolute")

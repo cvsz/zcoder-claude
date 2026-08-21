@@ -9,6 +9,7 @@ route through) so the real retry loop and error translation run, not a
 reimplementation of them — same pattern as
 tests/test_claude_compliance_api.py's `_request()` tests.
 """
+
 import io
 import json
 import urllib.error
@@ -44,10 +45,12 @@ def fresh_breaker(monkeypatch):
     give each test its own so failures in one test don't trip the breaker
     for the next."""
     from infrastructure.anthropic_api.http_client import CircuitBreaker
+
     monkeypatch.setattr(gateway, "_breaker", CircuitBreaker(failure_threshold=5, reset_timeout=30))
 
 
 # ── resolve_token ─────────────────────────────────────────────────────
+
 
 def test_resolve_token_prefers_explicit():
     assert gateway.resolve_token("explicit-token") == "explicit-token"
@@ -69,11 +72,13 @@ def test_resolve_token_raises_when_missing(monkeypatch):
 
 # ── get() ─────────────────────────────────────────────────────────────
 
+
 def test_get_returns_parsed_json(monkeypatch):
     def fake_urlopen(req, timeout=None):
         assert req.full_url == "https://api.github.com/repos/x/y/pulls/1"
         assert req.headers["Authorization"] == "Bearer tok123"
         return FakeResp(json.dumps({"title": "hi"}).encode())
+
     monkeypatch.setattr(http_client.urllib.request, "urlopen", fake_urlopen)
 
     result = gateway.get("/repos/x/y/pulls/1", "tok123")
@@ -83,6 +88,7 @@ def test_get_returns_parsed_json(monkeypatch):
 def test_get_translates_401_to_runtime_error(monkeypatch):
     def fake_urlopen(req, timeout=None):
         raise _http_error(req.full_url, 401, b'{"message": "Bad credentials"}')
+
     monkeypatch.setattr(http_client.urllib.request, "urlopen", fake_urlopen)
 
     with pytest.raises(RuntimeError, match="GitHub API error"):
@@ -91,9 +97,11 @@ def test_get_translates_401_to_runtime_error(monkeypatch):
 
 # ── fetch_diff() ──────────────────────────────────────────────────────
 
+
 def test_fetch_diff_returns_truncated_text(monkeypatch):
     def fake_urlopen(req, timeout=None):
         return FakeResp(b"diff --git a b\n" + b"x" * 100)
+
     monkeypatch.setattr(http_client.urllib.request, "urlopen", fake_urlopen)
 
     result = gateway.fetch_diff("https://github.com/x/y/pull/1.diff", "tok", max_chars=20)
@@ -103,6 +111,7 @@ def test_fetch_diff_returns_truncated_text(monkeypatch):
 def test_fetch_diff_translates_error(monkeypatch):
     def fake_urlopen(req, timeout=None):
         raise _http_error(req.full_url, 404, b"not found")
+
     monkeypatch.setattr(http_client.urllib.request, "urlopen", fake_urlopen)
 
     with pytest.raises(RuntimeError, match="GitHub diff fetch error"):

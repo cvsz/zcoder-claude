@@ -19,7 +19,8 @@ def cmd_skills_list():
 
 
 def cmd_skills_info(skill_id: str):
-    from domain.skills_api import PREBUILT_SKILLS, SkillRef, CODE_EXECUTION_BETA, SKILLS_BETA
+    from domain.skills_api import CODE_EXECUTION_BETA, PREBUILT_SKILLS, SKILLS_BETA, SkillRef
+
     info = PREBUILT_SKILLS.get(skill_id)
     if not info:
         print(f"\033[91m✗ Unknown skill_id: {skill_id}\033[0m")
@@ -27,7 +28,9 @@ def cmd_skills_info(skill_id: str):
         return None
     print(f"\n\033[94m{info['skill_id']}\033[0m (type: anthropic)")
     print(f"  {info['description']}")
-    print(f"  Reference in a request as: "
-          f"SkillRef.prebuilt({skill_id!r}) -> {SkillRef.prebuilt(skill_id).to_dict()}")
+    print(
+        f"  Reference in a request as: "
+        f"SkillRef.prebuilt({skill_id!r}) -> {SkillRef.prebuilt(skill_id).to_dict()}"
+    )
     print(f"  Requires beta headers: {CODE_EXECUTION_BETA}, {SKILLS_BETA}\n")
     return info

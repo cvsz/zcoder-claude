@@ -35,11 +35,10 @@ CLI flags:
 """
 
 import json
-import urllib.request
 import urllib.error
-from typing import Optional
+import urllib.request
 
-from claude_fable5 import MESSAGES_ENDPOINT, FABLE_MYTHOS_INFO, MYTHOS5_MODEL_ID
+from claude_fable5 import FABLE_MYTHOS_INFO, MESSAGES_ENDPOINT, MYTHOS5_MODEL_ID
 from exceptions import AICoderError, APIError
 from resilience import CircuitBreaker, retry, urlopen_json
 
@@ -47,14 +46,14 @@ _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
 
 # Re-exported for convenience so callers don't need to import claude_fable5
 # directly just to get the model ID or info table.
-__all__ = ["MYTHOS5_MODEL_ID", "MythosAccessError", "Mythos5Client",
-          "cmd_mythos5_info", "cmd_mythos5_call"]
+__all__ = ["MYTHOS5_MODEL_ID", "MythosAccessError", "Mythos5Client", "cmd_mythos5_info", "cmd_mythos5_call"]
 
 
 class MythosAccessError(Exception):
     """Raised when a Mythos 5 call fails in a way that looks like an access-gate
     rejection (HTTP 403/404 on the model ID) rather than an ordinary API error,
     so the caller gets a pointed message instead of a generic stack trace."""
+
     pass
 
 
@@ -75,8 +74,10 @@ class Mythos5Client:
             "anthropic-version": "2023-06-01",
         }
         req = urllib.request.Request(
-            MESSAGES_ENDPOINT, data=json.dumps(payload).encode(),
-            headers=headers, method="POST",
+            MESSAGES_ENDPOINT,
+            data=json.dumps(payload).encode(),
+            headers=headers,
+            method="POST",
         )
         return urlopen_json(req, timeout=300)
 
@@ -92,14 +93,14 @@ class Mythos5Client:
                     "requires approved Project Glasswing access; most accounts will "
                     "see this. Use claude-fable-5 instead unless you've confirmed "
                     f"access with Anthropic. Raw response: {body}"
-                )
+                ) from e
             return {"error": e.message, "status": e.status_code}
         except AICoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
 
-    def call(self, prompt: str, system: Optional[str] = None) -> dict:
+    def call(self, prompt: str, system: str | None = None) -> dict:
         payload = {
             "model": MYTHOS5_MODEL_ID,
             "max_tokens": self.max_tokens,
@@ -109,7 +110,7 @@ class Mythos5Client:
             payload["system"] = system
         return self._post(payload)
 
-    def call_text(self, prompt: str, system: Optional[str] = None) -> str:
+    def call_text(self, prompt: str, system: str | None = None) -> str:
         """Convenience wrapper returning just the response text (or an
         [ERROR] string), for callers that don't need the raw response dict."""
         data = self.call(prompt, system=system)
@@ -127,16 +128,18 @@ def cmd_mythos5_info():
     print(f"    Class:            {info['class']}")
     print(f"    Context window:   {info['context_window']:,} tokens")
     print(f"    Max output:       {info['max_output_tokens']:,} tokens")
-    print(f"    Pricing:          ${info['price_input_per_mtok_usd']}/MTok in, "
-         f"${info['price_output_per_mtok_usd']}/MTok out")
+    print(
+        f"    Pricing:          ${info['price_input_per_mtok_usd']}/MTok in, "
+        f"${info['price_output_per_mtok_usd']}/MTok out"
+    )
     print(f"    Data retention:   {info['data_retention']}")
-    print(f"    Safety classifiers: no (unlike Fable 5 — see claude_fable5.py)")
+    print("    Safety classifiers: no (unlike Fable 5 — see claude_fable5.py)")
     print(f"    Notes:            {info['notes']}")
     print("\n  To request access: contact your Anthropic, AWS, or Google Cloud account team")
     print("  about Project Glasswing. See also: --fable5-info for the publicly available sibling model.\n")
 
 
-def cmd_mythos5_call(prompt: str, api_key: str, system: Optional[str] = None):
+def cmd_mythos5_call(prompt: str, api_key: str, system: str | None = None):
     client = Mythos5Client(api_key=api_key)
     try:
         text = client.call_text(prompt, system=system)

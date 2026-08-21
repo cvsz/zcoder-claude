@@ -7,24 +7,26 @@ All actual HTTP calls now go through application/admin_service.py (not
 the gateway directly — closed in Phase A, exec-planing.md).
 """
 
-from typing import Optional
 
-from infrastructure.anthropic_api.admin_gateway import CE_USER_MANAGEMENT_BETA
 import application.admin_service as svc
+from infrastructure.anthropic_api.admin_gateway import CE_USER_MANAGEMENT_BETA
 
 
 def _default_date_range() -> tuple:
     return svc._default_date_range()
 
 
-def cmd_usage_report(admin_api_key: str, start: Optional[str] = None,
-                     end: Optional[str] = None, group_by: str = "model"):
+def cmd_usage_report(
+    admin_api_key: str, start: str | None = None, end: str | None = None, group_by: str = "model"
+):
     data = svc.get_usage_report(admin_api_key, start=start, end=end, group_by=group_by)
     if "error" in data:
         print(f"\033[91m✗ Usage report failed: {data['error']}\033[0m")
         if data.get("status") in (401, 403):
-            print("\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
-                 "not a regular API key.\033[0m")
+            print(
+                "\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
+                "not a regular API key.\033[0m"
+            )
         return None
 
     default_start, default_end = svc._default_date_range()
@@ -43,16 +45,19 @@ def cmd_usage_report(admin_api_key: str, start: Optional[str] = None,
     return data
 
 
-def cmd_cost_report(admin_api_key: str, start: Optional[str] = None,
-                    end: Optional[str] = None, group_by: str = "model"):
+def cmd_cost_report(
+    admin_api_key: str, start: str | None = None, end: str | None = None, group_by: str = "model"
+):
     """--cost-report: actual billed spend (cost_report), distinct from
     the token-count-based --usage-report above."""
     data = svc.get_cost_report(admin_api_key, start=start, end=end, group_by=group_by)
     if "error" in data:
         print(f"\033[91m✗ Cost report failed: {data['error']}\033[0m")
         if data.get("status") in (401, 403):
-            print("\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
-                 "not a regular API key.\033[0m")
+            print(
+                "\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
+                "not a regular API key.\033[0m"
+            )
         return None
 
     default_start, default_end = svc._default_date_range()
@@ -71,7 +76,7 @@ def cmd_cost_report(admin_api_key: str, start: Optional[str] = None,
     return data
 
 
-def cmd_cmek_list(admin_api_key: str, workspace_id: Optional[str] = None):
+def cmd_cmek_list(admin_api_key: str, workspace_id: str | None = None):
     """--cmek-list: list registered CMEK external keys.
 
     ⚠️ See the "CMEK external_keys" section of AdminApiClient — the
@@ -82,15 +87,21 @@ def cmd_cmek_list(admin_api_key: str, workspace_id: Optional[str] = None):
     if "error" in data:
         print(f"\033[91m✗ Failed to list CMEK keys: {data['error']}\033[0m")
         if data.get("status") in (401, 403):
-            print("\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
-                 "not a regular API key.\033[0m")
+            print(
+                "\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
+                "not a regular API key.\033[0m"
+            )
         return None
 
-    print("\n\033[94mCMEK external keys\033[0m  "
-          "\033[93m(unverified endpoint shape — see docs/37_upgrade_v1.25.0_audit_and_impl.md)\033[0m\n")
+    print(
+        "\n\033[94mCMEK external keys\033[0m  "
+        "\033[93m(unverified endpoint shape — see docs/37_upgrade_v1.25.0_audit_and_impl.md)\033[0m\n"
+    )
     for k in data.get("data", []):
-        print(f"  {k.get('id', '?')}  workspace={k.get('workspace_id', '?')}  "
-              f"provider={k.get('provider', '?')}  status={k.get('status', '?')}")
+        print(
+            f"  {k.get('id', '?')}  workspace={k.get('workspace_id', '?')}  "
+            f"provider={k.get('provider', '?')}  status={k.get('status', '?')}"
+        )
     print()
     return data
 
@@ -104,8 +115,10 @@ def cmd_claude_code_usage_report(admin_api_key: str, starting_at: str, limit: in
     if "error" in data:
         print(f"\033[91m✗ Claude Code usage report failed: {data['error']}\033[0m")
         if data.get("status") in (401, 403):
-            print("\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
-                 "not a regular API key.\033[0m")
+            print(
+                "\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
+                "not a regular API key.\033[0m"
+            )
         return None
 
     print(f"\n\033[94mClaude Code usage report — {starting_at}\033[0m\n")
@@ -123,12 +136,13 @@ def cmd_claude_code_usage_report(admin_api_key: str, starting_at: str, limit: in
         commits = core.get("commits_by_claude_code", "?")
         prs = core.get("pull_requests_by_claude_code", "?")
         cost_total = sum(
-            mb.get("estimated_cost", {}).get("amount", 0)
-            for mb in row.get("model_breakdown", []) or []
+            mb.get("estimated_cost", {}).get("amount", 0) for mb in row.get("model_breakdown", []) or []
         )
-        print(f"  {actor_label:<32} sessions={num_sessions:<4} "
-              f"+{added}/-{removed}  commits={commits}  prs={prs}  "
-              f"cost={cost_total}")
+        print(
+            f"  {actor_label:<32} sessions={num_sessions:<4} "
+            f"+{added}/-{removed}  commits={commits}  prs={prs}  "
+            f"cost={cost_total}"
+        )
     print()
     return data
 
@@ -138,15 +152,19 @@ def cmd_admin_list_keys(admin_api_key: str, limit: int = 20):
     if "error" in data:
         print(f"\033[91m✗ Failed to list API keys: {data['error']}\033[0m")
         if data.get("status") in (401, 403):
-            print("\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
-                 "not a regular API key.\033[0m")
+            print(
+                "\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
+                "not a regular API key.\033[0m"
+            )
         return None
 
     print("\n\033[94mOrganization API keys\033[0m\n")
     for key in data.get("data", []):
         expires_at = key.get("expires_at") or "never"
-        print(f"  {key.get('id', '?')}  {key.get('name', '')}  "
-              f"status={key.get('status', '?')}  expires={expires_at}")
+        print(
+            f"  {key.get('id', '?')}  {key.get('name', '')}  "
+            f"status={key.get('status', '?')}  expires={expires_at}"
+        )
     print()
     return data
 
@@ -169,21 +187,28 @@ def cmd_admin_create_key(name: str):
     This prints that explanation instead of silently failing or faking
     a response. No application-layer function for this one — there's no
     HTTP call to make, so there's nothing to centralize."""
-    print(f"\033[93mℹ Can't create API key {name!r} via the Admin API — there is no "
-         "documented create-key endpoint.\033[0m")
-    print("  API keys are generated through the Console UI (a secret is shown once, "
-         "on purpose). Use --admin-list-keys / --admin-revoke-key for the parts of "
-         "key management that are actually supported programmatically.")
+    print(
+        f"\033[93mℹ Can't create API key {name!r} via the Admin API — there is no "
+        "documented create-key endpoint.\033[0m"
+    )
+    print(
+        "  API keys are generated through the Console UI (a secret is shown once, "
+        "on purpose). Use --admin-list-keys / --admin-revoke-key for the parts of "
+        "key management that are actually supported programmatically."
+    )
     return None
 
 
 def _wrong_key_hint(data: dict, extra: str = ""):
     if data.get("status") in (401, 403):
-        print(f"\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
-             f"not a regular API key.{' ' + extra if extra else ''}\033[0m")
+        print(
+            f"\033[93m  This endpoint requires an Admin API key (sk-ant-admin...), "
+            f"not a regular API key.{' ' + extra if extra else ''}\033[0m"
+        )
 
 
 # ── Spend Limits API (v1.23.0, Claude Enterprise only) ──────────────────
+
 
 def cmd_spend_limits_list(admin_api_key: str, limit: int = 50):
     data = svc.list_effective_spend_limits(admin_api_key, limit=limit)
@@ -203,10 +228,8 @@ def cmd_spend_limits_list(admin_api_key: str, limit: int = 50):
     return data
 
 
-def cmd_spend_limit_set(user_id: str, amount: str, admin_api_key: str,
-                        suppress_notification: bool = False):
-    data = svc.set_spend_limit(admin_api_key, user_id, amount,
-                               suppress_notification=suppress_notification)
+def cmd_spend_limit_set(user_id: str, amount: str, admin_api_key: str, suppress_notification: bool = False):
+    data = svc.set_spend_limit(admin_api_key, user_id, amount, suppress_notification=suppress_notification)
     if "error" in data:
         print(f"\033[91m✗ Failed to set spend limit: {data['error']}\033[0m")
         _wrong_key_hint(data)
@@ -233,7 +256,7 @@ def cmd_spend_limit_delete(spend_limit_id: str, admin_api_key: str):
     return data
 
 
-def cmd_spend_limit_requests_list(admin_api_key: str, status: Optional[str] = None):
+def cmd_spend_limit_requests_list(admin_api_key: str, status: str | None = None):
     data = svc.list_spend_limit_increase_requests(admin_api_key, status=status)
     if "error" in data:
         print(f"\033[91m✗ Failed to list spend limit increase requests: {data['error']}\033[0m")
@@ -242,8 +265,10 @@ def cmd_spend_limit_requests_list(admin_api_key: str, status: Optional[str] = No
 
     print("\n\033[94mSpend limit increase requests\033[0m\n")
     for row in data.get("data", []):
-        print(f"  {row.get('id', '?')}  user={row.get('actor', {}).get('user_id', '?')}  "
-             f"status={row.get('status', '?')}  requested={row.get('requested_amount', '?')}")
+        print(
+            f"  {row.get('id', '?')}  user={row.get('actor', {}).get('user_id', '?')}  "
+            f"status={row.get('status', '?')}  requested={row.get('requested_amount', '?')}"
+        )
     print()
     return data
 
@@ -268,15 +293,15 @@ def cmd_spend_limit_request_deny(request_id: str, admin_api_key: str):
 
 # ── Rate Limits API (v1.23.0, read-only) ─────────────────────────────────
 
-def cmd_rate_limits(admin_api_key: str, model: Optional[str] = None):
+
+def cmd_rate_limits(admin_api_key: str, model: str | None = None):
     data = svc.get_org_rate_limits(admin_api_key, model=model)
     if "error" in data:
         print(f"\033[91m✗ Failed to get rate limits: {data['error']}\033[0m")
         _wrong_key_hint(data)
         return None
 
-    print("\n\033[94mOrganization rate limits\033[0m" +
-         (f" (model={model})" if model else "") + "\n")
+    print("\n\033[94mOrganization rate limits\033[0m" + (f" (model={model})" if model else "") + "\n")
     for group in data.get("data", data.get("rate_limits", [])):
         label = group.get("model_group", group.get("name", "?"))
         print(f"  {label}")
@@ -289,8 +314,7 @@ def cmd_rate_limits(admin_api_key: str, model: Optional[str] = None):
 def cmd_rate_limits_workspace(workspace_id: str, admin_api_key: str):
     data = svc.get_workspace_rate_limits(admin_api_key, workspace_id)
     if "error" in data:
-        print(f"\033[91m✗ Failed to get rate limits for workspace {workspace_id}: "
-             f"{data['error']}\033[0m")
+        print(f"\033[91m✗ Failed to get rate limits for workspace {workspace_id}: " f"{data['error']}\033[0m")
         _wrong_key_hint(data)
         return None
 
@@ -302,17 +326,20 @@ def cmd_rate_limits_workspace(workspace_id: str, admin_api_key: str):
         label = group.get("model_group", group.get("name", "?"))
         print(f"  {label}")
         for limiter in group.get("limits", []):
-            print(f"    {limiter.get('type', '?'):<24} "
-                 f"value={limiter.get('value', '?'):<12} org_limit={limiter.get('org_limit', '?')}")
+            print(
+                f"    {limiter.get('type', '?'):<24} "
+                f"value={limiter.get('value', '?'):<12} org_limit={limiter.get('org_limit', '?')}"
+            )
     print()
     return data
+
 
 # ── Claude Enterprise User Management API (v1.38.0, beta) ───────────────
 
 _CE_HINT = "This API also requires a Claude Enterprise (claude.ai) organization."
 
 
-def cmd_members_list(admin_api_key: str, limit: int = 20, email: Optional[str] = None):
+def cmd_members_list(admin_api_key: str, limit: int = 20, email: str | None = None):
     data = svc.list_members(admin_api_key, limit=limit, email=email)
     if "error" in data:
         print(f"\033[91m✗ Failed to list members: {data['error']}\033[0m")
@@ -324,8 +351,10 @@ def cmd_members_list(admin_api_key: str, limit: int = 20, email: Optional[str] =
     if not rows:
         print("  (no members found" + (f" matching {email}" if email else "") + ")")
     for m in rows:
-        print(f"  {m.get('id', '?'):<28} {m.get('email', '?'):<32} "
-             f"role={m.get('role', '?'):<16} added={m.get('added_at', '?')}")
+        print(
+            f"  {m.get('id', '?'):<28} {m.get('email', '?'):<32} "
+            f"role={m.get('role', '?'):<16} added={m.get('added_at', '?')}"
+        )
     if data.get("has_more"):
         print(f"  ... more available, last_id={data.get('last_id', '?')}")
     print()
@@ -369,15 +398,16 @@ def cmd_member_remove(user_id: str, admin_api_key: str):
     return data
 
 
-def cmd_invite_create(email: str, role: str, admin_api_key: str,
-                      rbac_group_ids: Optional[list] = None):
+def cmd_invite_create(email: str, role: str, admin_api_key: str, rbac_group_ids: list | None = None):
     data = svc.create_invite(admin_api_key, email, role, rbac_group_ids=rbac_group_ids)
     if "error" in data:
         print(f"\033[91m✗ Failed to invite {email}: {data['error']}\033[0m")
         _wrong_key_hint(data, _CE_HINT)
         return None
-    print(f"\033[92m✓ Invited {email} as {data.get('role', role)}\033[0m "
-         f"(id={data.get('id', '?')}, expires={data.get('expires_at', '?')})")
+    print(
+        f"\033[92m✓ Invited {email} as {data.get('role', role)}\033[0m "
+        f"(id={data.get('id', '?')}, expires={data.get('expires_at', '?')})"
+    )
     return data
 
 
@@ -392,8 +422,10 @@ def cmd_invites_list(admin_api_key: str, limit: int = 20):
     if not rows:
         print("  (no invites found)")
     for inv in rows:
-        print(f"  {inv.get('id', '?'):<28} {inv.get('email', '?'):<32} "
-             f"role={inv.get('role', '?'):<10} status={inv.get('status', '?')}")
+        print(
+            f"  {inv.get('id', '?'):<28} {inv.get('email', '?'):<32} "
+            f"role={inv.get('role', '?'):<10} status={inv.get('status', '?')}"
+        )
     print()
     return data
 
@@ -415,9 +447,11 @@ def cmd_groups_list(admin_api_key: str, limit: int = 20):
     if "error" in data:
         print(f"\033[91m✗ Failed to list groups: {data['error']}\033[0m")
         if data.get("status") == 404:
-            print(f"\033[93m  A 404 here usually means the {CE_USER_MANAGEMENT_BETA} beta "
-                 f"header wasn't accepted — confirm this is a Claude Enterprise "
-                 f"organization.\033[0m")
+            print(
+                f"\033[93m  A 404 here usually means the {CE_USER_MANAGEMENT_BETA} beta "
+                f"header wasn't accepted — confirm this is a Claude Enterprise "
+                f"organization.\033[0m"
+            )
         else:
             _wrong_key_hint(data, _CE_HINT)
         return None
@@ -426,8 +460,10 @@ def cmd_groups_list(admin_api_key: str, limit: int = 20):
     if not rows:
         print("  (no groups found)")
     for g in rows:
-        print(f"  {g.get('id', '?'):<32} {g.get('name', '?'):<24} "
-             f"source={g.get('source_type', '?'):<8} roles={len(g.get('roles') or [])}")
+        print(
+            f"  {g.get('id', '?'):<32} {g.get('name', '?'):<24} "
+            f"source={g.get('source_type', '?'):<8} roles={len(g.get('roles') or [])}"
+        )
     print()
     return data
 
@@ -501,9 +537,11 @@ def cmd_roles_list(admin_api_key: str, limit: int = 20):
     if "error" in data:
         print(f"\033[91m✗ Failed to list roles: {data['error']}\033[0m")
         if data.get("status") == 404:
-            print(f"\033[93m  A 404 here usually means the {CE_USER_MANAGEMENT_BETA} beta "
-                 f"header wasn't accepted — confirm this is a Claude Enterprise "
-                 f"organization.\033[0m")
+            print(
+                f"\033[93m  A 404 here usually means the {CE_USER_MANAGEMENT_BETA} beta "
+                f"header wasn't accepted — confirm this is a Claude Enterprise "
+                f"organization.\033[0m"
+            )
         else:
             _wrong_key_hint(data, _CE_HINT)
         return None
@@ -526,13 +564,13 @@ def cmd_role_permissions_list(role_id: str, admin_api_key: str, limit: int = 20)
     print(f"\n\033[94mRole {role_id} — permissions\033[0m\n")
     rows = data.get("data", [])
     if not rows:
-        print("  (no permissions found — role may only grant features not enabled "
-             "for this organization)")
+        print("  (no permissions found — role may only grant features not enabled " "for this organization)")
     for p in rows:
         resource = p.get("resource", {})
         r_type = resource.get("type", "?")
-        r_detail = (resource.get("connector_id") or resource.get("tool_name")
-                   or resource.get("organization_id") or "")
+        r_detail = (
+            resource.get("connector_id") or resource.get("tool_name") or resource.get("organization_id") or ""
+        )
         print(f"  {r_type:<16} {r_detail:<28} action={p.get('action', '?')}")
     print()
     return data

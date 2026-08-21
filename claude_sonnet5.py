@@ -38,13 +38,16 @@ CLI flags:
 """
 
 import json
-import urllib.request
 import urllib.error
-from datetime import date, datetime
-from typing import Optional
+import urllib.request
+from datetime import date
 
 from domain.models.catalog import (
-    SERVICE_TIER_UNSUPPORTED, INFERENCE_GEO_SUPPORTED, INFERENCE_GEO_PRICING_MULTIPLIER,
+    INFERENCE_GEO_PRICING_MULTIPLIER,
+    INFERENCE_GEO_SUPPORTED,
+    SERVICE_TIER_UNSUPPORTED,
+)
+from domain.models.catalog import (
     PRICE as _CATALOG_PRICE,
 )
 from exceptions import AICoderError
@@ -55,33 +58,33 @@ _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
 
 SONNET5_MODEL_ID = "claude-sonnet-5"
 
-PROMO_PRICE_IN_USD      = _CATALOG_PRICE["claude-sonnet-5"]["in"]
-PROMO_PRICE_OUT_USD     = _CATALOG_PRICE["claude-sonnet-5"]["out"]
+PROMO_PRICE_IN_USD = _CATALOG_PRICE["claude-sonnet-5"]["in"]
+PROMO_PRICE_OUT_USD = _CATALOG_PRICE["claude-sonnet-5"]["out"]
 # STANDARD_PRICE_IN_USD/STANDARD_PRICE_OUT_USD held the $3/$15 rate that was
 # scheduled to take effect 2026-09-01. Per the Aug 10, 2026 release note,
 # that increase was cancelled and $2/$10 is now the permanent price, so
 # these constants are historical only and no longer used by current_pricing().
-STANDARD_PRICE_IN_USD   = _CATALOG_PRICE["claude-sonnet-5"]["in"]
-STANDARD_PRICE_OUT_USD  = _CATALOG_PRICE["claude-sonnet-5"]["out"]
-PROMO_END_DATE          = date(2026, 8, 31)  # kept for compatibility; no longer a pricing cliff-edge
+STANDARD_PRICE_IN_USD = _CATALOG_PRICE["claude-sonnet-5"]["in"]
+STANDARD_PRICE_OUT_USD = _CATALOG_PRICE["claude-sonnet-5"]["out"]
+PROMO_END_DATE = date(2026, 8, 31)  # kept for compatibility; no longer a pricing cliff-edge
 
 SONNET5_INFO = {
-    "display_name":      "Claude Sonnet 5",
-    "tier":              "current",
-    "context_window":    1_000_000,
+    "display_name": "Claude Sonnet 5",
+    "tier": "current",
+    "context_window": 1_000_000,
     "max_output_tokens": 128_000,
-    "thinking":          "adaptive",
-    "effort_default":    "high",
+    "thinking": "adaptive",
+    "effort_default": "high",
     "service_tier_supported": SONNET5_MODEL_ID not in SERVICE_TIER_UNSUPPORTED,
     "inference_geo_supported": SONNET5_MODEL_ID in INFERENCE_GEO_SUPPORTED,
     "inference_geo_multiplier": INFERENCE_GEO_PRICING_MULTIPLIER,
     "notes": "Best speed/intelligence balance; builds on Sonnet 4.6. "
-             "Unlike most current-tier models, does NOT support "
-             "service_tier / Priority Tier.",
+    "Unlike most current-tier models, does NOT support "
+    "service_tier / Priority Tier.",
 }
 
 
-def current_pricing(as_of: Optional[date] = None) -> dict:
+def current_pricing(as_of: date | None = None) -> dict:
     """Return the {'price_in', 'price_out', 'promo_active'} dict for Sonnet 5.
     `as_of` is accepted for backward compatibility but no longer changes the
     result: per Anthropic's Aug 10, 2026 release note, the $2/$10 per MTok
@@ -94,35 +97,40 @@ def current_pricing(as_of: Optional[date] = None) -> dict:
     return {"price_in": PROMO_PRICE_IN_USD, "price_out": PROMO_PRICE_OUT_USD, "promo_active": False}
 
 
-def estimate_cost_usd(input_tokens: int, output_tokens: int,
-                      as_of: Optional[date] = None, use_geo: bool = False) -> float:
+def estimate_cost_usd(
+    input_tokens: int, output_tokens: int, as_of: date | None = None, use_geo: bool = False
+) -> float:
     """Cost estimate using whichever pricing tier applies on `as_of`
     (default: today). Applies the data-residency multiplier on top if
     use_geo=True, since inference_geo="us" pricing is 1.1x on both
     input and output per claude_models.INFERENCE_GEO_PRICING_MULTIPLIER."""
     pricing = current_pricing(as_of)
     multiplier = INFERENCE_GEO_PRICING_MULTIPLIER if use_geo else 1.0
-    return (input_tokens / 1_000_000 * pricing["price_in"] * multiplier +
-            output_tokens / 1_000_000 * pricing["price_out"] * multiplier)
+    return (
+        input_tokens / 1_000_000 * pricing["price_in"] * multiplier
+        + output_tokens / 1_000_000 * pricing["price_out"] * multiplier
+    )
 
 
-def validate_service_tier(service_tier: Optional[str]) -> Optional[str]:
+def validate_service_tier(service_tier: str | None) -> str | None:
     """Return None if service_tier is safe to send for Sonnet 5 (i.e. not
     set at all), or a warning string if the caller is trying to use
     Priority Tier on a model that doesn't support it."""
     if service_tier is None:
         return None
     if SONNET5_MODEL_ID in SERVICE_TIER_UNSUPPORTED:
-        return (f"claude-sonnet-5 does not support service_tier (grouped with the "
-                f"Mythos-class models in claude_models.SERVICE_TIER_UNSUPPORTED). "
-                f"Sending service_tier='{service_tier}' will likely be ignored or 400 — "
-                f"omit it for this model.")
+        return (
+            f"claude-sonnet-5 does not support service_tier (grouped with the "
+            f"Mythos-class models in claude_models.SERVICE_TIER_UNSUPPORTED). "
+            f"Sending service_tier='{service_tier}' will likely be ignored or 400 — "
+            f"omit it for this model."
+        )
     return None
 
 
-def validate_sampling_params(temperature: Optional[float] = None,
-                             top_p: Optional[float] = None,
-                             top_k: Optional[int] = None) -> Optional[str]:
+def validate_sampling_params(
+    temperature: float | None = None, top_p: float | None = None, top_k: int | None = None
+) -> str | None:
     """Sonnet 5 returns a 400 error if temperature, top_p, or top_k is set
     to a non-default value at all — unlike most other current-tier models,
     where non-default sampling values are simply accepted. Per the
@@ -142,10 +150,12 @@ def validate_sampling_params(temperature: Optional[float] = None,
         offending.append(f"top_k={top_k}")
     if not offending:
         return None
-    return (f"claude-sonnet-5 returns a 400 error if any sampling parameter is set "
-            f"to a non-default value — {', '.join(offending)} would fail. Omit "
-            f"these parameters entirely for this model (do not rely on it accepting "
-            f"defaults passed explicitly).")
+    return (
+        f"claude-sonnet-5 returns a 400 error if any sampling parameter is set "
+        f"to a non-default value — {', '.join(offending)} would fail. Omit "
+        f"these parameters entirely for this model (do not rely on it accepting "
+        f"defaults passed explicitly)."
+    )
 
 
 class Sonnet5Client:
@@ -164,8 +174,10 @@ class Sonnet5Client:
             "anthropic-version": "2023-06-01",
         }
         req = urllib.request.Request(
-            MESSAGES_ENDPOINT, data=json.dumps(payload).encode(),
-            headers=headers, method="POST",
+            MESSAGES_ENDPOINT,
+            data=json.dumps(payload).encode(),
+            headers=headers,
+            method="POST",
         )
         return urlopen_json(req, timeout=300)
 
@@ -177,10 +189,16 @@ class Sonnet5Client:
         except Exception as e:
             return {"error": str(e)}
 
-    def call(self, prompt: str, system: Optional[str] = None,
-             use_geo: bool = False, service_tier: Optional[str] = None,
-             temperature: Optional[float] = None, top_p: Optional[float] = None,
-             top_k: Optional[int] = None) -> dict:
+    def call(
+        self,
+        prompt: str,
+        system: str | None = None,
+        use_geo: bool = False,
+        service_tier: str | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
+    ) -> dict:
         warning = validate_service_tier(service_tier)
         sampling_error = validate_sampling_params(temperature, top_p, top_k)
         if sampling_error:
@@ -210,18 +228,27 @@ def cmd_sonnet5_info():
     print(f"  Max output:        {info['max_output_tokens']:,} tokens")
     print(f"  Thinking:          {info['thinking']} (effort default: {info['effort_default']})")
     print(f"  Priority Tier:     {'supported' if info['service_tier_supported'] else 'NOT supported'}")
-    print(f"  Data residency:    {'supported' if info['inference_geo_supported'] else 'not supported'}"
-          f" ({info['inference_geo_multiplier']}x pricing when used)")
+    print(
+        f"  Data residency:    {'supported' if info['inference_geo_supported'] else 'not supported'}"
+        f" ({info['inference_geo_multiplier']}x pricing when used)"
+    )
     print(f"\n  Pricing today ({date.today().isoformat()}):")
-    print(f"    ${pricing['price_in']}/${pricing['price_out']} per MTok "
-          f"(standard price — was introductory through {PROMO_END_DATE.isoformat()}, "
-          f"but Anthropic confirmed 2026-08-10 the scheduled increase to $3/$15 "
-          f"will not happen, so this is now permanent)")
+    print(
+        f"    ${pricing['price_in']}/${pricing['price_out']} per MTok "
+        f"(standard price — was introductory through {PROMO_END_DATE.isoformat()}, "
+        f"but Anthropic confirmed 2026-08-10 the scheduled increase to $3/$15 "
+        f"will not happen, so this is now permanent)"
+    )
     print(f"\n  Notes: {info['notes']}\n")
 
 
-def cmd_sonnet5_call(prompt: str, api_key: str, use_geo: bool = False,
-                     service_tier: Optional[str] = None, system: Optional[str] = None):
+def cmd_sonnet5_call(
+    prompt: str,
+    api_key: str,
+    use_geo: bool = False,
+    service_tier: str | None = None,
+    system: str | None = None,
+):
     client = Sonnet5Client(api_key=api_key)
     data = client.call(prompt, system=system, use_geo=use_geo, service_tier=service_tier)
     if "error" in data:
@@ -244,5 +271,7 @@ def cmd_sonnet5_cost(spec: str):
     cost = estimate_cost_usd(in_tok, out_tok)
     pricing = current_pricing()
     print(f"\n  {in_tok:,} input + {out_tok:,} output tokens on Sonnet 5")
-    print(f"  at today's standard rate (${pricing['price_in']}/${pricing['price_out']} per MTok): "
-          f"\033[1m${cost:.4f}\033[0m\n")
+    print(
+        f"  at today's standard rate (${pricing['price_in']}/${pricing['price_out']} per MTok): "
+        f"\033[1m${cost:.4f}\033[0m\n"
+    )

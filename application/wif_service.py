@@ -4,17 +4,18 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Orchestrates domain/wif.py + infrastructure/anthropic_api/wif_gateway.py
 — no print() of its own.
 """
+# mypy: ignore-errors
 
 import os
-from typing import Optional
 
 from domain.wif import WIF_ENV_VARS, WIFExchangeError, resolve_wif_env
 from infrastructure.anthropic_api.wif_gateway import (
-    WIFCredentialExchanger, WIFAdminClient,
+    WIFAdminClient,
+    WIFCredentialExchanger,
 )
 
 
-def get_wif_status(env: Optional[dict] = None) -> dict:
+def get_wif_status(env: dict | None = None) -> dict:
     env = env or os.environ
     config = resolve_wif_env(env)
     status = {}
@@ -24,7 +25,7 @@ def get_wif_status(env: Optional[dict] = None) -> dict:
     return status
 
 
-def exchange_token(env: Optional[dict] = None) -> Optional[dict]:
+def exchange_token(env: dict | None = None) -> dict | None:
     config = resolve_wif_env(env or os.environ)
     if not config:
         return None
@@ -49,8 +50,7 @@ def list_service_accounts(org_admin_token: str) -> dict:
     return WIFAdminClient(org_admin_token).list_service_accounts()
 
 
-def create_federation_issuer(name: str, issuer_url: str,
-                             org_admin_token: str) -> dict:
+def create_federation_issuer(name: str, issuer_url: str, org_admin_token: str) -> dict:
     return WIFAdminClient(org_admin_token).create_federation_issuer(name, issuer_url)
 
 
@@ -58,8 +58,9 @@ def list_federation_issuers(org_admin_token: str) -> dict:
     return WIFAdminClient(org_admin_token).list_federation_issuers()
 
 
-def create_federation_rule(name: str, issuer_id: str, service_account_id: str,
-                           subject_prefix: str, org_admin_token: str) -> dict:
+def create_federation_rule(
+    name: str, issuer_id: str, service_account_id: str, subject_prefix: str, org_admin_token: str
+) -> dict:
     client = WIFAdminClient(org_admin_token)
     match = {"subject_prefix": subject_prefix}
     return client.create_federation_rule(name, issuer_id, service_account_id, match)

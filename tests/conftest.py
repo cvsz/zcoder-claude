@@ -1,4 +1,5 @@
 """tests/conftest.py — shared fixtures"""
+
 import os
 import sys
 
@@ -27,4 +28,5 @@ def no_real_api_key(monkeypatch):
 @pytest.fixture
 def fake_logger_setup():
     from logging_config import setup_logging
+
     setup_logging(level="DEBUG", fmt="text")

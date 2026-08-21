@@ -4,7 +4,6 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Local-disk I/O for the prompt library. No network calls, no print().
 """
 
-
 from domain.prompt_optimizer import load_lib, save_lib
 
 

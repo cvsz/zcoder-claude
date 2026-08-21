@@ -12,15 +12,24 @@ cmd_obs_tail, and claude_eval.py's cmd_eval_run/cmd_eval_compare/
 cmd_eval_list/cmd_eval_scaffold.
 """
 
-from typing import Optional
 
 from application import observability_service as service
 
 __all__ = [
-    "cmd_optimized", "cmd_cost_summary", "cmd_cost_reset",
-    "cmd_metrics_show", "cmd_metrics_clear", "cmd_metrics_export",
-    "cmd_obs_latency", "cmd_obs_errors", "cmd_obs_clear", "cmd_obs_tail",
-    "cmd_eval_run", "cmd_eval_compare", "cmd_eval_list", "cmd_eval_scaffold",
+    "cmd_optimized",
+    "cmd_cost_summary",
+    "cmd_cost_reset",
+    "cmd_metrics_show",
+    "cmd_metrics_clear",
+    "cmd_metrics_export",
+    "cmd_obs_latency",
+    "cmd_obs_errors",
+    "cmd_obs_clear",
+    "cmd_obs_tail",
+    "cmd_eval_run",
+    "cmd_eval_compare",
+    "cmd_eval_list",
+    "cmd_eval_scaffold",
 ]
 
 
@@ -30,12 +39,14 @@ def _on_case(case_id: str, score: float, passed: bool, latency_ms: int):
 
 # ── Cost Optimizer ────────────────────────────────────────────────────────
 
-def cmd_optimized(prompt: str, api_key: str, verbose: bool = False,
-                  force_model: Optional[str] = None):
+
+def cmd_optimized(prompt: str, api_key: str, verbose: bool = False, force_model: str | None = None):
     r = service.optimized_call(prompt, api_key, force_model=force_model)
     if verbose:
-        print(f"[model={r.model_used}  complexity={r.complexity}  "
-              f"cost=${r.cost_usd:.5f}  {r.latency_ms}ms]\n")
+        print(
+            f"[model={r.model_used}  complexity={r.complexity}  "
+            f"cost=${r.cost_usd:.5f}  {r.latency_ms}ms]\n"
+        )
     print(r.text)
 
 
@@ -60,7 +71,8 @@ def cmd_cost_reset():
 
 # ── Metrics ──────────────────────────────────────────────────────────────
 
-def cmd_metrics_show(today_only: bool = False, model_filter: Optional[str] = None):
+
+def cmd_metrics_show(today_only: bool = False, model_filter: str | None = None):
     s = service.metrics_summary(today_only=today_only, model_filter=model_filter)
     if not s.get("calls"):
         print("No metrics recorded yet. API calls are logged automatically after each use.")
@@ -76,8 +88,10 @@ def cmd_metrics_show(today_only: bool = False, model_filter: Optional[str] = Non
     if s.get("by_model"):
         print("\n  \033[1mBy model:\033[0m")
         for model, ms in sorted(s["by_model"].items()):
-            print(f"    {model:<40} {ms['calls']} calls  "
-                  f"${ms['cost_usd']:.4f}  avg {ms['avg_latency_seconds']}s")
+            print(
+                f"    {model:<40} {ms['calls']} calls  "
+                f"${ms['cost_usd']:.4f}  avg {ms['avg_latency_seconds']}s"
+            )
     print()
 
 
@@ -93,15 +107,18 @@ def cmd_metrics_export(output_path: str, today_only: bool = False):
 
 # ── Observability ─────────────────────────────────────────────────────────
 
+
 def cmd_obs_latency(hours: int = 24):
     report = service.obs_latency_report(hours)
     if report is None:
         print(f"No requests in the last {hours}h.")
         return
     print(f"Requests (last {report['hours']}h): {report['count']}  errors: {report['error_count']}")
-    print(f"Latency — p50={report['p50_ms']:.0f}ms  "
-          f"p95={report['p95_ms']:.0f}ms  "
-          f"avg={report['avg_ms']:.0f}ms\n")
+    print(
+        f"Latency — p50={report['p50_ms']:.0f}ms  "
+        f"p95={report['p95_ms']:.0f}ms  "
+        f"avg={report['avg_ms']:.0f}ms\n"
+    )
     print("Latency histogram (ms):")
     print(report["histogram_text"])
     print("\nBy model:")
@@ -136,9 +153,15 @@ def cmd_obs_tail(n: int = 20):
 
 # ── Eval harness ───────────────────────────────────────────────────────────
 
-def cmd_eval_run(suite_path: str, api_key: str, model: str,
-                 judge_model: str = "claude-sonnet-5",
-                 threshold: float = 0.7, output: Optional[str] = None):
+
+def cmd_eval_run(
+    suite_path: str,
+    api_key: str,
+    model: str,
+    judge_model: str = "claude-sonnet-5",
+    threshold: float = 0.7,
+    output: str | None = None,
+):
     """Run an eval suite (JSON file of [{case_id, prompt, expected, tags}])"""
     cases = service.load_suite(suite_path)
     print(f"Running {len(cases)} eval cases against {model} …\n")
@@ -150,8 +173,9 @@ def cmd_eval_run(suite_path: str, api_key: str, model: str,
         service.write_eval_output(output, run)
 
 
-def cmd_eval_compare(suite_path: str, model_a: str, model_b: str,
-                     api_key: str, judge_model: str = "claude-sonnet-5"):
+def cmd_eval_compare(
+    suite_path: str, model_a: str, model_b: str, api_key: str, judge_model: str = "claude-sonnet-5"
+):
     """Compare two models head-to-head on the same eval suite."""
     cases = service.load_suite(suite_path)
     print(f"Comparing {model_a}  vs  {model_b}  on {len(cases)} cases …\n")
@@ -168,8 +192,10 @@ def cmd_eval_list():
         return
     for d in summaries:
         try:
-            print(f"  [{d['run_id']}] {d['ts'][:16]}  model={d['model']}  "
-                  f"{d['passed']}/{d['cases']}  avg={d['avg_score']:.2f}")
+            print(
+                f"  [{d['run_id']}] {d['ts'][:16]}  model={d['model']}  "
+                f"{d['passed']}/{d['cases']}  avg={d['avg_score']:.2f}"
+            )
         except Exception:
             pass
 

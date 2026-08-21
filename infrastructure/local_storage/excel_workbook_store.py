@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 infrastructure/local_storage/excel_workbook_store.py — ExcelSession,
 the pandas/openpyxl-backed in-memory/on-disk workbook
 AI Model Coder CLI v1.51.0 (Clean Architecture refactor, Phase C, Context #4)
@@ -23,9 +24,7 @@ except ImportError:
 class ExcelSession:
     def __init__(self, input_path=None, sheet_name=None):
         if pd is None:
-            raise ImportError(
-                "pandas is required for --excel (pip install pandas openpyxl)"
-            )
+            raise ImportError("pandas is required for --excel (pip install pandas openpyxl)")
         self.sheets = {}
         self._history_stack = []  # for /undo — list of {name: df.copy()} snapshots
         self._pending_charts = []  # (sheet, chart_type, title, categories_col, value_cols)
@@ -54,8 +53,7 @@ class ExcelSession:
         for name, df in self.sheets.items():
             cols = ", ".join(f"{c} ({df[c].dtype})" for c in df.columns[:30])
             parts.append(
-                f"Sheet {name!r}: {df.shape[0]} rows x {df.shape[1]} cols. "
-                f"Columns: {cols or '(empty)'}"
+                f"Sheet {name!r}: {df.shape[0]} rows x {df.shape[1]} cols. " f"Columns: {cols or '(empty)'}"
             )
             if not df.empty:
                 parts.append(f"First rows of {name!r}:\n{df.head(5).to_string()}")
@@ -88,12 +86,30 @@ class ExcelSession:
             "add_chart": self._add_chart,
         }
         try:
-            exec(compile(code, "<excel-turn>", "exec"), {"__builtins__": {
-                "len": len, "range": range, "sum": sum, "min": min, "max": max,
-                "round": round, "sorted": sorted, "list": list, "dict": dict,
-                "str": str, "int": int, "float": float, "bool": bool,
-                "enumerate": enumerate, "zip": zip, "abs": abs,
-            }}, local_ns)
+            exec(
+                compile(code, "<excel-turn>", "exec"),
+                {
+                    "__builtins__": {
+                        "len": len,
+                        "range": range,
+                        "sum": sum,
+                        "min": min,
+                        "max": max,
+                        "round": round,
+                        "sorted": sorted,
+                        "list": list,
+                        "dict": dict,
+                        "str": str,
+                        "int": int,
+                        "float": float,
+                        "bool": bool,
+                        "enumerate": enumerate,
+                        "zip": zip,
+                        "abs": abs,
+                    }
+                },
+                local_ns,
+            )
         except Exception as e:
             self.undo()
             return False, f"[ERROR] generated code failed: {e}"

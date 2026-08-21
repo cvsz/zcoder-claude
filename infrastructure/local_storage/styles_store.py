@@ -7,7 +7,7 @@ directories. No network calls, no print().
 
 from pathlib import Path
 
-from domain.output_styles import USER_STYLES_DIR, PROJECT_STYLES_DIR, _parse_style_file
+from domain.output_styles import PROJECT_STYLES_DIR, USER_STYLES_DIR, _parse_style_file
 
 
 def discover_custom_styles() -> dict:

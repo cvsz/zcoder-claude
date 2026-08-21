@@ -61,9 +61,21 @@ _CODE_BLOCK = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL)
 # sandbox. Anything more sensitive should go through
 # --code-agent-sandbox instead.
 _DENYLIST = (
-    "import os", "import sys", "import subprocess", "import socket",
-    "__import__", "open(", "eval(", "exec(", "os.", "sys.", "subprocess.",
-    "socket.", "shutil.", ".system(", "pathlib",
+    "import os",
+    "import sys",
+    "import subprocess",
+    "import socket",
+    "__import__",
+    "open(",
+    "eval(",
+    "exec(",
+    "os.",
+    "sys.",
+    "subprocess.",
+    "socket.",
+    "shutil.",
+    ".system(",
+    "pathlib",
 )
 
 HELP_TEXT = """\

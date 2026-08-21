@@ -8,7 +8,6 @@ No I/O, no print() — those belong to infrastructure/ and interfaces/.
 import json
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 USER_SETTINGS = Path("~/.claude/settings.json").expanduser()
 PROJECT_SETTINGS = Path(".claude/settings.json")
@@ -36,7 +35,7 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return out
 
 
-def load_settings(cli_overrides: Optional[dict] = None) -> dict:
+def load_settings(cli_overrides: dict | None = None) -> dict:
     merged = {}
     for path in (USER_SETTINGS, PROJECT_SETTINGS, LOCAL_SETTINGS):
         merged = _deep_merge(merged, _read_json(path))
@@ -59,13 +58,16 @@ def load_settings_with_provenance() -> dict:
     return {"settings": merged, "provenance": provenance}
 
 
-def render_status_line(session_state: dict, status_line_command: Optional[str] = None) -> str:
+def render_status_line(session_state: dict, status_line_command: str | None = None) -> str:
     if status_line_command:
         try:
             r = subprocess.run(
-                status_line_command, shell=True,
+                status_line_command,
+                shell=True,
                 input=json.dumps(session_state),
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             line = r.stdout.strip()
             if line:

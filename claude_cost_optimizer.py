@@ -35,25 +35,46 @@ used by main.py) keep working unmodified. See exec-planning.md §5
 (migration playbook).
 """
 
-from domain.observability import (
-    SONNET5_INTRO_PRICE, TIER_MODELS, estimate_cost,
-    classify_complexity, select_model, OptimizedResponse,
-    PRICE, DEFAULT_PRICE,
-)
-from domain.models.catalog import LONG_CONTEXT_SURCHARGE, INFERENCE_GEO_MULTIPLIER, INFERENCE_GEO_SUPPORTED
-from infrastructure.local_storage.observability_store import (
-    SPEND_LOG, log_spend as _log_spend,
-)
 from application.observability_service import optimized_call
+from domain.models.catalog import INFERENCE_GEO_MULTIPLIER, INFERENCE_GEO_SUPPORTED, LONG_CONTEXT_SURCHARGE
+from domain.observability import (
+    DEFAULT_PRICE,
+    PRICE,
+    SONNET5_INTRO_PRICE,
+    TIER_MODELS,
+    OptimizedResponse,
+    classify_complexity,
+    estimate_cost,
+    select_model,
+)
+from infrastructure.local_storage.observability_store import (
+    SPEND_LOG,
+)
+from infrastructure.local_storage.observability_store import (
+    log_spend as _log_spend,
+)
 from interfaces.cli.commands.observability_commands import (
-    cmd_optimized, cmd_cost_summary, cmd_cost_reset,
+    cmd_cost_reset,
+    cmd_cost_summary,
+    cmd_optimized,
 )
 
 __all__ = [
-    "PRICE", "DEFAULT_PRICE", "LONG_CONTEXT_SURCHARGE",
-    "INFERENCE_GEO_MULTIPLIER", "INFERENCE_GEO_SUPPORTED",
-    "SPEND_LOG", "SONNET5_INTRO_PRICE", "TIER_MODELS",
-    "estimate_cost", "classify_complexity", "select_model",
-    "OptimizedResponse", "optimized_call", "_log_spend",
-    "cmd_optimized", "cmd_cost_summary", "cmd_cost_reset",
+    "PRICE",
+    "DEFAULT_PRICE",
+    "LONG_CONTEXT_SURCHARGE",
+    "INFERENCE_GEO_MULTIPLIER",
+    "INFERENCE_GEO_SUPPORTED",
+    "SPEND_LOG",
+    "SONNET5_INTRO_PRICE",
+    "TIER_MODELS",
+    "estimate_cost",
+    "classify_complexity",
+    "select_model",
+    "OptimizedResponse",
+    "optimized_call",
+    "_log_spend",
+    "cmd_optimized",
+    "cmd_cost_summary",
+    "cmd_cost_reset",
 ]

@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 infrastructure/anthropic_api/cache_gateway.py — Prompt Caching gateway
 AI Model Coder CLI v1.53.0 (Clean Architecture refactor, Phase C, Context #5)
 
@@ -20,16 +21,18 @@ with) was already following.
 """
 
 import json
-import urllib.request
 import urllib.error
-from typing import Optional
+import urllib.request
 
+from domain.cache import (
+    MID_SYSTEM_SUPPORTED_MODELS,
+    add_cache_breakpoint,
+    build_mid_system_message,
+    make_cache_control,
+    validate_system_message_placement,
+)
 from exceptions import AICoderError
 from resilience import CircuitBreaker, retry, urlopen_json
-from domain.cache import (
-    MID_SYSTEM_SUPPORTED_MODELS, build_mid_system_message,
-    validate_system_message_placement, make_cache_control, add_cache_breakpoint,
-)
 
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
 
@@ -39,19 +42,18 @@ class CachingCoder:
 
     ENDPOINT = "https://api.anthropic.com/v1/messages"
 
-    def __init__(self, api_key: str, model: str = "claude-sonnet-5",
-                 max_tokens: int = 4096, ttl: str = "5m"):
-        self.api_key    = api_key
-        self.model      = model
+    def __init__(self, api_key: str, model: str = "claude-sonnet-5", max_tokens: int = 4096, ttl: str = "5m"):
+        self.api_key = api_key
+        self.model = model
         self.max_tokens = max_tokens
-        self.ttl        = ttl          # "5m" or "1h"
+        self.ttl = ttl  # "5m" or "1h"
         self._last_usage: dict = {}
-        self._last_message_id: Optional[str] = None
-        self._last_cache_miss_reason: Optional[str] = None
+        self._last_message_id: str | None = None
+        self._last_cache_miss_reason: str | None = None
 
     def _post(self, payload: dict, diagnose: bool = False) -> dict:
-        body    = json.dumps(payload).encode()
-        betas   = ["prompt-caching-2024-07-31"]
+        body = json.dumps(payload).encode()
+        betas = ["prompt-caching-2024-07-31"]
         if diagnose:
             # Cache diagnostics (public beta). Per platform.claude.com/docs
             # (checked 2026-07-02): pass diagnostics.previous_message_id on
@@ -61,20 +63,19 @@ class CachingCoder:
             # happened, only that usage showed 0 cache_read_input_tokens.
             betas.append("cache-diagnosis-2026-04-07")
         headers = {
-            "Content-Type":    "application/json",
-            "x-api-key":       self.api_key,
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
-            "anthropic-beta":  ",".join(betas),
+            "anthropic-beta": ",".join(betas),
         }
-        req = urllib.request.Request(self.ENDPOINT, data=body,
-                                     headers=headers, method="POST")
+        req = urllib.request.Request(self.ENDPOINT, data=body, headers=headers, method="POST")
         try:
             return self._call(req)
         except AICoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-    def _call(self, req: "urllib.request.Request") -> dict:
+    def _call(self, req: urllib.request.Request) -> dict:
         return urlopen_json(req, timeout=120)
 
     # ── Single cached call ─────────────────────────────────────────────────
@@ -82,11 +83,11 @@ class CachingCoder:
     def generate_cached(
         self,
         prompt: str,
-        system: Optional[str] = None,
+        system: str | None = None,
         cached_docs: list = None,
         history: list = None,
         diagnose: bool = False,
-        mid_system: Optional[str] = None,
+        mid_system: str | None = None,
     ) -> str:
         """
         Call Claude with cache breakpoints on system + docs.
@@ -114,30 +115,27 @@ class CachingCoder:
                 raise ValueError(
                     f"Mid-conversation system messages require one of "
                     f"{sorted(MID_SYSTEM_SUPPORTED_MODELS)}; got {self.model!r}. "
-                    "Use the top-level `system` field (--cache-system) instead.")
+                    "Use the top-level `system` field (--cache-system) instead."
+                )
             messages.append(build_mid_system_message(mid_system))
             validate_system_message_placement(messages)
 
         # Build user content
         user_blocks = []
-        for doc in (cached_docs or []):
-            user_blocks.append(add_cache_breakpoint(
-                {"type": "text", "text": doc}, self.ttl
-            ))
+        for doc in cached_docs or []:
+            user_blocks.append(add_cache_breakpoint({"type": "text", "text": doc}, self.ttl))
         user_blocks.append({"type": "text", "text": prompt})
         messages.append({"role": "user", "content": user_blocks})
 
         payload: dict = {
-            "model":      self.model,
+            "model": self.model,
             "max_tokens": self.max_tokens,
-            "messages":   messages,
+            "messages": messages,
         }
 
         # Cache the system prompt
         if system:
-            payload["system"] = [
-                add_cache_breakpoint({"type": "text", "text": system}, self.ttl)
-            ]
+            payload["system"] = [add_cache_breakpoint({"type": "text", "text": system}, self.ttl)]
 
         if diagnose:
             # Docs opt in on every call, using previous_message_id: None on
@@ -168,21 +166,16 @@ class CachingCoder:
         No output is produced and no output tokens are billed.
         Returns usage showing cache_creation_input_tokens.
         """
-        user_blocks = [
-            add_cache_breakpoint({"type": "text", "text": d}, self.ttl)
-            for d in (docs or [])
-        ]
+        user_blocks = [add_cache_breakpoint({"type": "text", "text": d}, self.ttl) for d in (docs or [])]
         user_blocks.append({"type": "text", "text": "."})  # minimal user msg
 
         payload: dict = {
-            "model":      self.model,
-            "max_tokens": 1,          # minimal to satisfy API
-            "messages":   [{"role": "user", "content": user_blocks}],
+            "model": self.model,
+            "max_tokens": 1,  # minimal to satisfy API
+            "messages": [{"role": "user", "content": user_blocks}],
         }
         if system:
-            payload["system"] = [
-                add_cache_breakpoint({"type": "text", "text": system}, self.ttl)
-            ]
+            payload["system"] = [add_cache_breakpoint({"type": "text", "text": system}, self.ttl)]
 
         data = self._post(payload)
         self._last_usage = data.get("usage", {})
@@ -194,7 +187,7 @@ class CachingCoder:
         self,
         prompt: str,
         tools: list,
-        system: Optional[str] = None,
+        system: str | None = None,
     ) -> str:
         """Cache tool definitions at the tools level (invalidated only if tools change)."""
         if tools:
@@ -205,15 +198,13 @@ class CachingCoder:
 
         messages = [{"role": "user", "content": prompt}]
         payload: dict = {
-            "model":      self.model,
+            "model": self.model,
             "max_tokens": self.max_tokens,
-            "messages":   messages,
-            "tools":      tools,
+            "messages": messages,
+            "tools": tools,
         }
         if system:
-            payload["system"] = [
-                add_cache_breakpoint({"type": "text", "text": system}, self.ttl)
-            ]
+            payload["system"] = [add_cache_breakpoint({"type": "text", "text": system}, self.ttl)]
 
         data = self._post(payload)
         if "error" in data:
@@ -228,8 +219,8 @@ class CachingCoder:
     def multi_turn_cached(
         self,
         turns: list,
-        system: Optional[str] = None,
-        mid_system_updates: Optional[dict] = None,
+        system: str | None = None,
+        mid_system_updates: dict | None = None,
     ) -> list:
         """
         Run a multi-turn conversation, caching the growing history each turn.
@@ -250,7 +241,8 @@ class CachingCoder:
         if mid_system_updates and self.model not in MID_SYSTEM_SUPPORTED_MODELS:
             raise ValueError(
                 f"Mid-conversation system messages require one of "
-                f"{sorted(MID_SYSTEM_SUPPORTED_MODELS)}; got {self.model!r}.")
+                f"{sorted(MID_SYSTEM_SUPPORTED_MODELS)}; got {self.model!r}."
+            )
 
         messages = []
         responses = []
@@ -277,14 +269,12 @@ class CachingCoder:
                 validate_system_message_placement(messages)
 
             payload: dict = {
-                "model":      self.model,
+                "model": self.model,
                 "max_tokens": self.max_tokens,
-                "messages":   messages,
+                "messages": messages,
             }
             if system:
-                payload["system"] = [
-                    add_cache_breakpoint({"type": "text", "text": system}, self.ttl)
-                ]
+                payload["system"] = [add_cache_breakpoint({"type": "text", "text": system}, self.ttl)]
 
             data = self._post(payload)
             self._last_usage = data.get("usage", {})
@@ -293,10 +283,7 @@ class CachingCoder:
                 responses.append(f"[ERROR] {data['error']}")
                 break
 
-            resp_text = "".join(
-                b.get("text", "") for b in data.get("content", [])
-                if b.get("type") == "text"
-            )
+            resp_text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
             responses.append(resp_text)
             messages.append({"role": "assistant", "content": resp_text})
 
@@ -307,12 +294,12 @@ class CachingCoder:
     def cache_stats(self) -> dict:
         u = self._last_usage
         return {
-            "input_tokens":                u.get("input_tokens", 0),
-            "output_tokens":               u.get("output_tokens", 0),
+            "input_tokens": u.get("input_tokens", 0),
+            "output_tokens": u.get("output_tokens", 0),
             "cache_creation_input_tokens": u.get("cache_creation_input_tokens", 0),
-            "cache_read_input_tokens":     u.get("cache_read_input_tokens", 0),
+            "cache_read_input_tokens": u.get("cache_read_input_tokens", 0),
             # Only populated when the last generate_cached() call passed
             # diagnose=True and the API had a previous request to compare
             # against — see Cache diagnostics (beta) in generate_cached().
-            "cache_miss_reason":           self._last_cache_miss_reason,
+            "cache_miss_reason": self._last_cache_miss_reason,
         }

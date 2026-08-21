@@ -9,54 +9,79 @@ ComplianceApiError is still imported here since cmd_* functions catch it
 directly (the service layer lets it propagate rather than swallowing it).
 """
 
-from typing import Optional
 from pathlib import Path
 
-from infrastructure.anthropic_api.compliance_gateway import ComplianceApiError
 import application.compliance_service as svc
+from infrastructure.anthropic_api.compliance_gateway import ComplianceApiError
 
 
 def _print_error(prefix: str, e: ComplianceApiError):
     print(f"\033[91m✗ {prefix}: [{e.status}] {e.error_type}: {e.message}\033[0m")
     if e.status == 403:
-        print("\033[93m  Compliance Access Keys (sk-ant-api01-...) carry different scopes "
-             "than Admin API keys (sk-ant-admin01-...); an Admin API key can only call "
-             "the Activity Feed. See the message above for the scopes this call needed "
-             "vs. what your key carries.\033[0m")
+        print(
+            "\033[93m  Compliance Access Keys (sk-ant-api01-...) carry different scopes "
+            "than Admin API keys (sk-ant-admin01-...); an Admin API key can only call "
+            "the Activity Feed. See the message above for the scopes this call needed "
+            "vs. what your key carries.\033[0m"
+        )
     elif e.status == 401:
-        print("\033[93m  Confirm the key value and that it hasn't been revoked in "
-             "claude.ai (Compliance Access Keys) or Claude Console (Admin API keys).\033[0m")
+        print(
+            "\033[93m  Confirm the key value and that it hasn't been revoked in "
+            "claude.ai (Compliance Access Keys) or Claude Console (Admin API keys).\033[0m"
+        )
     elif e.status == 429:
-        print("\033[93m  Rate limited even after automatic backoff — this org is doing "
-             "600+ requests/min against the Compliance API. Slow down the polling "
-             "interval.\033[0m")
+        print(
+            "\033[93m  Rate limited even after automatic backoff — this org is doing "
+            "600+ requests/min against the Compliance API. Slow down the polling "
+            "interval.\033[0m"
+        )
     if e.request_id:
-        print(f"\033[90m  request-id: {e.request_id} (include this if escalating to Anthropic support)\033[0m")
+        print(
+            f"\033[90m  request-id: {e.request_id} (include this if escalating to Anthropic support)\033[0m"
+        )
 
 
-def cmd_compliance_activities(api_key: str, since: Optional[str] = None,
-                              until: Optional[str] = None,
-                              activity_types: Optional[list] = None,
-                              limit: int = 100, all_pages: bool = False):
-    print("\n\033[94mActivity Feed\033[0m" + (" (all matching pages)" if all_pages else f" (up to {limit})") + "\n")
+def cmd_compliance_activities(
+    api_key: str,
+    since: str | None = None,
+    until: str | None = None,
+    activity_types: list | None = None,
+    limit: int = 100,
+    all_pages: bool = False,
+):
+    print(
+        "\n\033[94mActivity Feed\033[0m"
+        + (" (all matching pages)" if all_pages else f" (up to {limit})")
+        + "\n"
+    )
     try:
         count = 0
         if all_pages:
             for activity in svc.iterate_all_activities(
-                api_key, since=since, until=until, activity_types=activity_types, limit=limit,
+                api_key,
+                since=since,
+                until=until,
+                activity_types=activity_types,
+                limit=limit,
             ):
                 _print_activity(activity)
                 count += 1
         else:
             page = svc.list_activities_page(
-                api_key, since=since, until=until, activity_types=activity_types, limit=limit,
+                api_key,
+                since=since,
+                until=until,
+                activity_types=activity_types,
+                limit=limit,
             )
             for activity in page.get("data", []):
                 _print_activity(activity)
                 count += 1
             if page.get("has_more"):
-                print(f"\033[90m  ... more available (pass --compliance-activities-all "
-                     f"to page through everything, last_id={page.get('last_id')})\033[0m")
+                print(
+                    f"\033[90m  ... more available (pass --compliance-activities-all "
+                    f"to page through everything, last_id={page.get('last_id')})\033[0m"
+                )
     except ComplianceApiError as e:
         _print_error("Activity Feed request failed", e)
         return None
@@ -66,8 +91,13 @@ def cmd_compliance_activities(api_key: str, since: Optional[str] = None,
 
 def _print_activity(a: dict):
     actor = a.get("actor", {})
-    who = actor.get("email_address") or actor.get("api_key_id") or actor.get("admin_api_key_id") \
-        or actor.get("unauthenticated_email_address") or actor.get("type", "?")
+    who = (
+        actor.get("email_address")
+        or actor.get("api_key_id")
+        or actor.get("admin_api_key_id")
+        or actor.get("unauthenticated_email_address")
+        or actor.get("type", "?")
+    )
     print(f"  {a.get('created_at', '?'):<25} {a.get('type', '?'):<30} {who}")
 
 
@@ -100,11 +130,11 @@ def cmd_compliance_chat_messages(api_key: str, chat_id: str):
     for msg in data.get("chat_messages", []) or []:
         text = "".join(b.get("text", "") for b in msg.get("content", []) if b.get("type") == "text")
         print(f"  [{msg.get('role', '?'):<9}] {text[:200]}")
-        for f in (msg.get("files") or []):
+        for f in msg.get("files") or []:
             print(f"      \033[90m📎 {f.get('filename')} ({f.get('id')})\033[0m")
-        for f in (msg.get("generated_files") or []):
+        for f in msg.get("generated_files") or []:
             print(f"      \033[90m📄 generated: {f.get('filename')} ({f.get('id')})\033[0m")
-        for a in (msg.get("artifacts") or []):
+        for a in msg.get("artifacts") or []:
             print(f"      \033[90m🧩 artifact: {a.get('title')} ({a.get('version_id')})\033[0m")
     print()
     return data
@@ -112,9 +142,11 @@ def cmd_compliance_chat_messages(api_key: str, chat_id: str):
 
 def cmd_compliance_chat_delete(api_key: str, chat_id: str, yes: bool = False):
     if not yes:
-        print(f"\033[93m⚠ DRY RUN: would permanently delete chat {chat_id} and all its "
-             f"messages/attached files. This cannot be undone. Re-run with "
-             f"--compliance-yes to actually delete.\033[0m")
+        print(
+            f"\033[93m⚠ DRY RUN: would permanently delete chat {chat_id} and all its "
+            f"messages/attached files. This cannot be undone. Re-run with "
+            f"--compliance-yes to actually delete.\033[0m"
+        )
         return None
     try:
         result = svc.delete_chat(api_key, chat_id)
@@ -125,7 +157,7 @@ def cmd_compliance_chat_delete(api_key: str, chat_id: str, yes: bool = False):
     return result
 
 
-def cmd_compliance_file_download(api_key: str, file_id: str, output_path: Optional[str] = None):
+def cmd_compliance_file_download(api_key: str, file_id: str, output_path: str | None = None):
     try:
         content, filename, mime_type = svc.download_file(api_key, file_id)
     except ComplianceApiError as e:
@@ -139,8 +171,10 @@ def cmd_compliance_file_download(api_key: str, file_id: str, output_path: Option
 
 def cmd_compliance_file_delete(api_key: str, file_id: str, yes: bool = False):
     if not yes:
-        print(f"\033[93m⚠ DRY RUN: would permanently delete file {file_id}. This cannot be "
-             f"undone. Re-run with --compliance-yes to actually delete.\033[0m")
+        print(
+            f"\033[93m⚠ DRY RUN: would permanently delete file {file_id}. This cannot be "
+            f"undone. Re-run with --compliance-yes to actually delete.\033[0m"
+        )
         return None
     try:
         result = svc.delete_file(api_key, file_id)
@@ -198,18 +232,22 @@ def cmd_compliance_project_attachments(api_key: str, project_id: str):
 
 def cmd_compliance_project_delete(api_key: str, project_id: str, yes: bool = False):
     if not yes:
-        print(f"\033[93m⚠ DRY RUN: would permanently delete project {project_id}. Fails if "
-             f"chats are still attached (detach/delete them first). Re-run with "
-             f"--compliance-yes to actually delete.\033[0m")
+        print(
+            f"\033[93m⚠ DRY RUN: would permanently delete project {project_id}. Fails if "
+            f"chats are still attached (detach/delete them first). Re-run with "
+            f"--compliance-yes to actually delete.\033[0m"
+        )
         return None
     try:
         result = svc.delete_project(api_key, project_id)
     except ComplianceApiError as e:
         _print_error(f"Failed to delete project {project_id}", e)
         if e.status == 409:
-            print("\033[93m  This project still has chats attached. List them with "
-                 "list_chats(user_ids=[...], project_ids=[project_id]) and delete or "
-                 "detach each one first, then retry.\033[0m")
+            print(
+                "\033[93m  This project still has chats attached. List them with "
+                "list_chats(user_ids=[...], project_ids=[project_id]) and delete or "
+                "detach each one first, then retry.\033[0m"
+            )
         return None
     print(f"\033[92m✓ Deleted project {project_id}\033[0m")
     return result
@@ -295,8 +333,12 @@ def cmd_compliance_group_members(api_key: str, group_id: str):
 
 
 def _print_session_row(s: dict, local: bool):
-    who = (s.get("user") or {}).get("email_address") or (s.get("user") or {}).get("id") \
-        or s.get("agent_id") or "?"
+    who = (
+        (s.get("user") or {}).get("email_address")
+        or (s.get("user") or {}).get("id")
+        or s.get("agent_id")
+        or "?"
+    )
     surface = s.get("product_surface", "?")
     if local:
         print(f"  {s.get('id')}  {s.get('created_at', '?'):<25} {surface:<12} {who}")
@@ -305,8 +347,9 @@ def _print_session_row(s: dict, local: bool):
         print(f"  {s.get('id')}  {s.get('created_at', '?'):<25} {surface:<14} {status:<10} {who}")
 
 
-def cmd_compliance_local_sessions_list(api_key: str, since: Optional[str] = None,
-                                       until: Optional[str] = None, limit: int = 100):
+def cmd_compliance_local_sessions_list(
+    api_key: str, since: str | None = None, until: str | None = None, limit: int = 100
+):
     try:
         page = svc.list_local_sessions(api_key, since=since, until=until, limit=limit)
     except ComplianceApiError as e:
@@ -344,15 +387,22 @@ def cmd_compliance_local_session_messages(api_key: str, session_id: str):
     return data
 
 
-def cmd_compliance_remote_sessions_list(api_key: str, since: Optional[str] = None,
-                                        until: Optional[str] = None,
-                                        user_ids: Optional[list] = None,
-                                        organization_ids: Optional[list] = None,
-                                        limit: int = 100):
+def cmd_compliance_remote_sessions_list(
+    api_key: str,
+    since: str | None = None,
+    until: str | None = None,
+    user_ids: list | None = None,
+    organization_ids: list | None = None,
+    limit: int = 100,
+):
     try:
         page = svc.list_remote_sessions(
-            api_key, since=since, until=until,
-            user_ids=user_ids, organization_ids=organization_ids, limit=limit,
+            api_key,
+            since=since,
+            until=until,
+            user_ids=user_ids,
+            organization_ids=organization_ids,
+            limit=limit,
         )
     except (ComplianceApiError, ValueError) as e:
         if isinstance(e, ValueError):
@@ -381,8 +431,10 @@ def cmd_compliance_remote_session_messages(api_key: str, session_id: str):
 
 def _print_session_transcript(data: dict):
     session = data.get("session", {})
-    print(f"\n\033[94mSession {session.get('id')}\033[0m  "
-         f"(product_surface={session.get('product_surface', '?')})\n")
+    print(
+        f"\n\033[94mSession {session.get('id')}\033[0m  "
+        f"(product_surface={session.get('product_surface', '?')})\n"
+    )
     for msg in data.get("data", []):
         role = msg.get("role", "?")
         parts = []
@@ -393,7 +445,9 @@ def _print_session_transcript(data: dict):
             elif btype == "tool_use":
                 parts.append(f"[tool_use {block.get('name')}: {block.get('input')}]")
             elif btype == "tool_result":
-                inner = "".join(b.get("text", "") for b in (block.get("content") or []) if b.get("type") == "text")
+                inner = "".join(
+                    b.get("text", "") for b in (block.get("content") or []) if b.get("type") == "text"
+                )
                 parts.append(f"[tool_result {block.get('name')}: {inner[:200]}]")
         text = " ".join(parts)
         provenance = msg.get("provenance")

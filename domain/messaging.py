@@ -14,7 +14,6 @@ domain/agents/agent_config.py.
 """
 
 import threading
-from typing import Dict, List, Optional
 
 # ── Streaming / tool-use helpers (from claude_stream.py) ───────────────────
 
@@ -24,7 +23,7 @@ from typing import Dict, List, Optional
 FINE_GRAINED_TOOL_STREAMING_BETA = "fine-grained-tool-streaming-2025-05-14"
 
 
-def with_eager_input_streaming(tools: List[dict], enabled: bool = True) -> List[dict]:
+def with_eager_input_streaming(tools: list[dict], enabled: bool = True) -> list[dict]:
     """Return a copy of tools with eager_input_streaming set on each —
     turns on fine-grained streaming for those tools. Pass enabled=False to
     explicitly force buffered streaming for a tool even under the legacy
@@ -37,7 +36,7 @@ def with_eager_input_streaming(tools: List[dict], enabled: bool = True) -> List[
     return out
 
 
-def handle_refusal(response_or_stop_details) -> Optional[dict]:
+def handle_refusal(response_or_stop_details) -> dict | None:
     """Read stop_details off a (non-streaming) response dict or a
     message_delta event's stop_details field. Returns {"category": ...,
     "explanation": ...} when the response was a refusal with no output
@@ -54,7 +53,7 @@ def handle_refusal(response_or_stop_details) -> Optional[dict]:
     else:
         details = response_or_stop_details or {}
     return {
-        "category":    details.get("category"),
+        "category": details.get("category"),
         "explanation": details.get("explanation", ""),
     }
 
@@ -67,11 +66,11 @@ def handle_refusal(response_or_stop_details) -> Optional[dict]:
 # matching the budget_tokens value Opus 5's dedicated code already uses for
 # it, so the two ladders agree.
 EFFORT_BUDGETS = {
-    "low":    2_000,
+    "low": 2_000,
     "medium": 8_000,
-    "high":   16_000,
-    "xhigh":  24_000,
-    "max":    32_000,
+    "high": 16_000,
+    "xhigh": 24_000,
+    "max": 32_000,
 }
 
 # Models where adaptive thinking is the modern, correct path.
@@ -79,18 +78,23 @@ EFFORT_BUDGETS = {
 # accepted (--effort-legacy-budget can still target these). On every
 # other model in this set, manual budget_tokens is a hard 400 error.
 ADAPTIVE_THINKING_MODELS = {
-    "claude-mythos-5", "claude-fable-5",
-    "claude-opus-4-8", "claude-opus-4-7",
+    "claude-mythos-5",
+    "claude-fable-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
     "claude-sonnet-5",
-    "claude-opus-4-6", "claude-sonnet-4-6",
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
     "claude-mythos-preview",
 }
 
 # Models where budget_tokens is a hard 400 — adaptive is the *only*
 # working mode, --effort-legacy-budget must refuse rather than fail late.
 BUDGET_TOKENS_UNSUPPORTED_MODELS = {
-    "claude-mythos-5", "claude-fable-5",
-    "claude-opus-4-8", "claude-opus-4-7",
+    "claude-mythos-5",
+    "claude-fable-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
     "claude-sonnet-5",
     "claude-mythos-preview",
 }
@@ -124,7 +128,7 @@ class ThinkingModeError(ValueError):
     instead of after one."""
 
 
-def resolve_thinking_mode(model: str, adaptive: Optional[bool], legacy_budget: bool) -> bool:
+def resolve_thinking_mode(model: str, adaptive: bool | None, legacy_budget: bool) -> bool:
     """Returns True for adaptive mode, False for legacy manual mode.
     Raises ThinkingModeError instead of building a request known to
     fail with a 400. Pure decision logic — no client, no I/O."""
@@ -161,7 +165,7 @@ class AmbientBuffer:
     concurrent access from multiple threads, it isn't itself an I/O wait."""
 
     def __init__(self, maxlen: int = 20):
-        self._events: List[Dict[str, str]] = []
+        self._events: list[dict[str, str]] = []
         self._lock = threading.Lock()
         self._maxlen = maxlen
 
@@ -169,7 +173,7 @@ class AmbientBuffer:
         with self._lock:
             self._events.append({"source": source, "content": content})
             if len(self._events) > self._maxlen:
-                self._events = self._events[-self._maxlen:]
+                self._events = self._events[-self._maxlen :]
 
     def block(self) -> str:
         with self._lock:

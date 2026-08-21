@@ -7,21 +7,22 @@ went undetected. This file covers the pricing table, estimate_cost()'s
 surcharge/geo-multiplier logic, and the complexity router, so a future
 pricing regression here fails a test instead of shipping silently.
 """
+
 import pytest
 
 from claude_cost_optimizer import (
-    PRICE,
-    SONNET5_INTRO_PRICE,
-    LONG_CONTEXT_SURCHARGE,
     INFERENCE_GEO_MULTIPLIER,
     INFERENCE_GEO_SUPPORTED,
-    estimate_cost,
+    LONG_CONTEXT_SURCHARGE,
+    PRICE,
+    SONNET5_INTRO_PRICE,
     classify_complexity,
+    estimate_cost,
     select_model,
 )
 
-
 # ── pricing table (2026-08-10 release note: $2/$10 is now permanent) ────
+
 
 def test_sonnet5_price_is_2_10_not_cancelled_3_15():
     assert PRICE["claude-sonnet-5"] == {"in": 2.0, "out": 10.0}
@@ -46,6 +47,7 @@ def test_estimate_cost_unknown_model_falls_back_to_default():
 
 
 # ── long-context surcharge ────────────────────────────────────────────
+
 
 def test_surcharge_applies_above_threshold():
     model = "claude-sonnet-4-5"
@@ -74,6 +76,7 @@ def test_surcharge_not_modeled_for_flat_rate_models():
 
 # ── inference_geo pricing multiplier ─────────────────────────────────
 
+
 def test_inference_geo_us_applies_multiplier_on_supported_model():
     model = "claude-sonnet-5"
     assert model in INFERENCE_GEO_SUPPORTED
@@ -91,6 +94,7 @@ def test_inference_geo_us_ignored_on_unsupported_model():
 
 
 # ── complexity routing ────────────────────────────────────────────────
+
 
 def test_classify_complexity_short_prompt_is_low():
     assert classify_complexity("hello there") == "low"

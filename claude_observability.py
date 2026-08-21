@@ -53,18 +53,28 @@ etc., used by main.py) keep working unmodified. See exec-planning.md §5
 (migration playbook).
 """
 
-from functools import wraps
 import time
-from typing import Callable, List, Optional
+from collections.abc import Callable
+from functools import wraps
 
 from domain.observability import histogram as _histogram
 from infrastructure.local_storage.observability_store import (
-    OBS_DIR, OBS_LOG_FILE as LOG_FILE,
+    OBS_DIR,
+)
+from infrastructure.local_storage.observability_store import (
+    OBS_LOG_FILE as LOG_FILE,
+)
+from infrastructure.local_storage.observability_store import (
     log_observability_request as _log,
+)
+from infrastructure.local_storage.observability_store import (
     read_observability_logs as _read_logs,
 )
 from interfaces.cli.commands.observability_commands import (
-    cmd_obs_latency, cmd_obs_errors, cmd_obs_clear, cmd_obs_tail,
+    cmd_obs_clear,
+    cmd_obs_errors,
+    cmd_obs_latency,
+    cmd_obs_tail,
 )
 
 # error_analysis/latency_report used to print() directly (cmd_obs_errors/
@@ -75,17 +85,29 @@ error_analysis = cmd_obs_errors
 latency_report = cmd_obs_latency
 
 
-def record_request(model: str, prompt: str, response: str,
-                   latency_ms: int, in_tokens: int, out_tokens: int,
-                   error: Optional[str] = None, tags: Optional[List[str]] = None):
+def record_request(
+    model: str,
+    prompt: str,
+    response: str,
+    latency_ms: int,
+    in_tokens: int,
+    out_tokens: int,
+    error: str | None = None,
+    tags: list[str] | None = None,
+):
     from domain.observability import build_request_record
-    _log(build_request_record(model, prompt, response, latency_ms,
-                              in_tokens, out_tokens, error=error, tags=tags))
+
+    _log(
+        build_request_record(
+            model, prompt, response, latency_ms, in_tokens, out_tokens, error=error, tags=tags
+        )
+    )
 
 
-def observe(model: str = "unknown", tags: Optional[List[str]] = None):
+def observe(model: str = "unknown", tags: list[str] | None = None):
     """Decorator: wrap any function that (a) takes prompt as first arg and
     (b) returns a string response, logging latency + token estimate."""
+
     def decorator(fn: Callable) -> Callable:
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -97,19 +119,31 @@ def observe(model: str = "unknown", tags: Optional[List[str]] = None):
                 result = fn(*args, **kwargs)
                 return result
             except Exception as e:
-                error = str(e); raise
+                error = str(e)
+                raise
             finally:
                 ms = int((time.time() - t0) * 1000)
-                est_in  = max(1, len(str(prompt)) // 4)
+                est_in = max(1, len(str(prompt)) // 4)
                 est_out = max(1, len(str(result)) // 4)
-                record_request(model, str(prompt), str(result), ms,
-                               est_in, est_out, error=error, tags=tags)
+                record_request(model, str(prompt), str(result), ms, est_in, est_out, error=error, tags=tags)
+
         return wrapper
+
     return decorator
 
 
 __all__ = [
-    "OBS_DIR", "LOG_FILE", "_log", "_read_logs", "_histogram",
-    "record_request", "observe", "latency_report", "error_analysis",
-    "cmd_obs_latency", "cmd_obs_errors", "cmd_obs_clear", "cmd_obs_tail",
+    "OBS_DIR",
+    "LOG_FILE",
+    "_log",
+    "_read_logs",
+    "_histogram",
+    "record_request",
+    "observe",
+    "latency_report",
+    "error_analysis",
+    "cmd_obs_latency",
+    "cmd_obs_errors",
+    "cmd_obs_clear",
+    "cmd_obs_tail",
 ]

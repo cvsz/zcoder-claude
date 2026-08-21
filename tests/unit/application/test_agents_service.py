@@ -8,13 +8,15 @@ Compliance API done earlier). Focuses on the two functions with real
 orchestration logic (run_managed_agent_task, run_multiagent_review) plus
 representative coverage of the thin wrappers.
 """
-import pytest
+
 from unittest.mock import MagicMock
+
+import pytest
 
 import application.agents_service as svc
 
-
 # ── run_managed_agent_task orchestration ────────────────────────────────
+
 
 def test_run_managed_agent_task_plain_task_sequence(monkeypatch):
     mac = MagicMock()
@@ -30,8 +32,13 @@ def test_run_managed_agent_task_plain_task_sequence(monkeypatch):
     mac.create_environment.assert_called_once()
     mac.create_memory_store.assert_not_called()
     mac.create_session.assert_called_once_with(
-        "agent_1", "env_1", title="do the thing", memory_store_id=None,
-        vault_ids=None, agent_overrides=None, budget_usd_cents=None,
+        "agent_1",
+        "env_1",
+        title="do the thing",
+        memory_store_id=None,
+        vault_ids=None,
+        agent_overrides=None,
+        budget_usd_cents=None,
     )
     # run_task now also receives an on_delta callback (agents_gateway.py
     # print()-removal fix) — assert on the args/kwargs that matter rather
@@ -72,13 +79,19 @@ def test_run_managed_agent_task_outcome_mode_skips_run_task(monkeypatch):
     monkeypatch.setattr(svc, "ManagedAgentsClient", lambda api_key: mac)
 
     result = svc.run_managed_agent_task(
-        "unused", "sk-test", outcome_description="Build a report",
-        outcome_rubric="## has a table", outcome_max_iterations=7,
+        "unused",
+        "sk-test",
+        outcome_description="Build a report",
+        outcome_rubric="## has a table",
+        outcome_max_iterations=7,
     )
 
     mac.define_outcome.assert_called_once_with(
-        "sess_1", "Build a report",
-        rubric_text="## has a table", rubric_file_id=None, max_iterations=7,
+        "sess_1",
+        "Build a report",
+        rubric_text="## has a table",
+        rubric_file_id=None,
+        max_iterations=7,
     )
     mac.run_task.assert_not_called()
     assert result["_mode"] == "outcome"
@@ -110,6 +123,7 @@ def test_run_managed_agent_task_works_with_no_callback(monkeypatch):
 
 # ── run_multiagent_review orchestration ──────────────────────────────────
 
+
 def test_run_multiagent_review_rejects_unknown_specialist():
     with pytest.raises(ValueError, match="Unknown specialist"):
         svc.run_multiagent_review("/repo", ["not-a-real-specialist"], "sk-test")
@@ -118,7 +132,9 @@ def test_run_multiagent_review_rejects_unknown_specialist():
 def test_run_multiagent_review_creates_one_agent_per_specialist_plus_coordinator(monkeypatch):
     mac = MagicMock()
     mac.create_agent.side_effect = [
-        {"id": "spec_1"}, {"id": "spec_2"}, {"id": "coordinator_1"},
+        {"id": "spec_1"},
+        {"id": "spec_2"},
+        {"id": "coordinator_1"},
     ]
     mac.create_environment.return_value = {"id": "env_1"}
     mac.create_session.return_value = {"id": "sess_1"}
@@ -126,6 +142,7 @@ def test_run_multiagent_review_creates_one_agent_per_specialist_plus_coordinator
     monkeypatch.setattr(svc, "ManagedAgentsClient", lambda api_key: mac)
 
     from domain.agents.agent_config import REVIEW_SPECIALIST_PRESETS
+
     specialists = list(REVIEW_SPECIALIST_PRESETS)[:2]
     result = svc.run_multiagent_review("/repo", specialists, "sk-test")
 
@@ -144,15 +161,16 @@ def test_run_multiagent_review_on_step_fires_for_each_specialist_and_session(mon
     monkeypatch.setattr(svc, "ManagedAgentsClient", lambda api_key: mac)
 
     from domain.agents.agent_config import REVIEW_SPECIALIST_PRESETS
+
     one_specialist = list(REVIEW_SPECIALIST_PRESETS)[:1]
 
     events = []
-    svc.run_multiagent_review("/repo", one_specialist, "sk-test",
-                              on_step=lambda e, d: events.append(e))
+    svc.run_multiagent_review("/repo", one_specialist, "sk-test", on_step=lambda e, d: events.append(e))
     assert events == ["specialist_created", "session_created"]
 
 
 # ── thin wrappers (representative sample) ────────────────────────────────
+
 
 def test_create_memory_store_forwards_name(monkeypatch):
     mac = MagicMock()
@@ -166,8 +184,7 @@ def test_list_memories_forwards_all_filters(monkeypatch):
     mac = MagicMock()
     monkeypatch.setattr(svc, "ManagedAgentsClient", lambda api_key: mac)
     svc.list_memories("k", "store_1", path_prefix="docs/", depth=1, limit=10)
-    mac.list_memories.assert_called_once_with(
-        "store_1", path_prefix="docs/", depth=1, limit=10)
+    mac.list_memories.assert_called_once_with("store_1", path_prefix="docs/", depth=1, limit=10)
 
 
 def test_add_vault_credential_never_needs_secret_logged(monkeypatch):
@@ -202,6 +219,7 @@ def test_remove_session_budget_passes_none(monkeypatch):
 
 # ── local (non-Managed-Agents) chat/orchestrate ──────────────────────────
 
+
 def test_local_agent_chat_new_session_when_no_session_id(monkeypatch):
     fake_agent = MagicMock()
     fake_agent.chat.return_value = "the answer"
@@ -224,6 +242,7 @@ def test_local_agent_chat_resumes_existing_session(monkeypatch):
 def test_local_agent_chat_creates_with_given_id_when_not_found(monkeypatch):
     def raise_not_found(sid):
         raise FileNotFoundError()
+
     monkeypatch.setattr(svc.AgentSession, "load", staticmethod(raise_not_found))
     fake_agent = MagicMock()
     fake_agent.chat.return_value = "new with id"
@@ -252,7 +271,7 @@ def test_list_local_sessions_returns_parsed_dicts(monkeypatch, tmp_path):
 
 def test_list_local_sessions_skips_malformed_json(monkeypatch, tmp_path):
     monkeypatch.setattr(svc, "SESSIONS_DIR", tmp_path)
-    (tmp_path / "bad.json").write_text('not valid json')
+    (tmp_path / "bad.json").write_text("not valid json")
     (tmp_path / "good.json").write_text('{"id": "good"}')
     result = svc.list_local_sessions()
     assert len(result) == 1

@@ -7,7 +7,7 @@ layers were only covered indirectly through their application-service
 tests; this one is simple and self-contained enough to test directly.
 """
 
-from domain.files import _validate_filename, MAX_FILE_SIZE_BYTES, BETA_HEADER
+from domain.files import BETA_HEADER, MAX_FILE_SIZE_BYTES, _validate_filename
 
 
 def test_valid_filename_returns_none():

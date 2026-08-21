@@ -17,8 +17,16 @@ from infrastructure.local_storage.excel_workbook_store import pd
 __all__ = ["cmd_excel_chat"]
 
 
-def cmd_excel_chat(api_key, model, input_path=None, output_path=None, sheet_name=None,
-                    temperature=0.3, max_tokens=4096, native=False):
+def cmd_excel_chat(
+    api_key,
+    model,
+    input_path=None,
+    output_path=None,
+    sheet_name=None,
+    temperature=0.3,
+    max_tokens=4096,
+    native=False,
+):
     """native=True routes each turn through claude_skills_api.py's xlsx
     Skill (Anthropic's own maintained implementation, server-side in a
     code-execution container) instead of the hand-rolled pandas/openpyxl
@@ -26,12 +34,15 @@ def cmd_excel_chat(api_key, model, input_path=None, output_path=None, sheet_name
     account; the hand-rolled path here remains the default and the
     fallback for accounts without it."""
     if native:
-        return _cmd_excel_chat_native(api_key, model, input_path=input_path,
-                                      output_path=output_path, max_tokens=max_tokens)
+        return _cmd_excel_chat_native(
+            api_key, model, input_path=input_path, output_path=output_path, max_tokens=max_tokens
+        )
 
     if pd is None:
-        print("[ERROR] pandas is required for --excel. Install with: "
-              "pip install pandas openpyxl", file=sys.stderr)
+        print(
+            "[ERROR] pandas is required for --excel. Install with: " "pip install pandas openpyxl",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     from coder import Coder
@@ -66,7 +77,8 @@ def cmd_excel_chat(api_key, model, input_path=None, output_path=None, sheet_name
             if cmd in ("/exit", "/quit"):
                 break
             if cmd == "/help":
-                print(HELP_TEXT); continue
+                print(HELP_TEXT)
+                continue
             if cmd == "/sheets":
                 for name, df in session.sheets.items():
                     print(f"  {name}: {df.shape[0]} rows x {df.shape[1]} cols")
@@ -88,8 +100,7 @@ def cmd_excel_chat(api_key, model, input_path=None, output_path=None, sheet_name
         result = service.run_turn(c, session, user_input, history, output_path)
         if result["code_block_found"]:
             if result["applied"]:
-                print(f"\033[96mclaude›\033[0m Updated and saved to {output_path} "
-                     f"({result['shapes']})\n")
+                print(f"\033[96mclaude›\033[0m Updated and saved to {output_path} " f"({result['shapes']})\n")
             else:
                 print(f"\033[93mclaude›\033[0m {result['message']}\n")
         else:
@@ -112,8 +123,8 @@ def _cmd_excel_chat_native(api_key, model, input_path=None, output_path=None, ma
     aren't available here — the xlsx Skill owns the workbook, this CLI
     has no local copy of it to inspect or revert.
     """
-    from claude_skills_api import SkillsApiClient
     from claude_files import FilesAPI
+    from claude_skills_api import SkillsApiClient
 
     files_api = FilesAPI(api_key=api_key, model=model)
     client = SkillsApiClient(api_key=api_key, model=model, max_tokens=max_tokens)
@@ -146,8 +157,9 @@ def _cmd_excel_chat_native(api_key, model, input_path=None, output_path=None, ma
         if user_input.lower() in ("/exit", "/quit"):
             break
 
-        result = service.run_native_turn(client, files_api, messages, user_input,
-                                          pending_file_ids, container_id, output_path)
+        result = service.run_native_turn(
+            client, files_api, messages, user_input, pending_file_ids, container_id, output_path
+        )
         pending_file_ids = []  # only attach on the turn that actually introduces the file
         container_id = result["container_id"]
 

@@ -21,44 +21,52 @@ in three separate files:
     directly, preserving claude_chrome.py's original behavior exactly.
 """
 
-import anthropic
-from typing import List, Optional, Tuple
-
-from utils import sampling_kwargs
-from resilience import raise_for_http_error, retry
-from exceptions import APIError
-from domain.devtools import (
-    GIT_SYSTEM_PROMPT, BROWSE_SYSTEM_PROMPT, extract_page_text,
-)
-
-import urllib.request
 import urllib.error
+import urllib.request
 
+import anthropic
+
+from domain.devtools import (
+    BROWSE_SYSTEM_PROMPT,
+    GIT_SYSTEM_PROMPT,
+    extract_page_text,
+)
+from exceptions import APIError
+from resilience import raise_for_http_error, retry
+from utils import sampling_kwargs
 
 # ── git ───────────────────────────────────────────────────────────────
+
 
 def git_generate(api_key: str, model: str, user_prompt: str, max_tokens: int = 1024) -> str:
     client = anthropic.Anthropic(api_key=api_key)
     resp = client.messages.create(
-        model=model, max_tokens=max_tokens,
+        model=model,
+        max_tokens=max_tokens,
         **sampling_kwargs(model, temperature=0.3),
-        system=GIT_SYSTEM_PROMPT, messages=[{"role": "user", "content": user_prompt}])
+        system=GIT_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
     return resp.content[0].text.strip()
 
 
 # ── github ────────────────────────────────────────────────────────────
 
-def github_generate(api_key: str, model: str, system: str, user: str,
-                    max_tokens: int = 3000) -> str:
+
+def github_generate(api_key: str, model: str, system: str, user: str, max_tokens: int = 3000) -> str:
     client = anthropic.Anthropic(api_key=api_key)
     resp = client.messages.create(
-        model=model, max_tokens=max_tokens,
+        model=model,
+        max_tokens=max_tokens,
         **sampling_kwargs(model, temperature=0.3),
-        system=system, messages=[{"role": "user", "content": user}])
+        system=system,
+        messages=[{"role": "user", "content": user}],
+    )
     return resp.content[0].text.strip()
 
 
 # ── browse ────────────────────────────────────────────────────────────
+
 
 # No CircuitBreaker here deliberately: each step of a browsing session can
 # navigate to a completely different, unrelated site — a shared breaker
@@ -77,7 +85,7 @@ def _fetch_retrying(url: str, timeout: float) -> str:
         raise_for_http_error(e)
 
 
-def fetch_page(url: str, timeout: float = 15) -> Tuple[Optional[str], List[Tuple[str, str]], Optional[str]]:
+def fetch_page(url: str, timeout: float = 15) -> tuple[str | None, list[tuple[str, str]], str | None]:
     """Fetch a URL and return (text, links, error). Never raises."""
     try:
         raw = _fetch_retrying(url, timeout)
@@ -95,6 +103,7 @@ def fetch_page(url: str, timeout: float = 15) -> Tuple[Optional[str], List[Tuple
 
 def make_coder(api_key: str, model: str, temperature: float = 0.0, max_tokens: int = 1024):
     from coder import Coder
+
     return Coder(api_key=api_key, model=model, temperature=temperature, max_tokens=max_tokens)
 
 

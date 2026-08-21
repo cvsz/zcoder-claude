@@ -6,33 +6,43 @@ Orchestrates domain/plugins.py + infrastructure/local_storage/plugins_store.py
 """
 
 from pathlib import Path
-from typing import Optional
 
 from domain.plugins import (
     enabled_plugin_dirs,
-    load_plugin_skills, load_plugin_commands, load_plugin_agents,
-    load_plugin_output_styles, load_plugin_hooks, load_plugin_mcp_servers,
+    load_plugin_agents,
+    load_plugin_commands,
+    load_plugin_hooks,
+    load_plugin_mcp_servers,
+    load_plugin_output_styles,
+    load_plugin_skills,
     plugin_bin_paths,
     validate_plugin,
 )
 from infrastructure.local_storage.plugins_store import (
-    marketplace_add, marketplace_list, marketplace_remove,
-    plugin_install, plugin_install_from_dir, plugin_uninstall,
-    plugin_set_enabled, plugin_list, plugin_info,
+    marketplace_add,
+    marketplace_list,
+    marketplace_remove,
+    plugin_info,
+    plugin_install,
+    plugin_install_from_dir,
+    plugin_list,
+    plugin_set_enabled,
+    plugin_uninstall,
 )
 
 
-def get_plugin_dirs(reg: Optional[dict] = None) -> list:
+def get_plugin_dirs(reg: dict | None = None) -> list:
     reg = reg or _load_registry()
     return enabled_plugin_dirs(reg.get("installed", {}))
 
 
 def _load_registry() -> dict:
     from infrastructure.local_storage.plugins_store import _load_registry
+
     return _load_registry()
 
 
-def add_marketplace(source: str, name: Optional[str] = None) -> dict:
+def add_marketplace(source: str, name: str | None = None) -> dict:
     return marketplace_add(source, name)
 
 
@@ -68,7 +78,7 @@ def list_plugins() -> list:
     return plugin_list(_load_registry())
 
 
-def get_plugin_info(name: str) -> Optional[dict]:
+def get_plugin_info(name: str) -> dict | None:
     return plugin_info(name, _load_registry())
 
 

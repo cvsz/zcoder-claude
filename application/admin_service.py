@@ -17,8 +17,7 @@ report date defaulting, which used to live directly in cmd_usage_report /
 cmd_cost_report.
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from infrastructure.anthropic_api.admin_gateway import AdminApiClient
 
@@ -26,30 +25,33 @@ from infrastructure.anthropic_api.admin_gateway import AdminApiClient
 def _default_date_range() -> tuple:
     """Last 30 days, as (start_iso, end_iso). Used by get_usage_report/
     get_cost_report when the caller doesn't specify a range."""
-    end = datetime.now(timezone.utc).date()
+    end = datetime.now(UTC).date()
     start = end - timedelta(days=30)
     return start.isoformat(), end.isoformat()
 
 
 # ── Usage / Cost / Claude Code reports ──────────────────────────────────
 
-def get_usage_report(admin_api_key: str, start: Optional[str] = None,
-                     end: Optional[str] = None, group_by: str = "model") -> dict:
+
+def get_usage_report(
+    admin_api_key: str, start: str | None = None, end: str | None = None, group_by: str = "model"
+) -> dict:
     default_start, default_end = _default_date_range()
     start = start or default_start
     end = end or default_end
     return AdminApiClient(admin_api_key).get_usage_report(start, end, group_by=group_by)
 
 
-def get_cost_report(admin_api_key: str, start: Optional[str] = None,
-                    end: Optional[str] = None, group_by: str = "model") -> dict:
+def get_cost_report(
+    admin_api_key: str, start: str | None = None, end: str | None = None, group_by: str = "model"
+) -> dict:
     default_start, default_end = _default_date_range()
     start = start or default_start
     end = end or default_end
     return AdminApiClient(admin_api_key).get_cost_report(start, end, group_by=group_by)
 
 
-def list_cmek_keys(admin_api_key: str, workspace_id: Optional[str] = None) -> dict:
+def list_cmek_keys(admin_api_key: str, workspace_id: str | None = None) -> dict:
     return AdminApiClient(admin_api_key).list_external_keys(workspace_id=workspace_id)
 
 
@@ -58,6 +60,7 @@ def get_claude_code_usage_report(admin_api_key: str, starting_at: str, limit: in
 
 
 # ── API keys ──────────────────────────────────────────────────────────────
+
 
 def list_api_keys(admin_api_key: str, limit: int = 20) -> dict:
     return AdminApiClient(admin_api_key).list_api_keys(limit=limit)
@@ -74,14 +77,17 @@ def revoke_api_key(admin_api_key: str, key_id: str) -> dict:
 
 # ── Spend Limits API (Claude Enterprise only) ───────────────────────────
 
+
 def list_effective_spend_limits(admin_api_key: str, limit: int = 50) -> dict:
     return AdminApiClient(admin_api_key).list_effective_spend_limits(limit=limit)
 
 
-def set_spend_limit(admin_api_key: str, user_id: str, amount: str,
-                    suppress_notification: bool = False) -> dict:
+def set_spend_limit(
+    admin_api_key: str, user_id: str, amount: str, suppress_notification: bool = False
+) -> dict:
     return AdminApiClient(admin_api_key).set_spend_limit(
-        user_id, amount, suppress_notification=suppress_notification)
+        user_id, amount, suppress_notification=suppress_notification
+    )
 
 
 def get_spend_limit(admin_api_key: str, spend_limit_id: str) -> dict:
@@ -92,7 +98,7 @@ def delete_spend_limit(admin_api_key: str, spend_limit_id: str) -> dict:
     return AdminApiClient(admin_api_key).delete_spend_limit(spend_limit_id)
 
 
-def list_spend_limit_increase_requests(admin_api_key: str, status: Optional[str] = None) -> dict:
+def list_spend_limit_increase_requests(admin_api_key: str, status: str | None = None) -> dict:
     status_filter = [status] if status else None
     return AdminApiClient(admin_api_key).list_spend_limit_increase_requests(status=status_filter)
 
@@ -107,7 +113,8 @@ def deny_spend_limit_increase_request(admin_api_key: str, request_id: str) -> di
 
 # ── Rate Limits API (read-only) ─────────────────────────────────────────
 
-def get_org_rate_limits(admin_api_key: str, model: Optional[str] = None) -> dict:
+
+def get_org_rate_limits(admin_api_key: str, model: str | None = None) -> dict:
     return AdminApiClient(admin_api_key).get_org_rate_limits(model=model)
 
 
@@ -117,7 +124,8 @@ def get_workspace_rate_limits(admin_api_key: str, workspace_id: str) -> dict:
 
 # ── Claude Enterprise User Management API (beta) ────────────────────────
 
-def list_members(admin_api_key: str, limit: int = 20, email: Optional[str] = None) -> dict:
+
+def list_members(admin_api_key: str, limit: int = 20, email: str | None = None) -> dict:
     return AdminApiClient(admin_api_key).list_members(limit=limit, email=email)
 
 
@@ -136,8 +144,7 @@ def remove_member(admin_api_key: str, user_id: str) -> dict:
     return AdminApiClient(admin_api_key).remove_member(user_id)
 
 
-def create_invite(admin_api_key: str, email: str, role: str,
-                  rbac_group_ids: Optional[list] = None) -> dict:
+def create_invite(admin_api_key: str, email: str, role: str, rbac_group_ids: list | None = None) -> dict:
     return AdminApiClient(admin_api_key).create_invite(email, role, rbac_group_ids=rbac_group_ids)
 
 

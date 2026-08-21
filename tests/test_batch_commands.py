@@ -35,11 +35,18 @@ def test_cmd_batch_generate_with_wait_prints_trailing_newline_after_progress(mon
     import application.batch_service as service
 
     monkeypatch.setattr(service, "generate_and_submit", lambda *a, **k: "batch_xyz")
-    monkeypatch.setattr(service, "wait_for_batch",
-                         lambda batch_id, api_key, on_progress: on_progress(batch_id, {"status": "ended"}, 15))
-    monkeypatch.setattr(service, "get_results", lambda *a, **k: [
-        {"custom_id": "r1", "type": "succeeded", "text": "done"},
-    ])
+    monkeypatch.setattr(
+        service,
+        "wait_for_batch",
+        lambda batch_id, api_key, on_progress: on_progress(batch_id, {"status": "ended"}, 15),
+    )
+    monkeypatch.setattr(
+        service,
+        "get_results",
+        lambda *a, **k: [
+            {"custom_id": "r1", "type": "succeeded", "text": "done"},
+        ],
+    )
 
     cmds.cmd_batch_generate("write tests", 1, "key", "claude-sonnet-5", wait=True)
 
@@ -57,6 +64,7 @@ def test_cmd_batch_generate_with_wait_prints_trailing_newline_after_progress(mon
 
 def test_cmd_batch_list_empty_prints_message(monkeypatch, capsys):
     import application.batch_service as service
+
     monkeypatch.setattr(service, "list_batches", lambda api_key: [])
     cmds.cmd_batch_list("key")
     assert "No batches found." in capsys.readouterr().out
@@ -64,10 +72,18 @@ def test_cmd_batch_list_empty_prints_message(monkeypatch, capsys):
 
 def test_cmd_batch_status_prints_all_fields(monkeypatch, capsys):
     import application.batch_service as service
-    monkeypatch.setattr(service, "get_status", lambda batch_id, api_key: {
-        "id": "batch_123", "status": "ended", "request_counts": {"succeeded": 5},
-        "created_at": "2026-08-18T00:00:00Z", "expires_at": "2026-08-25T00:00:00Z",
-    })
+
+    monkeypatch.setattr(
+        service,
+        "get_status",
+        lambda batch_id, api_key: {
+            "id": "batch_123",
+            "status": "ended",
+            "request_counts": {"succeeded": 5},
+            "created_at": "2026-08-18T00:00:00Z",
+            "expires_at": "2026-08-25T00:00:00Z",
+        },
+    )
     cmds.cmd_batch_status("batch_123", "key")
     out = capsys.readouterr().out
     assert "batch_123" in out

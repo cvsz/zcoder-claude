@@ -97,10 +97,10 @@ CLI flags:
 
 import json
 import time
-import urllib.request
 import urllib.error
 import urllib.parse
-from typing import Optional, Iterator
+import urllib.request
+from collections.abc import Iterator
 
 COMPLIANCE_BASE = "https://api.anthropic.com/v1/compliance"
 
@@ -129,8 +129,14 @@ class ComplianceApiError(Exception):
     log or alert differently on exhausted-retry vs. non-retryable).
     """
 
-    def __init__(self, status: int, error_type: str, message: str,
-                 request_id: Optional[str] = None, retryable: bool = False):
+    def __init__(
+        self,
+        status: int,
+        error_type: str,
+        message: str,
+        request_id: str | None = None,
+        retryable: bool = False,
+    ):
         self.status = status
         self.error_type = error_type
         self.message = message
@@ -139,7 +145,7 @@ class ComplianceApiError(Exception):
         super().__init__(f"[{status}] {error_type}: {message}")
 
     @classmethod
-    def from_response(cls, status: int, body: bytes, headers: dict) -> "ComplianceApiError":
+    def from_response(cls, status: int, body: bytes, headers: dict) -> ComplianceApiError:
         error_type, message = "unknown_error", body.decode(errors="replace") or "(empty body)"
         try:
             parsed = json.loads(body.decode())
@@ -149,7 +155,9 @@ class ComplianceApiError(Exception):
         except (json.JSONDecodeError, UnicodeDecodeError):
             pass
         return cls(
-            status=status, error_type=error_type, message=message,
+            status=status,
+            error_type=error_type,
+            message=message,
             request_id=headers.get("request-id") or headers.get("Request-Id"),
             retryable=_is_retryable(status, headers),
         )
@@ -166,7 +174,7 @@ def _is_retryable(status: int, headers: dict) -> bool:
     return False
 
 
-def _parse_content_disposition_filename(value: str) -> Optional[str]:
+def _parse_content_disposition_filename(value: str) -> str | None:
     """Extract the filename from a
     `Content-Disposition: attachment; filename*=utf-8''<percent-encoded>`
     header. The Compliance API always uses the RFC 5987 extended form
@@ -199,9 +207,14 @@ class ComplianceApiClient:
     correct, retry with it unchanged").
     """
 
-    def __init__(self, api_key: str, max_retries: int = 5,
-                 backoff_cap: float = 60.0, timeout: int = 60,
-                 sleep_fn=time.sleep):
+    def __init__(
+        self,
+        api_key: str,
+        max_retries: int = 5,
+        backoff_cap: float = 60.0,
+        timeout: int = 60,
+        sleep_fn=time.sleep,
+    ):
         self.api_key = api_key
         self.max_retries = max_retries
         self.backoff_cap = backoff_cap
@@ -213,8 +226,7 @@ class ComplianceApiClient:
     def _headers(self) -> dict:
         return {"x-api-key": self.api_key, "anthropic-version": "2023-06-01"}
 
-    def _request(self, method: str, path: str, params: Optional[dict] = None,
-                 raw: bool = False):
+    def _request(self, method: str, path: str, params: dict | None = None, raw: bool = False):
         url = f"{COMPLIANCE_BASE}{path}"
         if params:
             # doseq=True so list-valued params (activity_types[], etc.)
@@ -238,20 +250,20 @@ class ComplianceApiClient:
                 body = e.read()
                 headers = dict(e.headers or {})
                 if _is_retryable(e.code, headers) and attempt < self.max_retries:
-                    sleep_for = min(self.backoff_cap, 2 ** attempt)
+                    sleep_for = min(self.backoff_cap, 2**attempt)
                     self._sleep(sleep_for)
                     attempt += 1
                     continue
-                raise ComplianceApiError.from_response(e.code, body, headers)
+                raise ComplianceApiError.from_response(e.code, body, headers) from e
             except urllib.error.URLError as e:
                 # Network-level failure (DNS, connection refused, etc.),
                 # not an HTTP error response — no status code to key
                 # retry behavior off of, so this doesn't auto-retry;
                 # callers doing a long backfill should catch this and
                 # decide their own retry policy same as any network call.
-                raise ComplianceApiError(status=0, error_type="connection_error", message=str(e))
+                raise ComplianceApiError(status=0, error_type="connection_error", message=str(e)) from e
 
-    def _get(self, path: str, params: Optional[dict] = None) -> dict:
+    def _get(self, path: str, params: dict | None = None) -> dict:
         return self._request("GET", path, params=params)
 
     def _get_raw(self, path: str) -> tuple:
@@ -262,36 +274,48 @@ class ComplianceApiClient:
 
     # ── Activity Feed ────────────────────────────────────────────────
 
-    def list_activities(self, limit: int = 100, after_id: Optional[str] = None,
-                        before_id: Optional[str] = None,
-                        activity_types: Optional[list] = None,
-                        actor_ids: Optional[list] = None,
-                        organization_ids: Optional[list] = None,
-                        created_at_gte: Optional[str] = None,
-                        created_at_gt: Optional[str] = None,
-                        created_at_lte: Optional[str] = None,
-                        created_at_lt: Optional[str] = None) -> dict:
+    def list_activities(
+        self,
+        limit: int = 100,
+        after_id: str | None = None,
+        before_id: str | None = None,
+        activity_types: list | None = None,
+        actor_ids: list | None = None,
+        organization_ids: list | None = None,
+        created_at_gte: str | None = None,
+        created_at_gt: str | None = None,
+        created_at_lte: str | None = None,
+        created_at_lt: str | None = None,
+    ) -> dict:
         """GET /v1/compliance/activities — one page, newest first.
         Requires read:compliance_activities (Compliance Access Key or
         Admin API key, either works here)."""
         params = {
-            "limit": limit, "after_id": after_id, "before_id": before_id,
-            "activity_types[]": activity_types, "actor_ids[]": actor_ids,
+            "limit": limit,
+            "after_id": after_id,
+            "before_id": before_id,
+            "activity_types[]": activity_types,
+            "actor_ids[]": actor_ids,
             "organization_ids[]": organization_ids,
-            "created_at.gte": created_at_gte, "created_at.gt": created_at_gt,
-            "created_at.lte": created_at_lte, "created_at.lt": created_at_lt,
+            "created_at.gte": created_at_gte,
+            "created_at.gt": created_at_gt,
+            "created_at.lte": created_at_lte,
+            "created_at.lt": created_at_lt,
         }
         return self._get("/activities", params=params)
 
-    def iterate_activities(self, activity_types: Optional[list] = None,
-                           actor_ids: Optional[list] = None,
-                           organization_ids: Optional[list] = None,
-                           created_at_gte: Optional[str] = None,
-                           created_at_gt: Optional[str] = None,
-                           created_at_lte: Optional[str] = None,
-                           created_at_lt: Optional[str] = None,
-                           after_id: Optional[str] = None,
-                           page_size: int = 100) -> Iterator[dict]:
+    def iterate_activities(
+        self,
+        activity_types: list | None = None,
+        actor_ids: list | None = None,
+        organization_ids: list | None = None,
+        created_at_gte: str | None = None,
+        created_at_gt: str | None = None,
+        created_at_lte: str | None = None,
+        created_at_lt: str | None = None,
+        after_id: str | None = None,
+        page_size: int = 100,
+    ) -> Iterator[dict]:
         """Generator that pages through the *entire* matching Activity
         Feed (newest first), yielding one Activity dict at a time.
 
@@ -305,27 +329,36 @@ class ComplianceApiClient:
         cursor = after_id
         while True:
             page = self.list_activities(
-                limit=page_size, after_id=cursor,
-                activity_types=activity_types, actor_ids=actor_ids,
+                limit=page_size,
+                after_id=cursor,
+                activity_types=activity_types,
+                actor_ids=actor_ids,
                 organization_ids=organization_ids,
-                created_at_gte=created_at_gte, created_at_gt=created_at_gt,
-                created_at_lte=created_at_lte, created_at_lt=created_at_lt,
+                created_at_gte=created_at_gte,
+                created_at_gt=created_at_gt,
+                created_at_lte=created_at_lte,
+                created_at_lt=created_at_lt,
             )
-            for item in page.get("data", []):
-                yield item
+            yield from page.get("data", [])
             if not page.get("has_more"):
                 return
             cursor = page.get("last_id")
 
     # ── Chats / messages (Compliance Access Key only) ───────────────
 
-    def list_chats(self, user_ids: list, organization_ids: Optional[list] = None,
-                   project_ids: Optional[list] = None, limit: int = 100,
-                   after_id: Optional[str] = None, before_id: Optional[str] = None,
-                   created_at_gte: Optional[str] = None,
-                   created_at_lte: Optional[str] = None,
-                   updated_at_gte: Optional[str] = None,
-                   updated_at_lte: Optional[str] = None) -> dict:
+    def list_chats(
+        self,
+        user_ids: list,
+        organization_ids: list | None = None,
+        project_ids: list | None = None,
+        limit: int = 100,
+        after_id: str | None = None,
+        before_id: str | None = None,
+        created_at_gte: str | None = None,
+        created_at_lte: str | None = None,
+        updated_at_gte: str | None = None,
+        updated_at_lte: str | None = None,
+    ) -> dict:
         """GET /v1/compliance/apps/chats. `user_ids` is required (up to
         10 per call) — this is a documented constraint of the endpoint,
         not an arbitrary client-side restriction, so it's enforced here
@@ -340,11 +373,16 @@ class ComplianceApiClient:
         if len(user_ids) > 10:
             raise ValueError(f"list_chats accepts at most 10 user_ids per call; got {len(user_ids)}.")
         params = {
-            "user_ids[]": user_ids, "organization_ids[]": organization_ids,
-            "project_ids[]": project_ids, "limit": limit,
-            "after_id": after_id, "before_id": before_id,
-            "created_at.gte": created_at_gte, "created_at.lte": created_at_lte,
-            "updated_at.gte": updated_at_gte, "updated_at.lte": updated_at_lte,
+            "user_ids[]": user_ids,
+            "organization_ids[]": organization_ids,
+            "project_ids[]": project_ids,
+            "limit": limit,
+            "after_id": after_id,
+            "before_id": before_id,
+            "created_at.gte": created_at_gte,
+            "created_at.lte": created_at_lte,
+            "updated_at.gte": updated_at_gte,
+            "updated_at.lte": updated_at_lte,
         }
         return self._get("/apps/chats", params=params)
 
@@ -356,15 +394,18 @@ class ComplianceApiClient:
         cursor = filters.pop("after_id", None)
         while True:
             page = self.list_chats(user_ids, limit=page_size, after_id=cursor, **filters)
-            for item in page.get("data", []):
-                yield item
+            yield from page.get("data", [])
             if not page.get("has_more"):
                 return
             cursor = page.get("last_id")
 
-    def get_chat_messages(self, chat_id: str, limit: Optional[int] = None,
-                          after_id: Optional[str] = None,
-                          before_id: Optional[str] = None) -> dict:
+    def get_chat_messages(
+        self,
+        chat_id: str,
+        limit: int | None = None,
+        after_id: str | None = None,
+        before_id: str | None = None,
+    ) -> dict:
         """GET /v1/compliance/apps/chats/{id}/messages. Omitting `limit`
         returns the whole chat in one response (per the docs); pass it
         to page through very long chats. Requires read:compliance_user_data."""
@@ -390,15 +431,21 @@ class ComplianceApiClient:
         mime_type); filename comes from the RFC 5987
         Content-Disposition header (the original upload's filename)."""
         body, headers = self._get_raw(f"/apps/chats/files/{file_id}/content")
-        return body, _parse_content_disposition_filename(headers.get("Content-Disposition", "")), \
-            headers.get("Content-Type")
+        return (
+            body,
+            _parse_content_disposition_filename(headers.get("Content-Disposition", "")),
+            headers.get("Content-Type"),
+        )
 
     def download_generated_file_content(self, gen_file_id: str) -> tuple:
         """Same shape as download_file_content(), for tool-generated
         files (claude_gen_file_* IDs from an assistant message)."""
         body, headers = self._get_raw(f"/apps/chats/generated_files/{gen_file_id}/content")
-        return body, _parse_content_disposition_filename(headers.get("Content-Disposition", "")), \
-            headers.get("Content-Type")
+        return (
+            body,
+            _parse_content_disposition_filename(headers.get("Content-Disposition", "")),
+            headers.get("Content-Type"),
+        )
 
     def download_artifact_content(self, artifact_version_id: str) -> str:
         """One artifact *version's* text body — pass version_id, not
@@ -413,20 +460,18 @@ class ComplianceApiClient:
 
     # ── Projects (Compliance Access Key only) ───────────────────────
 
-    def list_projects(self, limit: int = 100, page: Optional[str] = None) -> dict:
+    def list_projects(self, limit: int = 100, page: str | None = None) -> dict:
         return self._get("/apps/projects", params={"limit": limit, "page": page})
 
     def get_project(self, project_id: str) -> dict:
         return self._get(f"/apps/projects/{project_id}")
 
-    def list_project_attachments(self, project_id: str, limit: int = 100,
-                                 page: Optional[str] = None) -> dict:
+    def list_project_attachments(self, project_id: str, limit: int = 100, page: str | None = None) -> dict:
         """Each entry is a project_file (claude_file_* — download via
         download_file_content) or a project_doc (claude_proj_doc_* —
         fetch via get_project_document_content), discriminated by the
         `type` field on the entry."""
-        return self._get(f"/apps/projects/{project_id}/attachments",
-                         params={"limit": limit, "page": page})
+        return self._get(f"/apps/projects/{project_id}/attachments", params={"limit": limit, "page": page})
 
     def get_project_document_content(self, doc_id: str) -> str:
         body, _headers = self._get_raw(f"/apps/projects/documents/{doc_id}/content")
@@ -448,8 +493,7 @@ class ComplianceApiClient:
         every linked organization (up to 1,000) in one response."""
         return self._get("/organizations")
 
-    def list_organization_users(self, org_uuid: str, limit: int = 500,
-                                page: Optional[str] = None) -> dict:
+    def list_organization_users(self, org_uuid: str, limit: int = 500, page: str | None = None) -> dict:
         return self._get(f"/organizations/{org_uuid}/users", params={"limit": limit, "page": page})
 
     def list_roles(self, org_uuid: str) -> dict:
@@ -477,9 +521,13 @@ class ComplianceApiClient:
     # `cse_`-prefixed — deliberately not validated client-side beyond
     # that, since the docs say to treat IDs as opaque.
 
-    def list_local_sessions(self, created_at_gte: Optional[str] = None,
-                            created_at_lt: Optional[str] = None,
-                            limit: int = 100, page: Optional[str] = None) -> dict:
+    def list_local_sessions(
+        self,
+        created_at_gte: str | None = None,
+        created_at_lt: str | None = None,
+        limit: int = 100,
+        page: str | None = None,
+    ) -> dict:
         """GET /v1/compliance/apps/sessions/local — Cowork (Claude Desktop)
         and Claude Code sessions captured on users' machines. No
         organization/user filter (unlike remote sessions) — only a
@@ -488,8 +536,10 @@ class ComplianceApiClient:
         with "Local sessions are not available." if the org doesn't have
         local session capture enabled (e.g. HIPAA-readiness orgs)."""
         params = {
-            "created_at.gte": created_at_gte, "created_at.lt": created_at_lt,
-            "limit": limit, "page": page,
+            "created_at.gte": created_at_gte,
+            "created_at.lt": created_at_lt,
+            "limit": limit,
+            "page": page,
         }
         return self._get("/apps/sessions/local", params=params)
 
@@ -499,10 +549,15 @@ class ComplianceApiClient:
         content and no envelope."""
         return self._get(f"/apps/sessions/local/{session_id}")
 
-    def get_local_session_messages(self, session_id: str, limit: int = 100,
-                                   page: Optional[str] = None, order: str = "asc",
-                                   tool_use_input_max_bytes: Optional[int] = None,
-                                   tool_result_max_bytes: Optional[int] = None) -> dict:
+    def get_local_session_messages(
+        self,
+        session_id: str,
+        limit: int = 100,
+        page: str | None = None,
+        order: str = "asc",
+        tool_use_input_max_bytes: int | None = None,
+        tool_result_max_bytes: int | None = None,
+    ) -> dict:
         """GET /v1/compliance/apps/sessions/local/{id}/messages — the
         reconstructed transcript, oldest-first by default (order="desc"
         to reverse). limit default 100, max 1,000. The two
@@ -510,32 +565,38 @@ class ComplianceApiClient:
         the ~1MiB server max, 0 is a 400. Returns {"session": {...},
         "data": [...], "next_page": ...}."""
         params = {
-            "limit": limit, "page": page, "order": order,
+            "limit": limit,
+            "page": page,
+            "order": order,
             "tool_use_input_max_bytes": tool_use_input_max_bytes,
             "tool_result_max_bytes": tool_result_max_bytes,
         }
         return self._get(f"/apps/sessions/local/{session_id}/messages", params=params)
 
-    def iterate_local_session_messages(self, session_id: str, page_size: int = 100,
-                                       **filters) -> Iterator[dict]:
+    def iterate_local_session_messages(
+        self, session_id: str, page_size: int = 100, **filters
+    ) -> Iterator[dict]:
         """Generator over get_local_session_messages(), yielding one
         message dict at a time across all pages."""
         cursor = filters.pop("page", None)
         while True:
             resp = self.get_local_session_messages(session_id, limit=page_size, page=cursor, **filters)
-            for item in resp.get("data", []):
-                yield item
+            yield from resp.get("data", [])
             cursor = resp.get("next_page")
             if not cursor:
                 return
 
-    def list_remote_sessions(self, organization_ids: Optional[list] = None,
-                             user_ids: Optional[list] = None,
-                             created_at_gte: Optional[str] = None,
-                             created_at_gt: Optional[str] = None,
-                             created_at_lte: Optional[str] = None,
-                             created_at_lt: Optional[str] = None,
-                             limit: int = 100, page: Optional[str] = None) -> dict:
+    def list_remote_sessions(
+        self,
+        organization_ids: list | None = None,
+        user_ids: list | None = None,
+        created_at_gte: str | None = None,
+        created_at_gt: str | None = None,
+        created_at_lte: str | None = None,
+        created_at_lt: str | None = None,
+        limit: int = 100,
+        page: str | None = None,
+    ) -> dict:
         """GET /v1/compliance/apps/sessions/remote — Cowork sessions
         started on claude.ai web/mobile, run in Anthropic-managed cloud
         environments. Defaults to every organization the key can read;
@@ -546,17 +607,26 @@ class ComplianceApiClient:
         if user_ids is not None and not (1 <= len(user_ids) <= 10):
             raise ValueError(f"list_remote_sessions accepts 1-10 user_ids per call; got {len(user_ids)}.")
         params = {
-            "organization_ids[]": organization_ids, "user_ids[]": user_ids,
-            "created_at.gte": created_at_gte, "created_at.gt": created_at_gt,
-            "created_at.lte": created_at_lte, "created_at.lt": created_at_lt,
-            "limit": limit, "page": page,
+            "organization_ids[]": organization_ids,
+            "user_ids[]": user_ids,
+            "created_at.gte": created_at_gte,
+            "created_at.gt": created_at_gt,
+            "created_at.lte": created_at_lte,
+            "created_at.lt": created_at_lt,
+            "limit": limit,
+            "page": page,
         }
         return self._get("/apps/sessions/remote", params=params)
 
-    def get_remote_session_messages(self, session_id: str, limit: int = 100,
-                                    page: Optional[str] = None, order: str = "asc",
-                                    tool_use_input_max_bytes: Optional[int] = None,
-                                    tool_result_max_bytes: Optional[int] = None) -> dict:
+    def get_remote_session_messages(
+        self,
+        session_id: str,
+        limit: int = 100,
+        page: str | None = None,
+        order: str = "asc",
+        tool_use_input_max_bytes: int | None = None,
+        tool_result_max_bytes: int | None = None,
+    ) -> dict:
         """GET /v1/compliance/apps/sessions/remote/{id}/messages. 404 for
         `pending` sessions (no transcript yet), deleted sessions, and
         sessions in organizations the key can't read. Same
@@ -565,19 +635,21 @@ class ComplianceApiClient:
         `session.started_by_user`, and `session.claude_project_id` are
         always null here — get those from list_remote_sessions()."""
         params = {
-            "limit": limit, "page": page, "order": order,
+            "limit": limit,
+            "page": page,
+            "order": order,
             "tool_use_input_max_bytes": tool_use_input_max_bytes,
             "tool_result_max_bytes": tool_result_max_bytes,
         }
         return self._get(f"/apps/sessions/remote/{session_id}/messages", params=params)
 
-    def iterate_remote_session_messages(self, session_id: str, page_size: int = 100,
-                                        **filters) -> Iterator[dict]:
+    def iterate_remote_session_messages(
+        self, session_id: str, page_size: int = 100, **filters
+    ) -> Iterator[dict]:
         cursor = filters.pop("page", None)
         while True:
             resp = self.get_remote_session_messages(session_id, limit=page_size, page=cursor, **filters)
-            for item in resp.get("data", []):
-                yield item
+            yield from resp.get("data", [])
             cursor = resp.get("next_page")
             if not cursor:
                 return

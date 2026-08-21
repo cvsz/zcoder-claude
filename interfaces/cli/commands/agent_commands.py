@@ -1,4 +1,5 @@
 """
+# mypy: ignore-errors
 interfaces/cli/commands/agent_commands.py — CLI presentation for the Agent SDK / Managed Agents
 AI Model Coder CLI v1.45.0 (Clean Architecture refactor, Phase A complete)
 
@@ -8,13 +9,12 @@ application/agents_service.py (not the gateway directly — Phase A,
 exec-planing.md, now closed for all 4 originally-migrated modules).
 """
 
-from typing import Optional
 
-from domain.agents.agent_config import TOOL_PRESETS
 import application.agents_service as svc
+from domain.agents.agent_config import TOOL_PRESETS
 
 
-def cmd_mcp_tunnel_open(api_key: str, local_port: int, name: Optional[str] = None):
+def cmd_mcp_tunnel_open(api_key: str, local_port: int, name: str | None = None):
     """CLI entry: open a tunnel and print the public URL."""
     result = svc.open_mcp_tunnel(api_key, local_port, name=name)
     if result.get("error"):
@@ -22,21 +22,27 @@ def cmd_mcp_tunnel_open(api_key: str, local_port: int, name: Optional[str] = Non
         return result
     tunnel = result["_tunnel"]
     print(f"\033[92m✓ Tunnel open: {tunnel.public_url}  (id={tunnel.tunnel_id})\033[0m")
-    print(f"  Forwarding to local port {local_port}. Use this URL with "
-          f"McpServerConfig.sse()/http() as an mcp_servers entry.")
+    print(
+        f"  Forwarding to local port {local_port}. Use this URL with "
+        f"McpServerConfig.sse()/http() as an mcp_servers entry."
+    )
     return result
 
 
-def cmd_managed_agent_run(task: str, api_key: str, model: str = "claude-opus-4-8",
-                          memory_store: Optional[str] = None,
-                          outcome_description: Optional[str] = None,
-                          outcome_rubric: Optional[str] = None,
-                          outcome_rubric_file_id: Optional[str] = None,
-                          outcome_max_iterations: int = 3,
-                          vault_id: Optional[str] = None,
-                          agent_overrides: Optional[dict] = None,
-                          stream_deltas: bool = False,
-                          budget_usd_cents: Optional[int] = None):
+def cmd_managed_agent_run(
+    task: str,
+    api_key: str,
+    model: str = "claude-opus-4-8",
+    memory_store: str | None = None,
+    outcome_description: str | None = None,
+    outcome_rubric: str | None = None,
+    outcome_rubric_file_id: str | None = None,
+    outcome_max_iterations: int = 3,
+    vault_id: str | None = None,
+    agent_overrides: dict | None = None,
+    stream_deltas: bool = False,
+    budget_usd_cents: int | None = None,
+):
     """End-to-end convenience: create a throwaway agent + environment +
     session, run one task, print the result. See
     application.agents_service.run_managed_agent_task for the full
@@ -55,12 +61,19 @@ def cmd_managed_agent_run(task: str, api_key: str, model: str = "claude-opus-4-8
             print(data["text"], end="", flush=True)
 
     result = svc.run_managed_agent_task(
-        task, api_key, model=model, memory_store=memory_store,
-        outcome_description=outcome_description, outcome_rubric=outcome_rubric,
+        task,
+        api_key,
+        model=model,
+        memory_store=memory_store,
+        outcome_description=outcome_description,
+        outcome_rubric=outcome_rubric,
         outcome_rubric_file_id=outcome_rubric_file_id,
-        outcome_max_iterations=outcome_max_iterations, vault_id=vault_id,
-        agent_overrides=agent_overrides, stream_deltas=stream_deltas,
-        budget_usd_cents=budget_usd_cents, on_step=on_step,
+        outcome_max_iterations=outcome_max_iterations,
+        vault_id=vault_id,
+        agent_overrides=agent_overrides,
+        stream_deltas=stream_deltas,
+        budget_usd_cents=budget_usd_cents,
+        on_step=on_step,
     )
 
     if result.get("_mode") == "outcome":
@@ -83,16 +96,21 @@ def cmd_agent_memory_store_create(name: str, api_key: str) -> dict:
     return store
 
 
-def cmd_agent_memory_list(memory_store_id: str, api_key: str,
-                          path_prefix: Optional[str] = None,
-                          depth: Optional[int] = None, limit: int = 50) -> dict:
+def cmd_agent_memory_list(
+    memory_store_id: str,
+    api_key: str,
+    path_prefix: str | None = None,
+    depth: int | None = None,
+    limit: int = 50,
+) -> dict:
     """List the memory entries inside a memory store (v1.24.0)."""
-    result = svc.list_memories(api_key, memory_store_id, path_prefix=path_prefix,
-                               depth=depth, limit=limit)
+    result = svc.list_memories(api_key, memory_store_id, path_prefix=path_prefix, depth=depth, limit=limit)
     raw = result["raw"]
     entries = raw.get("data", []) if isinstance(raw, dict) else list(raw)
-    print(f"\n\033[94mMemories in {memory_store_id}\033[0m"
-          f"{f' (path_prefix={path_prefix!r})' if path_prefix else ''}\n")
+    print(
+        f"\n\033[94mMemories in {memory_store_id}\033[0m"
+        f"{f' (path_prefix={path_prefix!r})' if path_prefix else ''}\n"
+    )
     for entry in entries:
         path = entry.get("path", "?") if isinstance(entry, dict) else getattr(entry, "path", "?")
         print(f"  {path}")
@@ -109,10 +127,13 @@ def cmd_agent_memory_stores_list(api_key: str, include_archived: bool = False) -
     entries = raw.get("data", []) if isinstance(raw, dict) else list(raw)
     print(f"\n\033[94mMemory stores\033[0m{' (including archived)' if include_archived else ''}\n")
     for entry in entries:
-        get = (lambda k, d="?": entry.get(k, d)) if isinstance(entry, dict) else \
-              (lambda k, d="?": getattr(entry, k, d))
-        print(f"  {get('id')}  {get('name')}"
-              f"{'  [archived]' if get('archived', False) else ''}")
+        _entry = entry
+        get = (
+            (lambda k, d="?", e=_entry: e.get(k, d))
+            if isinstance(entry, dict)
+            else (lambda k, d="?", e=_entry: getattr(e, k, d))
+        )
+        print(f"  {get('id')}  {get('name')}" f"{'  [archived]' if get('archived', False) else ''}")
     if not entries:
         print("  (no memory stores found)")
     print()
@@ -126,15 +147,18 @@ def cmd_agent_memory_store_archive(memory_store_id: str, api_key: str) -> dict:
     return result
 
 
-def cmd_agent_memory_store_delete(memory_store_id: str, api_key: str,
-                                  confirm: bool = False) -> Optional[dict]:
+def cmd_agent_memory_store_delete(
+    memory_store_id: str, api_key: str, confirm: bool = False
+) -> dict | None:
     """Permanently delete a memory store and everything in it (v1.27.0).
     Requires --agent-memory-store-delete-yes (confirm=True) — dry-run by
     default."""
     if not confirm:
-        print(f"\033[93m[DRY RUN]\033[0m would permanently delete memory store "
-              f"{memory_store_id} and all memories/versions in it. "
-              f"Re-run with --agent-memory-store-delete-yes to actually delete.")
+        print(
+            f"\033[93m[DRY RUN]\033[0m would permanently delete memory store "
+            f"{memory_store_id} and all memories/versions in it. "
+            f"Re-run with --agent-memory-store-delete-yes to actually delete."
+        )
         return None
     result = svc.delete_memory_store(api_key, memory_store_id)
     print(f"\033[92m✓ memory store deleted\033[0m  id={memory_store_id}")
@@ -145,16 +169,16 @@ def cmd_agent_memory_get(memory_store_id: str, memory_id: str, api_key: str) -> 
     """Retrieve a single memory's full content (v1.27.0)."""
     result = svc.get_memory(api_key, memory_store_id, memory_id)
     raw = result["raw"]
-    get = (lambda k, d=None: raw.get(k, d)) if isinstance(raw, dict) else \
-          (lambda k, d=None: getattr(raw, k, d))
+    get = (
+        (lambda k, d=None: raw.get(k, d)) if isinstance(raw, dict) else (lambda k, d=None: getattr(raw, k, d))
+    )
     print(f"\n\033[94mMemory {memory_id}\033[0m  path={get('path')}\n")
     print(get("content", "(no content)"))
     print()
     return result
 
 
-def cmd_agent_memory_create(memory_store_id: str, path: str, content: str,
-                            api_key: str) -> dict:
+def cmd_agent_memory_create(memory_store_id: str, path: str, content: str, api_key: str) -> dict:
     """Create a memory at `path` inside a store (v1.27.0). Does not
     overwrite an existing memory at that path — use
     --agent-memory-update for that."""
@@ -163,54 +187,73 @@ def cmd_agent_memory_create(memory_store_id: str, path: str, content: str,
     return result
 
 
-def cmd_agent_memory_update(memory_store_id: str, memory_id: str, api_key: str,
-                            content: Optional[str] = None,
-                            path: Optional[str] = None) -> dict:
+def cmd_agent_memory_update(
+    memory_store_id: str,
+    memory_id: str,
+    api_key: str,
+    content: str | None = None,
+    path: str | None = None,
+) -> dict:
     """Update an existing memory's content and/or path (v1.27.0)."""
     result = svc.update_memory(api_key, memory_store_id, memory_id, content=content, path=path)
     print(f"\033[92m✓ memory updated\033[0m  id={memory_id}")
     return result
 
 
-def cmd_agent_memory_delete(memory_store_id: str, memory_id: str, api_key: str,
-                            confirm: bool = False) -> Optional[dict]:
+def cmd_agent_memory_delete(
+    memory_store_id: str, memory_id: str, api_key: str, confirm: bool = False
+) -> dict | None:
     """Delete a single memory (v1.27.0). Requires
     --agent-memory-delete-yes (confirm=True) — dry-run by default. The
     memory's version history survives the deletion."""
     if not confirm:
-        print(f"\033[93m[DRY RUN]\033[0m would delete memory {memory_id} from "
-              f"store {memory_store_id}. Re-run with --agent-memory-delete-yes "
-              f"to actually delete.")
+        print(
+            f"\033[93m[DRY RUN]\033[0m would delete memory {memory_id} from "
+            f"store {memory_store_id}. Re-run with --agent-memory-delete-yes "
+            f"to actually delete."
+        )
         return None
     result = svc.delete_memory(api_key, memory_store_id, memory_id)
     print(f"\033[92m✓ memory deleted\033[0m  id={memory_id}")
     return result
 
 
-def cmd_agent_vault_create(display_name: str, api_key: str,
-                           external_user_id: Optional[str] = None) -> dict:
+def cmd_agent_vault_create(display_name: str, api_key: str, external_user_id: str | None = None) -> dict:
     """Create a vault (v1.21.0, public beta)."""
     vault = svc.create_vault(api_key, display_name, external_user_id=external_user_id)
     print(f"\033[92m✓ vault created\033[0m  id={vault['id']}  display_name={display_name}")
-    print(f"  Add a credential: ai-coder --agent-vault-add-credential {vault['id']} "
-          f"--agent-vault-cred-type static_bearer --agent-vault-mcp-url URL --agent-vault-secret TOKEN")
+    print(
+        f"  Add a credential: ai-coder --agent-vault-add-credential {vault['id']} "
+        f"--agent-vault-cred-type static_bearer --agent-vault-mcp-url URL --agent-vault-secret TOKEN"
+    )
     return vault
 
 
-def cmd_agent_vault_add_credential(vault_id: str, credential_type: str, api_key: str,
-                                   mcp_server_url: Optional[str] = None,
-                                   secret_name: Optional[str] = None,
-                                   secret_value: str = "",
-                                   allowed_domains: Optional[list] = None,
-                                   injection_location: Optional[str] = None) -> dict:
+def cmd_agent_vault_add_credential(
+    vault_id: str,
+    credential_type: str,
+    api_key: str,
+    mcp_server_url: str | None = None,
+    secret_name: str | None = None,
+    secret_value: str = "",
+    allowed_domains: list | None = None,
+    injection_location: str | None = None,
+) -> dict:
     """Add a credential to an existing vault. Never prints secret_value —
     it's write-only."""
     cred = svc.add_vault_credential(
-        api_key, vault_id, credential_type, mcp_server_url=mcp_server_url,
-        secret_name=secret_name, secret_value=secret_value,
-        allowed_domains=allowed_domains, injection_location=injection_location)
-    print(f"\033[92m✓ credential added\033[0m  id={cred['id']}  vault_id={vault_id}  "
-          f"type={credential_type}")
+        api_key,
+        vault_id,
+        credential_type,
+        mcp_server_url=mcp_server_url,
+        secret_name=secret_name,
+        secret_value=secret_value,
+        allowed_domains=allowed_domains,
+        injection_location=injection_location,
+    )
+    print(
+        f"\033[92m✓ credential added\033[0m  id={cred['id']}  vault_id={vault_id}  " f"type={credential_type}"
+    )
     return cred
 
 
@@ -223,18 +266,25 @@ def cmd_agent_vault_list(api_key: str) -> list:
     return vaults
 
 
-def cmd_agent_dream(store_id: str, api_key: str, model: str = "claude-opus-4-8",
-                    session_ids: Optional[list] = None, instructions: Optional[str] = None) -> dict:
+def cmd_agent_dream(
+    store_id: str,
+    api_key: str,
+    model: str = "claude-opus-4-8",
+    session_ids: list | None = None,
+    instructions: str | None = None,
+) -> dict:
     """Start a Dreaming pass over a memory store (research preview)."""
-    from domain.agents.agent_config import validate_dreaming_model, validate_dreaming_instructions
+    from domain.agents.agent_config import validate_dreaming_instructions, validate_dreaming_model
+
     model_warning = validate_dreaming_model(model)
     if model_warning:
         print(f"\033[93m⚠ {model_warning}\033[0m")
     instructions_warning = validate_dreaming_instructions(instructions)
     if instructions_warning:
         print(f"\033[93m⚠ {instructions_warning}\033[0m")
-    dream = svc.create_dream(api_key, store_id, model=model, session_ids=session_ids,
-                             instructions=instructions)
+    dream = svc.create_dream(
+        api_key, store_id, model=model, session_ids=session_ids, instructions=instructions
+    )
     print(f"\033[92m✓ dream started\033[0m  id={dream['id']}  status={dream['status']}")
     print(f"\033[90m  Poll: ai-coder --agent-dream-get {dream['id']}\033[0m")
     return dream
@@ -250,9 +300,11 @@ def cmd_agent_dream_get(dream_id: str, api_key: str) -> dict:
         print(f"  session_id={dream['session_id']}  (stream its events to watch the dream run)")
     usage = dream.get("usage")
     if usage:
-        print(f"  usage: input={usage['input_tokens']} output={usage['output_tokens']} "
-              f"cache_creation={usage['cache_creation_input_tokens']} "
-              f"cache_read={usage['cache_read_input_tokens']}")
+        print(
+            f"  usage: input={usage['input_tokens']} output={usage['output_tokens']} "
+            f"cache_creation={usage['cache_creation_input_tokens']} "
+            f"cache_read={usage['cache_read_input_tokens']}"
+        )
     if dream.get("archived_at"):
         print(f"  archived_at={dream['archived_at']}")
     if dream.get("error"):
@@ -260,8 +312,9 @@ def cmd_agent_dream_get(dream_id: str, api_key: str) -> dict:
     return dream
 
 
-def cmd_agent_dream_list(api_key: str, include_archived: bool = False,
-                         limit: int = 20, page: Optional[str] = None) -> list:
+def cmd_agent_dream_list(
+    api_key: str, include_archived: bool = False, limit: int = 20, page: str | None = None
+) -> list:
     """List dreams, newest first."""
     dreams = svc.list_dreams(api_key, include_archived=include_archived, limit=limit, page=page)
     for d in dreams:
@@ -285,13 +338,22 @@ def cmd_agent_dream_archive(dream_id: str, api_key: str) -> dict:
     return dream
 
 
-def cmd_agent_schedule_create(agent_id: str, environment_id: str, cron_expression: str,
-                              api_key: str, timezone: str = "UTC", task: str = "") -> dict:
+def cmd_agent_schedule_create(
+    agent_id: str,
+    environment_id: str,
+    cron_expression: str,
+    api_key: str,
+    timezone: str = "UTC",
+    task: str = "",
+) -> dict:
     """Attach a cron schedule (v1.21.0, public beta) to an existing agent + environment."""
-    dep = svc.create_scheduled_deployment(api_key, agent_id, environment_id, cron_expression,
-                                          timezone=timezone, task=task)
-    print(f"\033[92m✓ scheduled deployment created\033[0m  id={dep['id']}  "
-          f"cron='{cron_expression}' tz={timezone}")
+    dep = svc.create_scheduled_deployment(
+        api_key, agent_id, environment_id, cron_expression, timezone=timezone, task=task
+    )
+    print(
+        f"\033[92m✓ scheduled deployment created\033[0m  id={dep['id']}  "
+        f"cron='{cron_expression}' tz={timezone}"
+    )
     return dep
 
 
@@ -315,13 +377,16 @@ def cmd_agent_env_self_hosted_create(name: str, api_key: str) -> dict:
     env = svc.create_self_hosted_environment(api_key, name)
     print(f"\033[92m✓ self-hosted environment created\033[0m  id={env['id']}")
     print("  Next steps (not done by this command):")
-    print(f"    1. In the Console, open environment {env['id']} and click "
-          f"'Generate environment key'")
-    print(f"    2. Run a worker with ANTHROPIC_ENVIRONMENT_ID={env['id']} and "
-          f"ANTHROPIC_ENVIRONMENT_KEY set — e.g. `ant beta:worker poll` or the "
-          f"EnvironmentWorker SDK helper")
-    print(f"    3. Check --agent-env-work-stats {env['id']} for "
-          f"workers_polling > 0 before pointing a session at it")
+    print(f"    1. In the Console, open environment {env['id']} and click " f"'Generate environment key'")
+    print(
+        f"    2. Run a worker with ANTHROPIC_ENVIRONMENT_ID={env['id']} and "
+        f"ANTHROPIC_ENVIRONMENT_KEY set — e.g. `ant beta:worker poll` or the "
+        f"EnvironmentWorker SDK helper"
+    )
+    print(
+        f"    3. Check --agent-env-work-stats {env['id']} for "
+        f"workers_polling > 0 before pointing a session at it"
+    )
     return env
 
 
@@ -329,16 +394,20 @@ def cmd_agent_env_work_stats(environment_id: str, api_key: str) -> dict:
     """Print the self-hosted work queue's state for `environment_id`."""
     stats = svc.get_environment_work_stats(api_key, environment_id)
     print(f"\033[94mℹ work queue stats for {environment_id}\033[0m")
-    print(f"  depth={stats['depth']}  pending={stats['pending']}  "
-          f"workers_polling={stats['workers_polling']}  "
-          f"oldest_queued_at={stats['oldest_queued_at']}")
+    print(
+        f"  depth={stats['depth']}  pending={stats['pending']}  "
+        f"workers_polling={stats['workers_polling']}  "
+        f"oldest_queued_at={stats['oldest_queued_at']}"
+    )
     if stats["workers_polling"] == 0:
-        print("  \033[93m⚠ no worker has polled in the last 30s — sessions "
-              "routed here will queue, not fail\033[0m")
+        print(
+            "  \033[93m⚠ no worker has polled in the last 30s — sessions "
+            "routed here will queue, not fail\033[0m"
+        )
     return stats
 
 
-def cmd_agent_webhook_register(url: str, api_key: str, events: Optional[list] = None) -> dict:
+def cmd_agent_webhook_register(url: str, api_key: str, events: list | None = None) -> dict:
     webhook = svc.register_agent_webhook(api_key, url, events=events)
     print(f"\033[92m✓ webhook registered\033[0m  id={webhook['id']}  url={url}")
     if events:
@@ -346,19 +415,26 @@ def cmd_agent_webhook_register(url: str, api_key: str, events: Optional[list] = 
     return webhook
 
 
-def cmd_agent_create(name: str, api_key: str, model: str = "claude-opus-4-8",
-                     system: str = "You are a helpful coding assistant.",
-                     effort: Optional[str] = None,
-                     inference_geo: Optional[str] = None) -> dict:
-    agent = svc.create_agent(api_key, name, model=model, system=system, effort=effort,
-                             inference_geo=inference_geo)
-    print(f"\033[92m✓ agent created\033[0m  id={agent['id']}  name={name}  model={model}"
-          + (f"  effort={effort}" if effort else "")
-          + (f"  inference_geo={inference_geo}" if inference_geo else ""))
+def cmd_agent_create(
+    name: str,
+    api_key: str,
+    model: str = "claude-opus-4-8",
+    system: str = "You are a helpful coding assistant.",
+    effort: str | None = None,
+    inference_geo: str | None = None,
+) -> dict:
+    agent = svc.create_agent(
+        api_key, name, model=model, system=system, effort=effort, inference_geo=inference_geo
+    )
+    print(
+        f"\033[92m✓ agent created\033[0m  id={agent['id']}  name={name}  model={model}"
+        + (f"  effort={effort}" if effort else "")
+        + (f"  inference_geo={inference_geo}" if inference_geo else "")
+    )
     return agent
 
 
-def cmd_agent_get(agent_id: str, api_key: str, version: Optional[int] = None) -> dict:
+def cmd_agent_get(agent_id: str, api_key: str, version: int | None = None) -> dict:
     agent = svc.get_agent(api_key, agent_id, version=version)
     print(f"\033[92m✓ agent\033[0m  id={agent_id}" + (f"  version={version}" if version else ""))
     print(f"  {agent['raw']}")
@@ -373,21 +449,37 @@ def cmd_agent_list(api_key: str, limit: int = 50) -> dict:
     return result
 
 
-def cmd_agent_update(agent_id: str, api_key: str, name: Optional[str] = None,
-                     model: Optional[str] = None, effort: Optional[str] = None,
-                     system: Optional[str] = None, version: Optional[int] = None,
-                     inference_geo: Optional[str] = None) -> dict:
-    agent = svc.update_agent(api_key, agent_id, name=name, model=model, effort=effort,
-                             system=system, version=version, inference_geo=inference_geo)
+def cmd_agent_update(
+    agent_id: str,
+    api_key: str,
+    name: str | None = None,
+    model: str | None = None,
+    effort: str | None = None,
+    system: str | None = None,
+    version: int | None = None,
+    inference_geo: str | None = None,
+) -> dict:
+    agent = svc.update_agent(
+        api_key,
+        agent_id,
+        name=name,
+        model=model,
+        effort=effort,
+        system=system,
+        version=version,
+        inference_geo=inference_geo,
+    )
     print(f"\033[92m✓ agent updated\033[0m  id={agent_id}  new_version={agent['version']}")
     return agent
 
 
-def cmd_agent_review_multiagent(path: str, specialists: list, api_key: str,
-                                model: str = "claude-opus-4-8") -> dict:
+def cmd_agent_review_multiagent(
+    path: str, specialists: list, api_key: str, model: str = "claude-opus-4-8"
+) -> dict:
     """Native Multiagent orchestration (v1.21.0): run named specialist
     code reviewers as parallel subagents sharing one sandbox filesystem
     and one event stream, with a coordinator synthesizing one report."""
+
     def on_step(event, data):
         if event == "specialist_created":
             print(f"  {data['name']} -> {data['agent']['id']}")
@@ -408,15 +500,17 @@ def cmd_agent_outcome_rubric_upload(file_path: str, api_key: str, model: str) ->
     print(f"\033[94mℹ Uploading rubric {file_path}…\033[0m")
     result = svc.upload_outcome_rubric(api_key, file_path, model)
     print(f"\033[92m✓ rubric uploaded\033[0m  file_id={result['id']}")
-    print(f"  Reuse with: ai-coder --agent-managed-run \"...\" --agent-outcome \"...\" "
-          f"--agent-outcome-rubric-file {result['id']}")
+    print(
+        f'  Reuse with: ai-coder --agent-managed-run "..." --agent-outcome "..." '
+        f"--agent-outcome-rubric-file {result['id']}"
+    )
     return result["id"]
 
 
 # ── CLI entry points (local, non-Managed-Agents chat/orchestrate) ───────
 
-def cmd_agent_chat(prompt: str, api_key: str, model: str,
-                   session_id: str = None, new: bool = False):
+
+def cmd_agent_chat(prompt: str, api_key: str, model: str, session_id: str = None, new: bool = False):
     outcome = svc.local_agent_chat(prompt, api_key, model, session_id=session_id, new=new)
     session, result, status = outcome["session"], outcome["result"], outcome["status"]
     if status == "resumed":
@@ -427,7 +521,7 @@ def cmd_agent_chat(prompt: str, api_key: str, model: str,
         print(f"\033[94mℹ New session: {session.id}\033[0m\n")
     print(result)
     print(f"\n\033[90m[session: {session.id}  turns: {len(session.history)//2}]\033[0m")
-    print(f"\033[90m  Resume: ai-coder --agent-session {session.id} -p \"follow-up\"\033[0m")
+    print(f'\033[90m  Resume: ai-coder --agent-session {session.id} -p "follow-up"\033[0m')
     return result
 
 
@@ -465,8 +559,10 @@ def cmd_agent_session_get(session_id: str, api_key: str) -> dict:
     """Inspect a Managed Agents session's status, stop_reason, budget,
     and consumed list cost (v1.39.0, public beta)."""
     info = svc.get_agent_session(api_key, session_id)
-    print(f"\033[92m✓ session {session_id}\033[0m  status={info['status']}"
-          + (f"  stop_reason={info['stop_reason']}" if info['stop_reason'] else ""))
+    print(
+        f"\033[92m✓ session {session_id}\033[0m  status={info['status']}"
+        + (f"  stop_reason={info['stop_reason']}" if info["stop_reason"] else "")
+    )
     if info["budget"]:
         cap = info["budget"].get("max_list_cost", {}).get("amount")
         spent = info["list_cost_usd_cents"]

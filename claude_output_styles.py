@@ -20,21 +20,31 @@ existing imports keep working unmodified.
 """
 
 from domain.output_styles import (
-    PROJECT_STYLES_DIR, USER_STYLES_DIR,
-    BUILTIN_STYLES, FRONTMATTER_RE,
+    BUILTIN_STYLES,
+    FRONTMATTER_RE,
+    PROJECT_STYLES_DIR,
+    USER_STYLES_DIR,
     _parse_style_file,
-    list_styles, get_style, system_prompt_fragment,
+    get_style,
+    list_styles,
+    system_prompt_fragment,
 )
 from infrastructure.local_storage.styles_store import (
-    discover_custom_styles, load_plugin_output_styles,
+    discover_custom_styles,
+    load_plugin_output_styles,
 )
 from interfaces.cli.commands.output_styles_commands import cmd_list_output_styles
 
 __all__ = [
-    "PROJECT_STYLES_DIR", "USER_STYLES_DIR",
-    "BUILTIN_STYLES", "FRONTMATTER_RE",
+    "PROJECT_STYLES_DIR",
+    "USER_STYLES_DIR",
+    "BUILTIN_STYLES",
+    "FRONTMATTER_RE",
     "_parse_style_file",
-    "list_styles", "get_style", "system_prompt_fragment",
-    "discover_custom_styles", "load_plugin_output_styles",
+    "list_styles",
+    "get_style",
+    "system_prompt_fragment",
+    "discover_custom_styles",
+    "load_plugin_output_styles",
     "cmd_list_output_styles",
 ]

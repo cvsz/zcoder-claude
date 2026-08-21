@@ -5,9 +5,9 @@ both local Claude Code-style SKILL.md packages and custom Skills uploaded to
 the Anthropic Skills Management API.
 """
 
-from dataclasses import dataclass, field
 import re
-from typing import Iterable
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 
 _NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
@@ -33,7 +33,7 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
     if end < 0:
         return {}, text
     raw = text[4:end]
-    body = text[end + 5:]
+    body = text[end + 5 :]
     values: dict[str, str] = {}
     for line in raw.splitlines():
         if not line.strip() or line.lstrip().startswith("#") or ":" not in line:
@@ -46,9 +46,7 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
 def parse_skill_md(text: str) -> SkillManifest:
     frontmatter, body = _parse_frontmatter(text)
     raw_tools = frontmatter.get("allowed-tools", "")
-    allowed_tools = tuple(
-        item.strip() for item in raw_tools.split(",") if item.strip()
-    )
+    allowed_tools = tuple(item.strip() for item in raw_tools.split(",") if item.strip())
     return SkillManifest(
         name=frontmatter.get("name", ""),
         description=frontmatter.get("description", ""),

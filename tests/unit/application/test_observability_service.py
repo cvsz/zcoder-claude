@@ -6,19 +6,27 @@ Cost, Metrics, Observability & Eval bounded context, extracted 2026-08-19
 function here needs direct unit test coverage, not only indirect coverage
 via a CLI test capturing stdout.
 """
-import application.observability_service as service
-from domain.observability import OptimizedResponse, EvalCase, EvalResult, EvalRun
 
+import application.observability_service as service
+from domain.observability import EvalCase, EvalResult, EvalRun, OptimizedResponse
 
 # ── Cost Optimizer ────────────────────────────────────────────────────
+
 
 def test_optimized_call_selects_model_and_delegates_to_gateway(monkeypatch):
     seen = {}
 
     def fake_gateway_call(prompt, api_key, model, complexity, **kwargs):
         seen.update(prompt=prompt, api_key=api_key, model=model, complexity=complexity)
-        return OptimizedResponse(text="ok", model_used=model, complexity=complexity,
-                                 in_tokens=1, out_tokens=1, cost_usd=0.0, latency_ms=1)
+        return OptimizedResponse(
+            text="ok",
+            model_used=model,
+            complexity=complexity,
+            in_tokens=1,
+            out_tokens=1,
+            cost_usd=0.0,
+            latency_ms=1,
+        )
 
     monkeypatch.setattr(service, "_gateway_optimized_call", fake_gateway_call)
     r = service.optimized_call("hello", "key")
@@ -32,8 +40,15 @@ def test_optimized_call_force_model_overrides_routing(monkeypatch):
 
     def fake_gateway_call(prompt, api_key, model, complexity, **kwargs):
         seen["model"] = model
-        return OptimizedResponse(text="ok", model_used=model, complexity=complexity,
-                                 in_tokens=1, out_tokens=1, cost_usd=0.0, latency_ms=1)
+        return OptimizedResponse(
+            text="ok",
+            model_used=model,
+            complexity=complexity,
+            in_tokens=1,
+            out_tokens=1,
+            cost_usd=0.0,
+            latency_ms=1,
+        )
 
     monkeypatch.setattr(service, "_gateway_optimized_call", fake_gateway_call)
     service.optimized_call("hello", "key", force_model="claude-opus-4-8")
@@ -46,8 +61,10 @@ def test_cost_summary_returns_none_when_no_entries(monkeypatch):
 
 
 def test_cost_summary_aggregates_total_and_recent(monkeypatch):
-    entries = [{"cost_usd": 1.0, "model": "m", "ts": "t", "prompt": "p"},
-              {"cost_usd": 2.0, "model": "m", "ts": "t", "prompt": "p"}]
+    entries = [
+        {"cost_usd": 1.0, "model": "m", "ts": "t", "prompt": "p"},
+        {"cost_usd": 2.0, "model": "m", "ts": "t", "prompt": "p"},
+    ]
     monkeypatch.setattr(service, "read_spend_log", lambda: entries)
     s = service.cost_summary(limit=1)
     assert s["total"] == 3.0
@@ -62,11 +79,15 @@ def test_cost_reset_delegates_to_store(monkeypatch):
 
 # ── Metrics ───────────────────────────────────────────────────────────
 
+
 def test_metrics_summary_delegates_to_store_and_domain(monkeypatch):
-    monkeypatch.setattr(service, "load_metrics_log",
-                        lambda today_only, model_filter: [{"model": "m", "cost_usd": 1.0,
-                                                            "input_tokens": 1, "output_tokens": 1,
-                                                            "latency_seconds": 1.0}])
+    monkeypatch.setattr(
+        service,
+        "load_metrics_log",
+        lambda today_only, model_filter: [
+            {"model": "m", "cost_usd": 1.0, "input_tokens": 1, "output_tokens": 1, "latency_seconds": 1.0}
+        ],
+    )
     s = service.metrics_summary()
     assert s["calls"] == 1
 
@@ -79,11 +100,15 @@ def test_metrics_clear_calls_store(monkeypatch):
 
 
 def test_metrics_export_writes_and_returns_count(monkeypatch, tmp_path):
-    monkeypatch.setattr(service, "load_metrics_log",
-                        lambda today_only=False, model_filter=None: [{"model": "m"}])
+    monkeypatch.setattr(
+        service, "load_metrics_log", lambda today_only=False, model_filter=None: [{"model": "m"}]
+    )
     written = {}
-    monkeypatch.setattr(service, "write_metrics_export",
-                        lambda path, entries, summary: written.update(path=path, entries=entries))
+    monkeypatch.setattr(
+        service,
+        "write_metrics_export",
+        lambda path, entries, summary: written.update(path=path, entries=entries),
+    )
     n = service.metrics_export(str(tmp_path / "out.json"))
     assert n == 1
     assert written["entries"] == [{"model": "m"}]
@@ -91,14 +116,14 @@ def test_metrics_export_writes_and_returns_count(monkeypatch, tmp_path):
 
 # ── Observability ─────────────────────────────────────────────────────
 
+
 def test_obs_latency_report_empty_returns_none(monkeypatch):
     monkeypatch.setattr(service, "read_observability_logs", lambda hours: [])
     assert service.obs_latency_report() is None
 
 
 def test_obs_latency_report_delegates_to_domain(monkeypatch):
-    monkeypatch.setattr(service, "read_observability_logs",
-                        lambda hours: [{"latency_ms": 100, "model": "m"}])
+    monkeypatch.setattr(service, "read_observability_logs", lambda hours: [{"latency_ms": 100, "model": "m"}])
     report = service.obs_latency_report(hours=12)
     assert report["count"] == 1
     assert report["hours"] == 12
@@ -117,6 +142,7 @@ def test_obs_errors_calls_gateway_with_filtered_records(monkeypatch):
     def fake_analyze(api_key, model, error_records):
         seen.update(api_key=api_key, model=model, error_records=error_records)
         return "analysis text"
+
     monkeypatch.setattr(service, "analyze_errors", fake_analyze)
     result = service.obs_errors("key", "claude-sonnet-5")
     assert result == "analysis text"
@@ -129,14 +155,14 @@ def test_obs_clear_delegates(monkeypatch):
 
 
 def test_obs_tail_slices_last_n(monkeypatch):
-    monkeypatch.setattr(service, "read_observability_logs",
-                        lambda hours: [{"i": i} for i in range(30)])
+    monkeypatch.setattr(service, "read_observability_logs", lambda hours: [{"i": i} for i in range(30)])
     tail = service.obs_tail(n=5)
     assert len(tail) == 5
     assert tail[-1] == {"i": 29}
 
 
 # ── Eval harness ──────────────────────────────────────────────────────
+
 
 def test_load_suite_delegates_to_store(monkeypatch):
     cases = [EvalCase(case_id="c1", prompt="p", expected="e")]
@@ -145,11 +171,26 @@ def test_load_suite_delegates_to_store(monkeypatch):
 
 
 def test_eval_run_delegates_to_gateway_runner(monkeypatch):
-    fake_run = EvalRun(run_id="r1", model="claude-sonnet-5", cases=1, passed=1,
-                       avg_score=1.0, avg_latency_ms=10.0,
-                       results=[EvalResult(case_id="c1", prompt="p", expected="e",
-                                          actual="a", score=1.0, passed=True,
-                                          latency_ms=10, model="m")])
+    fake_run = EvalRun(
+        run_id="r1",
+        model="claude-sonnet-5",
+        cases=1,
+        passed=1,
+        avg_score=1.0,
+        avg_latency_ms=10.0,
+        results=[
+            EvalResult(
+                case_id="c1",
+                prompt="p",
+                expected="e",
+                actual="a",
+                score=1.0,
+                passed=True,
+                latency_ms=10,
+                model="m",
+            )
+        ],
+    )
 
     class FakeRunner:
         def __init__(self, api_key, model, judge_model, threshold):
@@ -170,8 +211,9 @@ def test_persist_eval_run_delegates_to_store(monkeypatch):
 
 def test_write_eval_output_delegates_to_store(monkeypatch):
     seen = {}
-    monkeypatch.setattr(service, "write_eval_first_result_json",
-                        lambda path, run: seen.update(path=path, run=run))
+    monkeypatch.setattr(
+        service, "write_eval_first_result_json", lambda path, run: seen.update(path=path, run=run)
+    )
     service.write_eval_output("out.json", "a-run")
     assert seen == {"path": "out.json", "run": "a-run"}
 

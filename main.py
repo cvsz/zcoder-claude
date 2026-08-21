@@ -7,12 +7,8 @@ Delegates to interfaces/cli/parser.py and interfaces/cli/dispatcher.py.
 Extracted 2026-08-21 (Phase E).
 """
 
-from interfaces.cli.dispatcher import (
-    VERSION, BANNER, AGENT_SYSTEM_PROMPTS,
-    _api_key, _model, _read_file,
-)
-from interfaces.cli.parser import build_parser
 from interfaces.cli.dispatcher import dispatch
+from interfaces.cli.parser import build_parser
 
 
 def main():

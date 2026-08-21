@@ -4,7 +4,7 @@ Covers domain/memory.py — pure MemType/MemEntry, extracted 2026-08-18
 (Phase C, Context #5).
 """
 
-from domain.memory import MemType, MemEntry
+from domain.memory import MemEntry, MemType
 
 
 def test_mem_entry_roundtrip():

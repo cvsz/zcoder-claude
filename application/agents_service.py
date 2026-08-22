@@ -91,9 +91,9 @@ def run_managed_agent_task(
         _step("delta", text=text)
 
     mac = ManagedAgentsClient(api_key)
-    agent = mac.create_agent(name=f"ai-coder-task-{uuid.uuid4().hex[:8]}", model=model)
+    agent = mac.create_agent(name=f"zcoder-task-{uuid.uuid4().hex[:8]}", model=model)
     _step("agent_created", agent=agent)
-    env = mac.create_environment(name=f"ai-coder-env-{uuid.uuid4().hex[:8]}")
+    env = mac.create_environment(name=f"zcoder-env-{uuid.uuid4().hex[:8]}")
     _step("env_created", env=env)
 
     store_id = None
@@ -393,7 +393,7 @@ def run_multiagent_review(
         system=coordinator_system,
         multiagent=build_multiagent_config(specialist_ids),
     )
-    env = mac.create_environment(name=f"ai-coder-review-env-{uuid.uuid4().hex[:8]}")
+    env = mac.create_environment(name=f"zcoder-review-env-{uuid.uuid4().hex[:8]}")
     sess = mac.create_session(coordinator["id"], env["id"], title=f"multiagent review: {path}"[:60])
     _step("session_created", session=sess)
 

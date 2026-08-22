@@ -81,9 +81,9 @@ def build_hooks_engine(hooks_file: str | None, on_warning: Callable[[str], None]
 
 
 def enable_sandbox(cwd: str, allow_net: bool, extra_roots: list | None = None):
-    os.environ["AI_CODER_SANDBOX"] = "1"
-    os.environ["AI_CODER_SANDBOX_NET"] = "1" if allow_net else "0"
-    os.environ["AI_CODER_SANDBOX_ROOTS"] = json.dumps([str(Path(cwd).resolve())] + (extra_roots or []))
+    os.environ["ZCODER_SANDBOX"] = "1"
+    os.environ["ZCODER_SANDBOX_NET"] = "1" if allow_net else "0"
+    os.environ["ZCODER_SANDBOX_ROOTS"] = json.dumps([str(Path(cwd).resolve())] + (extra_roots or []))
 
 
 def add_plugin_bin_paths():

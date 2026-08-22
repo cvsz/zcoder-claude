@@ -79,7 +79,7 @@ def _fetch_retrying(url: str, timeout: float) -> str:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.read().decode(r.headers.get_content_charset() or "utf-8", errors="replace")
     except (urllib.error.HTTPError, TimeoutError, ConnectionError, OSError) as e:
-        # Translates to the AICoderError hierarchy so retry() above can tell
+        # Translates to the ZCoderError hierarchy so retry() above can tell
         # a transient failure from a permanent one; fetch_page()'s `except
         # Exception` below still catches whatever this raises either way.
         raise_for_http_error(e)

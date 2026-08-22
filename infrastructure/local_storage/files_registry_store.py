@@ -15,7 +15,7 @@ import json
 import os
 from pathlib import Path
 
-LOCAL_REGISTRY = Path(os.path.expanduser("~/.ai-coder/files_registry.json"))
+LOCAL_REGISTRY = Path(os.path.expanduser("~/.zcoder/files_registry.json"))
 
 
 def load_registry() -> dict:
@@ -28,7 +28,7 @@ def load_registry() -> dict:
 
 
 def ensure_registry_dir():
-    """Original FilesAPI.__init__ created ~/.ai-coder/ eagerly, on
+    """Original FilesAPI.__init__ created ~/.zcoder/ eagerly, on
     every FilesAPI() construction, not lazily on first write — some
     callers may rely on the directory existing right after
     construction, before any upload/delete happens."""

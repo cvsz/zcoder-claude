@@ -219,7 +219,7 @@ def run_adaptive_thinking(
 # Thin use-cases over infrastructure/anthropic_api/
 # model_wrappers_gateway.py's per-model clients. Each returns plain data
 # and lets exceptions (RefusalError, MythosAccessError, ValueError,
-# AICoderError) propagate — the interface layer decides how to render
+# ZCoderError) propagate — the interface layer decides how to render
 # them. The pure info/pricing tables these commands also print live in
 # domain/model_wrappers.py and need no service function.
 
@@ -300,5 +300,5 @@ def sonnet5_call(
 
 def whoami_metadata(api_key: str) -> ResponseMetadata:
     """Minimal whoami Messages API call; returns the parsed workspace /
-    organization header metadata. Raises AICoderError on failure."""
+    organization header metadata. Raises ZCoderError on failure."""
     return get_response_metadata(api_key)

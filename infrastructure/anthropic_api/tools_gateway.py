@@ -38,7 +38,7 @@ from domain.tools import (
     build_context_management,
     computer_use_tool_for_model,
 )
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
@@ -58,7 +58,7 @@ class MemoryToolHandler:
     disk, per Anthropic's documented path-traversal-protection
     requirement for memory tool implementations."""
 
-    def __init__(self, base_dir: str = "~/.ai-coder/memory"):
+    def __init__(self, base_dir: str = "~/.zcoder/memory"):
         self.base_dir = os.path.abspath(os.path.expanduser(base_dir))
         os.makedirs(self.base_dir, exist_ok=True)
 
@@ -160,7 +160,7 @@ class ToolCoder:
         )
         try:
             return self._call(req)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}

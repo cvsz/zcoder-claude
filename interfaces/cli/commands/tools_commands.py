@@ -92,7 +92,7 @@ def cmd_server_tool(
 
 
 def cmd_memory_agent(
-    prompt: str, api_key: str, model: str, memory_dir: str = "~/.ai-coder/memory", max_turns: int = 10
+    prompt: str, api_key: str, model: str, memory_dir: str = "~/.zcoder/memory", max_turns: int = 10
 ):
     """Run an agent loop backed by the native memory tool."""
     print(f"\033[94mℹ Memory-tool agent | dir={memory_dir}\033[0m\n")

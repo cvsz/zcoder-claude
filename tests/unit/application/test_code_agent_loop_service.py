@@ -109,17 +109,17 @@ def test_apply_output_style_missing_module_is_noop(monkeypatch):
 
 
 def test_enable_sandbox_sets_env_vars(monkeypatch, tmp_path):
-    monkeypatch.delenv("AI_CODER_SANDBOX", raising=False)
-    monkeypatch.delenv("AI_CODER_SANDBOX_NET", raising=False)
-    monkeypatch.delenv("AI_CODER_SANDBOX_ROOTS", raising=False)
+    monkeypatch.delenv("ZCODER_SANDBOX", raising=False)
+    monkeypatch.delenv("ZCODER_SANDBOX_NET", raising=False)
+    monkeypatch.delenv("ZCODER_SANDBOX_ROOTS", raising=False)
 
     service.enable_sandbox(str(tmp_path), allow_net=True, extra_roots=["/extra"])
 
     import os
 
-    assert os.environ["AI_CODER_SANDBOX"] == "1"
-    assert os.environ["AI_CODER_SANDBOX_NET"] == "1"
-    roots = json.loads(os.environ["AI_CODER_SANDBOX_ROOTS"])
+    assert os.environ["ZCODER_SANDBOX"] == "1"
+    assert os.environ["ZCODER_SANDBOX_NET"] == "1"
+    roots = json.loads(os.environ["ZCODER_SANDBOX_ROOTS"])
     assert str(tmp_path.resolve()) in roots
     assert "/extra" in roots
 
@@ -128,7 +128,7 @@ def test_enable_sandbox_net_blocked_by_default(monkeypatch, tmp_path):
     service.enable_sandbox(str(tmp_path), allow_net=False)
     import os
 
-    assert os.environ["AI_CODER_SANDBOX_NET"] == "0"
+    assert os.environ["ZCODER_SANDBOX_NET"] == "0"
 
 
 # ── Context editing ──────────────────────────────────────────────────────

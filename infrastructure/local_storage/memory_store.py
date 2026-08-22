@@ -20,7 +20,7 @@ from typing import Any
 
 from domain.memory import MemEntry, MemType
 
-MEMORY_DIR = Path.home() / ".ai-coder" / "memory"
+MEMORY_DIR = Path.home() / ".zcoder" / "memory"
 
 
 class MemoryStore:

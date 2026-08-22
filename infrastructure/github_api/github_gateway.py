@@ -19,7 +19,7 @@ directly").
 import os
 import urllib.request
 
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import (
     CircuitBreaker,
     retry,
@@ -53,12 +53,12 @@ def get(path: str, token: str):
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "ai-coder-cli/1.9.1",
+            "User-Agent": "zcoder-cli/1.9.1",
         },
     )
     try:
         return urlopen_json(req, timeout=20)
-    except AICoderError as e:
+    except ZCoderError as e:
         raise RuntimeError(f"GitHub API error: {e.message}") from e
 
 
@@ -75,5 +75,5 @@ def fetch_diff(diff_url: str, token: str, max_chars: int) -> str:
     )
     try:
         return urlopen_text(req, timeout=30)[:max_chars]
-    except AICoderError as e:
+    except ZCoderError as e:
         raise RuntimeError(f"GitHub diff fetch error: {e.message}") from e

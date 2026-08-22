@@ -3,7 +3,7 @@
 import json
 import os
 
-CONFIG_PATH = os.path.expanduser("~/.ai-coder-config.json")
+CONFIG_PATH = os.path.expanduser("~/.zcoder-config.json")
 
 
 class Config:

@@ -3,7 +3,7 @@ domain/agents/agent_config.py — Agent SDK domain layer: config, sessions, vali
 AI Model Coder CLI v1.42.0 (Clean Architecture refactor)
 
 Pure data/config classes and validation for the Agent SDK / Managed Agents
-surface. AgentSession persists to local disk (~/.ai-coder/agent_sessions) --
+surface. AgentSession persists to local disk (~/.zcoder/agent_sessions) --
 not an Anthropic API call, so it's kept here as a pragmatic simplification
 rather than pushed into infrastructure/, but note this is local persistence,
 not a network-free domain in the strictest Clean Architecture sense.
@@ -22,7 +22,7 @@ import time
 import uuid
 from pathlib import Path
 
-SESSIONS_DIR = Path(os.path.expanduser("~/.ai-coder/agent_sessions"))
+SESSIONS_DIR = Path(os.path.expanduser("~/.zcoder/agent_sessions"))
 
 # Session budgets (v1.39.0) — platform.claude.com/docs/en/managed-agents/
 # budgets, released Aug 7 2026, checked 2026-08-14. A budget is a hard USD

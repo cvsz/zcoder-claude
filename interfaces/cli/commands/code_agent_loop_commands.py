@@ -208,7 +208,7 @@ def cmd_code_agent(
 
     if not headless:
         print(f"\n\033[90m{session.cost_summary()}\033[0m")
-        print(f'\033[90m  Resume: ai-coder --code-agent-session {session.id} -p "..."\033[0m')
+        print(f'\033[90m  Resume: zcoder --code-agent-session {session.id} -p "..."\033[0m')
     return result
 
 
@@ -345,7 +345,7 @@ def cmd_code_slash(command: str, api_key: str, model: str, cwd: str = ".", promp
         return
 
     print(f"\033[91m✗ Unknown slash command: {full_cmd}\033[0m")
-    print("  Run: ai-coder --code-agent-slash help")
+    print("  Run: zcoder --code-agent-slash help")
 
 
 # ── --code-agent-cost ─────────────────────────────────────────────────────

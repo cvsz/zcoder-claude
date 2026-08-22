@@ -40,7 +40,7 @@ from domain.model_wrappers import (
 from domain.model_wrappers import (
     estimate_sonnet5_cost_usd as estimate_cost_usd,
 )
-from exceptions import AICoderError
+from exceptions import ZCoderError
 
 # ── Fable 5 / Mythos 5 ───────────────────────────────────────────────────
 
@@ -297,7 +297,7 @@ def cmd_sonnet5_cost(spec: str):
 def cmd_whoami(api_key: str):
     try:
         meta = whoami_metadata(api_key)
-    except AICoderError as e:
+    except ZCoderError as e:
         print(f"[ERROR] {e.message}")
         return None
     print("\n\033[94mResponse metadata\033[0m (from a minimal Messages API call)")

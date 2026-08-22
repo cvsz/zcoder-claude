@@ -14,7 +14,7 @@ import json
 import os
 from pathlib import Path
 
-BATCH_STORE = Path(os.path.expanduser("~/.ai-coder/batches"))
+BATCH_STORE = Path(os.path.expanduser("~/.zcoder/batches"))
 
 
 def ensure_store_dir():

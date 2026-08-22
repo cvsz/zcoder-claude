@@ -56,7 +56,7 @@ from domain.model_wrappers import (
     validate_service_tier,
 )
 from domain.models.catalog import FAST_MODE_SUPPORTED
-from exceptions import AICoderError, APIError
+from exceptions import APIError, ZCoderError
 from infrastructure.anthropic_api.http_client import (
     CircuitBreaker,
     retry,
@@ -119,7 +119,7 @@ class Fable5Client:
     def _post(self, payload: dict, extra_headers: dict | None = None) -> dict:
         try:
             return self._call(payload, extra_headers)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
@@ -320,7 +320,7 @@ class Mythos5Client:
                     f"access with Anthropic. Raw response: {body}"
                 ) from e
             return {"error": e.message, "status": e.status_code}
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
@@ -372,7 +372,7 @@ class Opus5Client:
     def _post(self, payload: dict) -> dict:
         try:
             return self._call(payload)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
@@ -450,7 +450,7 @@ class Haiku45Client:
     def _post(self, payload: dict) -> dict:
         try:
             return self._call(payload)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
@@ -516,7 +516,7 @@ class Sonnet5Client:
     def _post(self, payload: dict) -> dict:
         try:
             return self._call(payload)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
@@ -575,7 +575,7 @@ def _call_with_headers(api_key: str) -> tuple:
 
 def get_response_metadata(api_key: str) -> ResponseMetadata:
     """Make the minimal whoami call and return the parsed metadata.
-    Raises AICoderError on failure (bad key, network error, etc.) — same
+    Raises ZCoderError on failure (bad key, network error, etc.) — same
     exception type every other claude_*.py client raises, so callers can
     catch it uniformly."""
     _body, response_headers = _call_with_headers(api_key)

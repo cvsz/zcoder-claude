@@ -5,7 +5,7 @@ AI Model Coder CLI v1.42.0 (Clean Architecture refactor)
 
 ArtifactManager and its module-level meta/version helpers, extracted
 2026-08-22 from artifacts.py. Everything here is local-disk I/O under
-~/.ai-coder/artifacts/ — same bucket as the other *_store.py modules
+~/.zcoder/artifacts/ — same bucket as the other *_store.py modules
 (see infrastructure/local_storage/devtools_store.py's docstring for the
 precedent). The class is kept intact rather than split method-by-method,
 matching the CodeSession/PptxSession/ExcelSession precedent: create()/
@@ -26,7 +26,7 @@ from pathlib import Path
 
 from domain.artifacts import TYPE_EXTENSIONS
 
-ARTIFACTS_DIR = os.path.expanduser("~/.ai-coder/artifacts")
+ARTIFACTS_DIR = os.path.expanduser("~/.zcoder/artifacts")
 
 
 # ── helpers ────────────────────────────────────────────────────────────────

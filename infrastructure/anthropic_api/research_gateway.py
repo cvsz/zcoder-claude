@@ -41,7 +41,7 @@ class DeepResearchGateway:
 
     @retry(max_attempts=2, base_delay=1.0, max_delay=5.0)
     def fetch_url(self, url: str) -> str:
-        req = urllib.request.Request(url, headers={"User-Agent": "ai-coder-research/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "zcoder-research/1.0"})
         try:
             with urllib.request.urlopen(req, timeout=15) as resp:
                 return resp.read().decode("utf-8", errors="replace")[:4000]

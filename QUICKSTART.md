@@ -17,11 +17,11 @@ python main.py -p "Write a function to reverse a string"
 No local Python needed to *run* the result — only to build it:
 
 ```bash
-./scripts/build.sh       # macOS/Linux — produces dist/ai-coder
-# or scripts/build.bat on Windows — produces dist\ai-coder.exe
+./scripts/build.sh       # macOS/Linux — produces dist/zcoder
+# or scripts/build.bat on Windows — produces dist\zcoder.exe
 
 export ANTHROPIC_API_KEY=sk-ant-...
-./dist/ai-coder -p "Create a Flask REST API"
+./dist/zcoder -p "Create a Flask REST API"
 ```
 
 ## A few places to start
@@ -40,7 +40,7 @@ python main.py --list-server-tools
 # Agentic tool loop
 python main.py --tool-agent -p "Find and fix the bug in app.py"
 
-# Native memory tool (persists across runs, in ~/.ai-coder/memory)
+# Native memory tool (persists across runs, in ~/.zcoder/memory)
 python main.py --memory-agent "Remember that this project uses pytest"
 
 # Advisor tool — a stronger model consulted mid-generation

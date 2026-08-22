@@ -2,7 +2,7 @@
 # mypy: ignore-errors
 interfaces/cli/commands/messaging_commands.py — CLI presentation for
 Core Messaging (streaming, structured outputs, citations/RAG, extended
-thinking, token counting, zai-live REPL)
+thinking, token counting, zcoder-live REPL)
 AI Model Coder CLI v1.46.0 (Clean Architecture refactor, Phase B)
 
 Only print()/input() and CLI-facing string building live here — all real
@@ -314,7 +314,7 @@ def cmd_count_tokens(
             print(f"\033[92m  ✓ Within budget ({b['remaining']:,} tokens remaining)\033[0m")
 
 
-# ── zai-live REPL ─────────────────────────────────────────────────────────
+# ── zcoder-live REPL ─────────────────────────────────────────────────────────
 
 
 def _handle_slash(cmd: str, session) -> bool:
@@ -362,7 +362,7 @@ def cmd_live(
     api_key: str, model: str = "claude-sonnet-5", temperature: float = 0.7, personality_prompt: str = ""
 ):
     session = service.create_live_session(api_key, model, temperature, personality_prompt)
-    print(f"⚡ zai-live  model={model}  /help for commands  Ctrl+C to quit\n")
+    print(f"⚡ zcoder-live  model={model}  /help for commands  Ctrl+C to quit\n")
     while True:
         try:
             text = input("You: ").strip()

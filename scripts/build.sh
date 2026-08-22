@@ -41,7 +41,7 @@ echo "   This may take 1-2 minutes..."
 echo ""
 
 pyinstaller --onefile \
-    --name ai-coder \
+    --name zcoder \
     --console \
     --hidden-import=anthropic \
     --strip \
@@ -52,15 +52,15 @@ echo "✅ Build complete!"
 echo ""
 
 # Check output
-if [ -f "dist/ai-coder" ]; then
-    ls -lh dist/ai-coder
+if [ -f "dist/zcoder" ]; then
+    ls -lh dist/zcoder
     echo ""
-    echo "🎉 Standalone executable created: dist/ai-coder"
+    echo "🎉 Standalone executable created: dist/zcoder"
     echo ""
     echo "Next steps:"
-    echo "1. Copy 'dist/ai-coder' to any location"
+    echo "1. Copy 'dist/zcoder' to any location"
     echo "2. Set API key: export ANTHROPIC_API_KEY='sk-ant-...'"
-    echo "3. Run: ./ai-coder -p 'Create code'"
+    echo "3. Run: ./zcoder -p 'Create code'"
     echo ""
 else
     echo "❌ Build failed"
@@ -69,7 +69,7 @@ fi
 
 # Cleanup
 echo "🧹 Cleaning up build files..."
-rm -rf build ai-coder.spec > /dev/null 2>&1
+rm -rf build zcoder.spec > /dev/null 2>&1
 echo "✅ Cleanup complete"
 echo ""
 

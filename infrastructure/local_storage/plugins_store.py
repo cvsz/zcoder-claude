@@ -23,7 +23,7 @@ from domain.plugins import (
     discover_plugins_in_marketplace,
     read_manifest,
 )
-from exceptions import AICoderError, TransientAPIError
+from exceptions import TransientAPIError, ZCoderError
 from infrastructure.anthropic_api.http_client import retry
 
 
@@ -62,7 +62,7 @@ def marketplace_add(source: str, name: str | None = None) -> dict:
             with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
                 try:
                     tmp.write(fetch_marketplace_source(source))
-                except AICoderError as e:
+                except ZCoderError as e:
                     raise RuntimeError(str(e.message)) from e
                 tmp_path = tmp.name
             with zipfile.ZipFile(tmp_path) as zf:
@@ -71,7 +71,7 @@ def marketplace_add(source: str, name: str | None = None) -> dict:
         else:
             try:
                 raw = fetch_marketplace_source(source).decode("utf-8", errors="replace")
-            except AICoderError as e:
+            except ZCoderError as e:
                 raise RuntimeError(str(e.message)) from e
             dest.mkdir(parents=True, exist_ok=True)
             (dest / "marketplace.json").write_text(raw)

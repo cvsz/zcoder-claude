@@ -10,7 +10,7 @@ does:
     application/messaging_service.py -> chat_turn / stream_chat_turn
     domain.agents.role_prompts       -> AGENT_SYSTEM_PROMPTS (/api/agents)
     version.py                       -> VERSION
-    config.py                        -> Config (persisted to ~/.ai-coder-config.json)
+    config.py                        -> Config (persisted to ~/.zcoder-config.json)
     health.py                        -> run_health_check (used for Docker/orchestrator
                                           probes and the CLI's --health-check flag)
     domain.models.catalog            -> MODEL_CATALOG (dropdown list)

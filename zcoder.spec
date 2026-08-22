@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
 PyInstaller spec file for AI Model Coder CLI standalone executable
-Run: pyinstaller ai-coder.spec
+Run: pyinstaller zcoder.spec
 """
 
 block_cipher = None
@@ -31,7 +31,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='ai-coder',
+    name='zcoder',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

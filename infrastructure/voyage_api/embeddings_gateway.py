@@ -19,7 +19,7 @@ import os
 import urllib.request
 
 from domain.tools import cosine_similarity
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 VOYAGE_ENDPOINT = "https://api.voyageai.com/v1/embeddings"
@@ -63,7 +63,7 @@ def embed(
     )
     try:
         data = _call(req)
-    except AICoderError as e:
+    except ZCoderError as e:
         raise RuntimeError(f"Voyage API error: {e.message}") from e
     return [item["embedding"] for item in data.get("data", [])]
 

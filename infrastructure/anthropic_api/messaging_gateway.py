@@ -2,7 +2,7 @@
 infrastructure/anthropic_api/messaging_gateway.py — Live Anthropic API
 # mypy: ignore-errors
 adapters for Core Messaging (streaming, structured outputs, citations/RAG,
-extended thinking, token counting, the zai-live REPL session)
+extended thinking, token counting, the zcoder-live REPL session)
 AI Model Coder CLI v1.46.0 (Clean Architecture refactor, Phase B)
 
 Infrastructure layer: everything here makes a real call to
@@ -40,7 +40,7 @@ from domain.messaging import (
     with_eager_input_streaming,
 )
 from domain.models.catalog import get_price
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
@@ -285,7 +285,7 @@ class StructuredCoder:
         # already check for, while retrying transient failures in _call().
         try:
             return self._call(payload)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
@@ -413,7 +413,7 @@ class CitationsCoder:
     def _post(self, payload: dict, beta: str = "") -> dict:
         try:
             return self._call(payload, beta)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
 
     def cite_documents(self, question: str, documents: list, system: str | None = None) -> dict:
@@ -666,7 +666,7 @@ class TokenCounter:
         )
         try:
             return self._call(req)
-        except AICoderError as e:
+        except ZCoderError as e:
             raise RuntimeError(f"Token count failed: {e.message}") from e
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
@@ -698,7 +698,7 @@ class TokenCounter:
         }
 
 
-# ── zai-live REPL session (claude_live.py) ──────────────────────────────────
+# ── zcoder-live REPL session (claude_live.py) ──────────────────────────────────
 
 
 class LiveSession:

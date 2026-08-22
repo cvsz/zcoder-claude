@@ -19,8 +19,8 @@ from pathlib import Path
 
 from domain.sessions import SKIP_DIRS, Checkpoint, Session, Turn
 
-SESSIONS_DIR = Path.home() / ".ai-coder" / "sessions"
-CHECKPOINTS_DIR = Path.home() / ".ai-coder" / "checkpoints"
+SESSIONS_DIR = Path.home() / ".zcoder" / "sessions"
+CHECKPOINTS_DIR = Path.home() / ".zcoder" / "checkpoints"
 
 
 def _sess_path(sid: str) -> Path:

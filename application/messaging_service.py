@@ -253,7 +253,7 @@ def count_tokens(
     return {"tokens": tokens, "estimate": estimate, "budget": budget_info}
 
 
-# ── zai-live REPL session ────────────────────────────────────────────────
+# ── zcoder-live REPL session ────────────────────────────────────────────────
 
 
 def create_live_session(

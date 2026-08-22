@@ -14,7 +14,7 @@ def build_parser():
     from domain.models.catalog import UPGRADE_TARGETS
 
     p = argparse.ArgumentParser(
-        prog="ai-coder",
+        prog="zcoder",
         description=f"AI Model Coder CLI v{VERSION}",
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -302,9 +302,9 @@ def build_parser():
     )
     tu.add_argument(
         "--memory-dir",
-        default="~/.ai-coder/memory",
+        default="~/.zcoder/memory",
         dest="memory_dir",
-        help="Local directory backing --memory-agent (default: ~/.ai-coder/memory)",
+        help="Local directory backing --memory-agent (default: ~/.zcoder/memory)",
     )
     tu.add_argument(
         "--context-management",
@@ -1919,7 +1919,7 @@ def build_parser():
     ses.add_argument("--checkpoint-list", metavar="SESSION_ID", dest="checkpoint_list")
     ses.add_argument("--away-summary", metavar="SESSION_ID", dest="away_summary")
 
-    lv = p.add_argument_group("zai-live")
+    lv = p.add_argument_group("zcoder-live")
     lv.add_argument("--live", action="store_true", dest="live")
 
     rs = p.add_argument_group("Deep Research")

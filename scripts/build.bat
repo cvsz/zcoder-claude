@@ -45,7 +45,7 @@ echo    This may take 1-2 minutes...
 echo.
 
 pyinstaller --onefile ^
-    --name ai-coder ^
+    --name zcoder ^
     --console ^
     --hidden-import=anthropic ^
     main.py
@@ -55,15 +55,15 @@ echo ✅ Build complete!
 echo.
 
 REM Check output
-if exist "dist\ai-coder.exe" (
-    for /F %%A in ('dir /b dist\ai-coder.exe') do (
-        echo 🎉 Standalone executable created: dist\ai-coder.exe
+if exist "dist\zcoder.exe" (
+    for /F %%A in ('dir /b dist\zcoder.exe') do (
+        echo 🎉 Standalone executable created: dist\zcoder.exe
     )
     echo.
     echo Next steps:
-    echo 1. Copy 'dist\ai-coder.exe' to any location
+    echo 1. Copy 'dist\zcoder.exe' to any location
     echo 2. Set API key: set ANTHROPIC_API_KEY=sk-ant-...
-    echo 3. Run: ai-coder.exe -p "Create code"
+    echo 3. Run: zcoder.exe -p "Create code"
     echo.
 ) else (
     echo ❌ Build failed
@@ -74,7 +74,7 @@ if exist "dist\ai-coder.exe" (
 REM Cleanup
 echo 🧹 Cleaning up build files...
 rmdir /s /q build >nul 2>&1
-del ai-coder.spec >nul 2>&1
+del zcoder.spec >nul 2>&1
 echo ✅ Cleanup complete
 echo.
 

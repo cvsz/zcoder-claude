@@ -175,7 +175,7 @@ def run_memory_agent(
     prompt: str,
     api_key: str,
     model: str,
-    memory_dir: str = "~/.ai-coder/memory",
+    memory_dir: str = "~/.zcoder/memory",
     max_turns: int = 10,
     on_memory_op: Callable = _NOOP,
 ) -> str:

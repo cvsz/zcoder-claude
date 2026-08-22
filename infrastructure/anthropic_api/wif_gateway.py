@@ -17,7 +17,7 @@ from domain.wif import (
     OAUTH_TOKEN_ENDPOINT,
     WIFExchangeError,
 )
-from exceptions import AICoderError, APIError, AuthenticationError, RateLimitError
+from exceptions import APIError, AuthenticationError, RateLimitError, ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
@@ -60,7 +60,7 @@ class WIFCredentialExchanger:
             raise WIFExchangeError(429, e.details.get("body", "")) from None
         except APIError as e:
             raise WIFExchangeError(e.status_code, e.details.get("body", "")) from None
-        except AICoderError as e:
+        except ZCoderError as e:
             raise WIFExchangeError(None, e.details.get("body", "")) from None
 
 

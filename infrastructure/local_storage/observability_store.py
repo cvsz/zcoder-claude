@@ -20,7 +20,7 @@ from domain.observability import EvalCase, EvalRun, price_lookup
 
 # ── Cost log (claude_cost_optimizer.py) ──────────────────────────────────
 
-SPEND_LOG = Path.home() / ".ai-coder" / "cost_log.json"
+SPEND_LOG = Path.home() / ".zcoder" / "cost_log.json"
 
 
 def log_spend(model: str, in_tok: int, out_tok: int, cost: float, prompt_preview: str) -> None:
@@ -60,7 +60,7 @@ def clear_spend_log() -> bool:
 
 # ── Metrics log (claude_metrics.py) ──────────────────────────────────────
 
-METRICS_LOG_PATH = Path.home() / ".ai-coder" / "metrics.jsonl"
+METRICS_LOG_PATH = Path.home() / ".zcoder" / "metrics.jsonl"
 
 
 def record_metric(
@@ -130,7 +130,7 @@ def write_metrics_export(output_path: str, entries: list[dict], summary: dict) -
 
 # ── Observability request log (claude_observability.py) ─────────────────
 
-OBS_DIR = Path.home() / ".ai-coder" / "observability"
+OBS_DIR = Path.home() / ".zcoder" / "observability"
 OBS_LOG_FILE = OBS_DIR / "requests.jsonl"
 
 
@@ -165,7 +165,7 @@ def clear_observability_log() -> bool:
 
 # ── Eval suites & runs (claude_eval.py) ──────────────────────────────────
 
-EVALS_DIR = Path.home() / ".ai-coder" / "evals"
+EVALS_DIR = Path.home() / ".zcoder" / "evals"
 
 
 def save_eval_run(run: EvalRun) -> str:

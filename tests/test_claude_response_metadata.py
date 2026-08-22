@@ -18,7 +18,7 @@ repointing anywhere in this suite.
 import json
 
 import infrastructure.anthropic_api.model_wrappers_gateway as gw
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.model_wrappers_gateway import get_response_metadata
 from interfaces.cli.commands.wrapper_commands import cmd_whoami
 
@@ -88,7 +88,7 @@ def test_cmd_whoami_prints_ids(monkeypatch, capsys):
 
 def test_cmd_whoami_handles_error(monkeypatch, capsys):
     def raise_error(api_key):
-        raise AICoderError("bad key")
+        raise ZCoderError("bad key")
 
     monkeypatch.setattr(gw, "_call_with_headers", raise_error)
     result = cmd_whoami("sk-ant-bad")

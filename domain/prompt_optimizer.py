@@ -59,7 +59,7 @@ def parse_judgment(raw: str) -> dict:
         return {"winner": "unknown", "reason": raw}
 
 
-PROMPT_LIB_PATH = Path("~/.ai-coder/prompt_library.json").expanduser()
+PROMPT_LIB_PATH = Path("~/.zcoder/prompt_library.json").expanduser()
 
 
 def load_lib() -> dict:

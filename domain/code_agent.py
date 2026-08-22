@@ -266,8 +266,8 @@ def extract_skill_description(content: str) -> str:
 # ── Storage paths (pure Path construction, not I/O — mkdir happens in the
 # infrastructure layer that actually uses these) ────────────────────────
 
-SESSIONS_DIR = Path(os.path.expanduser("~/.ai-coder/code_sessions"))
-HOOKS_DIR = Path(os.path.expanduser("~/.ai-coder/hooks"))
+SESSIONS_DIR = Path(os.path.expanduser("~/.zcoder/code_sessions"))
+HOOKS_DIR = Path(os.path.expanduser("~/.zcoder/hooks"))
 SKILLS_DIR = Path(".claude/skills")
 AGENTS_DIR = Path(".claude/agents")
 COMMANDS_DIR = Path(".claude/commands")
@@ -275,4 +275,4 @@ MEMORY_FILE = Path(".claude/CLAUDE.md")
 USER_MEMORY = Path(os.path.expanduser("~/.claude/CLAUDE.md"))
 MCP_JSON = Path(".mcp.json")
 SETTINGS_JSON = Path(".claude/settings.json")
-TODO_FILE = Path(os.path.expanduser("~/.ai-coder/code_todos.json"))
+TODO_FILE = Path(os.path.expanduser("~/.zcoder/code_todos.json"))

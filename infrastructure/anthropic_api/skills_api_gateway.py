@@ -16,7 +16,7 @@ from domain.skills_api import (
     SkillRef,
     build_container_skills,
 )
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
@@ -47,7 +47,7 @@ class SkillsApiGateway:
     def _post(self, payload: dict, betas: list) -> dict:
         try:
             return self._call(payload, betas)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}

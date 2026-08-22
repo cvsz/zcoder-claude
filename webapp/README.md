@@ -62,5 +62,5 @@ than a second source of truth.
 
 The API key entered in the sidebar is sent once to `POST /api/config` and
 stored the same place the CLI already reads it from
-(`~/.ai-coder-config.json` via `config.Config`) — it is never echoed back
+(`~/.zcoder-config.json` via `config.Config`) — it is never echoed back
 in full to the browser afterward.

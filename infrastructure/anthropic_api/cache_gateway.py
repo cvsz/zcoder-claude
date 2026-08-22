@@ -31,7 +31,7 @@ from domain.cache import (
     make_cache_control,
     validate_system_message_placement,
 )
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
@@ -71,7 +71,7 @@ class CachingCoder:
         req = urllib.request.Request(self.ENDPOINT, data=body, headers=headers, method="POST")
         try:
             return self._call(req)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)

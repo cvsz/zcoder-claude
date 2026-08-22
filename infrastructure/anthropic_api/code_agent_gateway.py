@@ -21,7 +21,7 @@ from pathlib import Path
 import anthropic
 
 from domain.agent_execution import Plan, PlanStep
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 from utils import sampling_kwargs
 
@@ -71,7 +71,7 @@ class CodeExecutionCoder:
     def _post(self, payload: dict) -> dict:
         try:
             return self._call(payload)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
@@ -238,7 +238,7 @@ def _call(api_key: str, payload: dict) -> dict:
 def _post(api_key: str, payload: dict) -> dict:
     try:
         return _call(api_key, payload)
-    except AICoderError as e:
+    except ZCoderError as e:
         return {"error": e.message}
     except Exception as e:
         return {"error": str(e)}

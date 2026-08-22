@@ -27,7 +27,7 @@ def cmd_file_upload(file_path: str, api_key: str, model: str):
     print(f"  Filename: {result.get('filename', '')}")
     print(f"  Size:     {result.get('size', 0):,} bytes")
     print(f"  Created:  {result.get('created_at', '')}")
-    print(f"\n  Use with: ai-coder --file-ask {result['id']} \"your question\"")
+    print(f"\n  Use with: zcoder --file-ask {result['id']} \"your question\"")
     return result["id"]
 
 

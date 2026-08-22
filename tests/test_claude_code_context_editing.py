@@ -28,7 +28,7 @@ _CMD_CODE_AGENT_MODULE = "interfaces.cli.commands.code_agent_loop_commands"
 
 @pytest.fixture(autouse=True)
 def isolated_sessions_dir(tmp_path, monkeypatch):
-    """Keep CodeSession.save() out of the real ~/.ai-coder directory.
+    """Keep CodeSession.save() out of the real ~/.zcoder directory.
 
     CodeSession is now defined in infrastructure/local_storage/
     code_agent_store.py, so SESSIONS_DIR must be patched there — that's

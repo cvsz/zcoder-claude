@@ -86,7 +86,7 @@ This CLI recognizes four distinct key types, each with its own blast radius:
   Anthropic's hosted code-execution tool. If you extend this project to
   run generated code locally, that requires its own sandboxing (containers,
   seccomp, no network) which is *not* provided here.
-- **API key storage**: `~/.ai-coder-config.json` stores the key in plain
+- **API key storage**: `~/.zcoder-config.json` stores the key in plain
   text on disk if you use `--setup` instead of an environment variable.
   Prefer `ANTHROPIC_API_KEY` (env var, or a secrets manager in production)
   over the on-disk config for anything beyond local dev.

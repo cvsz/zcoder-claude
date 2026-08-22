@@ -63,4 +63,4 @@ def cmd_cowork_list():
     print("  " + "─" * 70)
     for key, task in COWORK_TASKS.items():
         print(f"  {key:<14}{(task['icon']+' '+task['name']):<26}{task['description']}")
-    print('\n  Usage: ai-coder --cowork <type> --cowork-prompt "your task"')
+    print('\n  Usage: zcoder --cowork <type> --cowork-prompt "your task"')

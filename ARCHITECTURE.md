@@ -84,7 +84,7 @@ Dependencies point inward, and side effects stay at the edge:
 The root keeps only entry points and shared kernels so every bounded
 context gets the same behavior for free instead of re-implementing it:
 
-- **`exceptions.py`** — every deliberate error is an `AICoderError`
+- **`exceptions.py`** — every deliberate error is an `ZCoderError`
   subclass with a stable `error_code` and a `RETRYABLE` flag. This is
   the contract `retry()` (see below) reads to decide what to retry.
 - **`infrastructure/anthropic_api/http_client.py`** — the retry and
@@ -93,7 +93,7 @@ context gets the same behavior for free instead of re-implementing it:
   (fail-fast during an outage, one breaker per downstream so a GitHub
   outage doesn't trip the Anthropic breaker), and the shared helpers
   `raise_for_http_error()` / `urlopen_json()` / `urlopen_text()`,
-  which translate raw `urllib` exceptions into the `AICoderError`
+  which translate raw `urllib` exceptions into the `ZCoderError`
   hierarchy. All Anthropic gateways route through it. Call sites that
   fetch an arbitrary caller-supplied URL rather than one fixed
   dependency use `retry()` without a `CircuitBreaker`, since a breaker
@@ -146,7 +146,7 @@ request never silently skips data on retry.
 ## State & persistence
 
 All local state is flat JSON files under the user's home directory —
-`~/.ai-coder-config.json` (config), `~/.ai-coder/` (projects, artifacts,
+`~/.zcoder-config.json` (config), `~/.zcoder/` (projects, artifacts,
 files registry, sessions) — read and written exclusively by
 `infrastructure/local_storage/*_store.py`. There is no database. This
 keeps the tool zero-install beyond Python + `pip install -r
@@ -168,7 +168,7 @@ ruff, black, and mypy.
 
 Two ways to run this:
 1. **From source**: `scripts/setup.sh`/`scripts/setup.bat` create a venv and `.env`.
-2. **Standalone binary**: `scripts/build.sh`/`scripts/build.bat` + `ai-coder.spec` produce
+2. **Standalone binary**: `scripts/build.sh`/`scripts/build.bat` + `zcoder.spec` produce
    a PyInstaller single-file executable with no local Python required.
 3. **Container**: `Dockerfile` (multi-stage, non-root, healthcheck) +
    `docker-compose.yml` for anything that wants to run this as a service

@@ -8,7 +8,7 @@ import json
 import urllib.request
 
 from domain.advisor import ADVISOR_TOOL_BETA, ADVISOR_TOOL_TYPE, strip_advisor_blocks
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 ENDPOINT = "https://api.anthropic.com/v1/messages"
@@ -40,7 +40,7 @@ class AdvisorGateway:
     def _post(self, payload: dict, beta: str) -> dict:
         try:
             return self._call(payload, beta)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}

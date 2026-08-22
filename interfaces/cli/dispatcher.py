@@ -1107,7 +1107,7 @@ def dispatch(args):
         cmd_haiku45_call(args.haiku45, key, thinking_budget=args.haiku45_thinking_budget)
         return
 
-    # ── zai-live ──
+    # ── zcoder-live ──
     if args.live:
         from interfaces.cli.commands.messaging_commands import cmd_live
 

@@ -18,7 +18,7 @@ from pathlib import Path
 
 from domain.tools import SUPPORTED_RAG_EXTS, RAGIndex, build_idf, chunk_text, tokenize
 
-INDEX_DIR = Path.home() / ".ai-coder" / "rag_indexes"
+INDEX_DIR = Path.home() / ".zcoder" / "rag_indexes"
 
 
 def build_index(name: str, folder: str, chunk_size: int = 600, overlap: int = 100) -> RAGIndex:

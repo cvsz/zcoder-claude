@@ -45,14 +45,14 @@ regex over a message string.
 
 - **`--metrics-show` / `--metrics-today` / `--metrics-model` /
   `--metrics-export`** — per-call token counts, cost (against a verified
-  pricing table), and latency, logged to `~/.ai-coder/metrics.jsonl`.
+  pricing table), and latency, logged to `~/.zcoder/metrics.jsonl`.
   Answers "what am I spending, on which model." Implemented in
   `domain/observability.py` / `application/observability_service.py` /
   `interfaces/cli/commands/observability_commands.py` with a compatibility
   shim at `claude_metrics.py`.
 - **`--obs-latency` / `--obs-errors`** — structured request/response logging,
   latency histograms, and AI-assisted error-trend analysis, logged to
-  `~/.ai-coder/observability/requests.jsonl`. Answers "is latency/error
+  `~/.zcoder/observability/requests.jsonl`. Answers "is latency/error
   rate drifting." Implemented in `domain/observability.py` /
   `infrastructure/local_storage/observability_store.py` /
   `application/observability_service.py` with a compatibility shim at

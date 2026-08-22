@@ -4,7 +4,7 @@ subsystem local-disk persistence
 AI Model Coder CLI v1.42.0 (Clean Architecture refactor)
 
 ProjectManager and its manifest helpers, extracted 2026-08-22 from
-projects.py. Everything here is local-disk I/O under ~/.ai-coder/
+projects.py. Everything here is local-disk I/O under ~/.zcoder/
 projects/ — same bucket as the other *_store.py modules (see
 infrastructure/local_storage/devtools_store.py's docstring for the
 precedent). The class is kept intact rather than split method-by-method,
@@ -29,7 +29,7 @@ from pathlib import Path
 
 from domain.projects import ProjectStatus, Task
 
-PROJECTS_DIR = os.path.expanduser("~/.ai-coder/projects")
+PROJECTS_DIR = os.path.expanduser("~/.zcoder/projects")
 
 
 # ── helpers ────────────────────────────────────────────────────────────────

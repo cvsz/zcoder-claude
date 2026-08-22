@@ -25,7 +25,7 @@ from domain.agents.agent_config import (
     _encode_session_budget,
     _list_cost_cents,
 )
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 
 ENDPOINT = "https://api.anthropic.com/v1/messages"
@@ -71,7 +71,7 @@ class McpTunnel:
         )
         try:
             data = self._call(req)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
@@ -94,7 +94,7 @@ class McpTunnel:
         )
         try:
             return self._call_delete(req)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
@@ -155,7 +155,7 @@ class ManagedAgent:
     def _post(self, payload: dict, beta: str = "") -> dict:
         try:
             return self._call(payload, beta)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}

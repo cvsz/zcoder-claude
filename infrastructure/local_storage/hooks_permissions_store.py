@@ -27,8 +27,8 @@ from domain.agent_execution import (
     hook_matches,
 )
 
-HOOKS_FILE = Path.home() / ".ai-coder" / "hooks.json"
-PERMS_FILE = Path.home() / ".ai-coder" / "permissions.json"
+HOOKS_FILE = Path.home() / ".zcoder" / "hooks.json"
+PERMS_FILE = Path.home() / ".zcoder" / "permissions.json"
 
 
 class HookManager:
@@ -61,8 +61,8 @@ class HookManager:
     def fire(self, event: HookEvent, tool_name: str | None = None) -> list[HookResult]:
         env = {**os.environ}
         if tool_name:
-            env["AI_CODER_TOOL_NAME"] = tool_name
-        env["AI_CODER_HOOK_EVENT"] = event.value
+            env["ZCODER_TOOL_NAME"] = tool_name
+        env["ZCODER_HOOK_EVENT"] = event.value
         results = []
         for h in [h for h in self.hooks if hook_matches(h, event, tool_name)]:
             try:

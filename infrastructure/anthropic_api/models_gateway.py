@@ -18,7 +18,7 @@ import json
 import urllib.error
 import urllib.request
 
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 MODELS_ENDPOINT = "https://api.anthropic.com/v1/models"
@@ -74,7 +74,7 @@ class ModelsAPI:
         req = urllib.request.Request(url, headers=headers, method="GET")
         try:
             return self._call(req)
-        except AICoderError as e:
+        except ZCoderError as e:
             raise RuntimeError(f"Models API error: {e.message}") from e
 
     def list_models(self) -> list:
@@ -121,7 +121,7 @@ class ComputerUseCoder:
     def _post(self, payload: dict) -> dict:
         try:
             return self._call(payload)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
@@ -195,7 +195,7 @@ class AdaptiveThinkingCoder:
     def _post(self, payload: dict, betas: list[str] = None) -> dict:
         try:
             return self._call(payload, betas)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}

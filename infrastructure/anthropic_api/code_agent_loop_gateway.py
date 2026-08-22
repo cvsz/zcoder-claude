@@ -37,7 +37,7 @@ from pathlib import Path
 from domain.agent_execution import SandboxViolation, enforce
 from domain.code_agent import READ_ONLY_TOOLS, build_tool_definitions
 from domain.tools import CONTEXT_MANAGEMENT_BETA
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 from infrastructure.local_storage.code_agent_store import CodeSession, HooksEngine, MemoryManager, TodoManager
 
@@ -85,7 +85,7 @@ class CodeAgent:
     def _post(self, payload: dict, betas: list | None = None) -> dict:
         try:
             return self._call(payload, betas)
-        except AICoderError as e:
+        except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
@@ -94,7 +94,7 @@ class CodeAgent:
     # time (agent-chosen), not one fixed downstream dependency.
     @retry(max_attempts=2, base_delay=1.0, max_delay=5.0)
     def _webfetch_retrying(self, url: str) -> str:
-        req = urllib.request.Request(url, headers={"User-Agent": "ai-coder-agent/1.8"})
+        req = urllib.request.Request(url, headers={"User-Agent": "zcoder-agent/1.8"})
         try:
             with urllib.request.urlopen(req, timeout=15) as r:
                 return r.read().decode("utf-8", errors="replace")[:4000]
@@ -160,10 +160,10 @@ class CodeAgent:
             elif name == "Bash":
                 cmd = inputs["command"]
                 timeout = inputs.get("timeout", 30)
-                if os.environ.get("AI_CODER_SANDBOX") == "1":
+                if os.environ.get("ZCODER_SANDBOX") == "1":
                     try:
-                        roots = json.loads(os.environ.get("AI_CODER_SANDBOX_ROOTS", "[]"))
-                        allow_net = os.environ.get("AI_CODER_SANDBOX_NET") == "1"
+                        roots = json.loads(os.environ.get("ZCODER_SANDBOX_ROOTS", "[]"))
+                        allow_net = os.environ.get("ZCODER_SANDBOX_NET") == "1"
                         enforce(cmd, cwd, allow_net=allow_net, extra_roots=roots)
                     except SandboxViolation as e:
                         return f"[SANDBOX BLOCKED] {e}"

@@ -371,7 +371,7 @@ def test_count_tokens_no_budget_omits_budget_info(monkeypatch):
     assert outcome["budget"] is None
 
 
-# ── zai-live session ──────────────────────────────────────────────────────
+# ── zcoder-live session ──────────────────────────────────────────────────────
 
 
 def test_create_live_session_and_send(monkeypatch):

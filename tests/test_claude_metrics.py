@@ -32,7 +32,7 @@ DEFAULT_PRICE = (_CATALOG_DEFAULT["in"], _CATALOG_DEFAULT["out"])
 @pytest.fixture(autouse=True)
 def isolated_log(tmp_path, monkeypatch):
     """Every test gets its own LOG_PATH so nothing touches the real
-    ~/.ai-coder/metrics.jsonl or leaks state between tests.
+    ~/.zcoder/metrics.jsonl or leaks state between tests.
 
     2026-08-19 Phase D, Context #7 "second repoint" (exec-planning.md §5
     step 5): record()/load_log()/cmd_metrics_export() now resolve

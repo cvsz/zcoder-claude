@@ -20,7 +20,7 @@ import urllib.request
 from pathlib import Path
 
 from domain.files import BETA_HEADER, MAX_FILE_SIZE_BYTES, _validate_filename
-from exceptions import AICoderError
+from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 from infrastructure.local_storage import files_registry_store as registry
 
@@ -106,7 +106,7 @@ class FilesAPI:
         req = urllib.request.Request(FILES_BASE, data=body, headers=headers, method="POST")
         try:
             result = self._call_json(req, timeout=60)
-        except AICoderError as e:
+        except ZCoderError as e:
             raise RuntimeError(f"Upload failed: {e.message}") from e
 
         # Save to local registry
@@ -131,7 +131,7 @@ class FilesAPI:
         )
         try:
             return self._call_json(req, timeout=30)
-        except AICoderError as e:
+        except ZCoderError as e:
             raise RuntimeError(f"List failed: {e.message}") from e
 
     def list_files_all(self, max_items: int | None = None) -> list:
@@ -157,7 +157,7 @@ class FilesAPI:
         )
         try:
             return self._call_json(req, timeout=30)
-        except AICoderError as e:
+        except ZCoderError as e:
             raise RuntimeError(f"Get failed: {e.message}") from e
 
     # ── Download content ──────────────────────────────────────────────────
@@ -185,7 +185,7 @@ class FilesAPI:
         )
         try:
             data = self._call_bytes(req, timeout=60)
-        except AICoderError as e:
+        except ZCoderError as e:
             raise RuntimeError(f"Download failed: {e.message}") from e
         Path(output_path).write_bytes(data)
         return output_path
@@ -202,7 +202,7 @@ class FilesAPI:
             self._call_nobody(req, timeout=30)
             registry.unregister_file(file_id)
             return True
-        except AICoderError as e:
+        except ZCoderError as e:
             raise RuntimeError(f"Delete failed: {e.message}") from e
 
     # ── Use file in Messages API ────────────────────────────────────────────
@@ -266,7 +266,7 @@ class FilesAPI:
         )
         try:
             data = self._call_json(req, timeout=120)
-        except AICoderError as e:
+        except ZCoderError as e:
             return f"[API ERROR {getattr(e, 'status_code', '')}] {e.message}"
 
         return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")

@@ -55,8 +55,8 @@ def cmd_batch_submit(
         jsonl_path, api_key, model, system=system, use_300k_output=use_300k_output, on_warning=_on_warning
     )
     print(f"\033[92m✓ Batch submitted: {bid}\033[0m")
-    print(f"  Check status:   ai-coder --batch-status {bid}")
-    print(f"  Get results:    ai-coder --batch-results {bid}")
+    print(f"  Check status:   zcoder --batch-status {bid}")
+    print(f"  Get results:    zcoder --batch-results {bid}")
     return bid
 
 

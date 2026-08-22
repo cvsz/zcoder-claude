@@ -220,7 +220,7 @@ def cmd_agent_vault_create(display_name: str, api_key: str, external_user_id: st
     vault = svc.create_vault(api_key, display_name, external_user_id=external_user_id)
     print(f"\033[92m✓ vault created\033[0m  id={vault['id']}  display_name={display_name}")
     print(
-        f"  Add a credential: ai-coder --agent-vault-add-credential {vault['id']} "
+        f"  Add a credential: zcoder --agent-vault-add-credential {vault['id']} "
         f"--agent-vault-cred-type static_bearer --agent-vault-mcp-url URL --agent-vault-secret TOKEN"
     )
     return vault
@@ -283,7 +283,7 @@ def cmd_agent_dream(
         api_key, store_id, model=model, session_ids=session_ids, instructions=instructions
     )
     print(f"\033[92m✓ dream started\033[0m  id={dream['id']}  status={dream['status']}")
-    print(f"\033[90m  Poll: ai-coder --agent-dream-get {dream['id']}\033[0m")
+    print(f"\033[90m  Poll: zcoder --agent-dream-get {dream['id']}\033[0m")
     return dream
 
 
@@ -498,7 +498,7 @@ def cmd_agent_outcome_rubric_upload(file_path: str, api_key: str, model: str) ->
     result = svc.upload_outcome_rubric(api_key, file_path, model)
     print(f"\033[92m✓ rubric uploaded\033[0m  file_id={result['id']}")
     print(
-        f'  Reuse with: ai-coder --agent-managed-run "..." --agent-outcome "..." '
+        f'  Reuse with: zcoder --agent-managed-run "..." --agent-outcome "..." '
         f"--agent-outcome-rubric-file {result['id']}"
     )
     return result["id"]
@@ -518,7 +518,7 @@ def cmd_agent_chat(prompt: str, api_key: str, model: str, session_id: str = None
         print(f"\033[94mℹ New session: {session.id}\033[0m\n")
     print(result)
     print(f"\n\033[90m[session: {session.id}  turns: {len(session.history)//2}]\033[0m")
-    print(f'\033[90m  Resume: ai-coder --agent-session {session.id} -p "follow-up"\033[0m')
+    print(f'\033[90m  Resume: zcoder --agent-session {session.id} -p "follow-up"\033[0m')
     return result
 
 

@@ -3,7 +3,7 @@
 ## Configuration
 
 All configuration is via environment variables (preferred for production)
-or `~/.ai-coder-config.json` (fine for local dev; see `SECURITY.md` for
+or `~/.zcoder-config.json` (fine for local dev; see `SECURITY.md` for
 why env vars are preferred).
 
 | Variable                    | Required | Default | Purpose |

@@ -786,7 +786,7 @@ def build_parser():
         action="store_true",
         dest="cmek_list",
         help="List registered CMEK external keys (v1.25.0; unverified endpoint "
-        "shape, see docs/37_upgrade_v1.25.0_audit_and_impl.md)",
+        "shape, see docs/releases/37_upgrade_v1.25.0_audit_and_impl.md)",
     )
     ad.add_argument(
         "--cmek-workspace",

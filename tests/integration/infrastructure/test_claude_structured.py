@@ -3,7 +3,7 @@
 claude_structured.py had no prior test coverage. Added alongside the
 v1.30.0 fix that removed the unconditional (and, since GA, unnecessary)
 structured-outputs-2025-11-13 beta header and the dead, unused
-StructuredCoder.BETA attribute — see docs/42_upgrade_v1.30.0.md.
+StructuredCoder.BETA attribute — see docs/releases/42_upgrade_v1.30.0.md.
 """
 
 import json

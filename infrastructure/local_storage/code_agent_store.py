@@ -102,7 +102,7 @@ class CodeSession:
             # Cost estimate now reads the actual session model's price
             # from the catalog instead of a hardcoded "Sonnet 4.5 rates"
             # $3/$15 literal — found 2026-08-16 while reading this file
-            # ahead of migration (docs/54_bugfix_upgrade_target_opus5_sonnet5.md
+            # ahead of migration (docs/releases/54_bugfix_upgrade_target_opus5_sonnet5.md
             # neighbor finding), same duplication anti-pattern §0
             # describes; fixed as part of this migration rather than
             # left for a second pass, since the old constant would

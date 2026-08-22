@@ -336,7 +336,7 @@ def build_multiagent_config(agents: list, advisor_model: str | None = None) -> d
 # Small built-in system-prompt presets for the --agent-review-multiagent
 # CLI convenience wrapper (parallel specialist code review over one shared
 # sandbox — the concrete zcoder use case that un-deferred Multiagent
-# orchestration this cycle; see docs/35_upgrade_v1.21.0.md).
+# orchestration this cycle; see docs/releases/35_upgrade_v1.23.0_audit_and_impl.md).
 REVIEW_SPECIALIST_PRESETS = {
     "security": (
         "You are a security reviewer. Read the code at the given path and "

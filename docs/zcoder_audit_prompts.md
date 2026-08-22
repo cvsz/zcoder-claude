@@ -1,9 +1,9 @@
 # zcoder full-source audit — prompt pack
 
-Modeled on the methodology your own `docs/NN_upgrade_vX.Y.Z_audit_and_impl.md`
+Modeled on the methodology your own `docs/releases/NN_upgrade_vX.Y.Z_audit_and_impl.md`
 cycles already use (live docs fetch → grep source → prioritized findings →
 non-gaps checked → methodology note). Run one prompt per cycle, not all at
-once — each should produce its own `docs/NN_...md`, the same as before.
+once — each should produce its own `docs/releases/NN_...md`, the same as before.
 
 ---
 
@@ -167,9 +167,9 @@ cycle's pagination change)?
   since those are the areas most likely to have live-breaking drift
   (per your own audit history). Groups 8-14 are lower urgency — mostly
   additive gaps, not regressions.
-- One prompt = one cycle = one `docs/NN_...md`, same convention as before.
+- One prompt = one cycle = one `docs/releases/NN_...md`, same convention as before.
   Don't batch multiple groups into a single cycle; it makes root-causing
   "why was this missed" harder to do honestly per finding.
 - After each audit doc is reviewed, follow up with: *"Implement the P0 and
-  P1 findings from docs/NN_....md"* — keep audit and implementation as
+  P1 findings from docs/releases/NN_....md"* — keep audit and implementation as
   separate turns, same as this cycle.

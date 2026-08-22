@@ -3,7 +3,7 @@
 Covers claude_tools.py's v1.24.0 server tool version bumps
 (code_execution_20260521, web_search_20260318, web_fetch_20260318) and
 the new response_inclusion parameter — see
-docs/36_upgrade_v1.24.0_audit_and_impl.md Finding 1.
+docs/releases/36_upgrade_v1.24.0_audit_and_impl.md Finding 1.
 """
 
 import json

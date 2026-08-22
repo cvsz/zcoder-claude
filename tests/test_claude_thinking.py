@@ -4,7 +4,7 @@ Covers claude_thinking.py's v1.25.0 addition (thinking.display="omitted",
 GA, no beta header) and its v1.30.0 rewrite: real adaptive-thinking
 routing (thinking.type="adaptive" + top-level output_config.effort, no
 budget_tokens) vs. the legacy manual budget_tokens path, auto-selected
-per model. See docs/42_upgrade_v1.30.0.md for the full audit — before
+per model. See docs/releases/42_upgrade_v1.30.0.md for the full audit — before
 this fix, --thinking always sent manual budget_tokens, which is a 400
 error on every current-generation model except Opus 4.5 and Haiku 4.5.
 """

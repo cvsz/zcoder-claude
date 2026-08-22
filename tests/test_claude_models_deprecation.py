@@ -5,7 +5,7 @@ still callable today" separately from RETIRED_MODELS ("already 404s").
 claude_models.py had no dedicated test file before this cycle; scope here
 is limited to the new deprecation-tracking surface, not a full backfill
 of pre-existing untested functions (validate_fast_mode, cmd_upgrade_all,
-etc.) — see docs/49_upgrade_v1.37.0_deferred_items.md for that note.
+etc.) — see docs/releases/49_upgrade_v1.37.0_deferred_items.md for that note.
 """
 
 import sys

@@ -53,7 +53,7 @@ bounded agent loop with independent verification and review sign-off.
 
 ## v1.41.0 — Claude 2026-08-21 upgrade alignment
 
-Full detail in `docs/55_upgrade_v1.41.0_claude_2026_08_21.md`.
+Full detail in `docs/releases/55_upgrade_v1.41.0_claude_2026_08_21.md`.
 
 **Pricing correction:** Sonnet 5's scheduled $3/$15 MTok increase (Oct 2026)
 was cancelled Aug 10, 2026 — the $2/$10 rate is now permanent. Corrected in
@@ -98,7 +98,7 @@ backfills + v1.41.0's new tests, 0 failing).
 
 ## v1.40.0 — `--upgrade-all` gains Opus 5 and Sonnet 5 targets
 
-Full detail in `docs/54_bugfix_upgrade_target_opus5_sonnet5.md`.
+Full detail in `docs/releases/54_bugfix_upgrade_target_opus5_sonnet5.md`.
 
 **Bugfix:** `--upgrade-target` had no way to reach `claude-opus-5` or
 `claude-sonnet-5` — both already correctly listed as `"current"` tier in
@@ -108,7 +108,7 @@ preserving existing script/CI behavior).
 
 ## v1.39.0 — Managed Agents session budgets, `inference_geo`, advisor roster, and a CLI wiring gap
 
-Full detail in `docs/52_upgrade_v1.39.0_managed_agents_session_budgets.md`.
+Full detail in `docs/releases/52_upgrade_v1.39.0_managed_agents_session_budgets.md`.
 
 **New feature:** Managed Agents session budgets (public beta, shipped by
 Anthropic Aug 7 2026) — a hard USD spend cap on a session, enforced at
@@ -149,7 +149,7 @@ section for exact reasons.
 
 ## v1.38.0 — Claude Enterprise User Management API, and closing a wiring gap in it
 
-Full detail in `docs/51_upgrade_v1.38.0_ce_user_management.md`.
+Full detail in `docs/releases/51_upgrade_v1.38.0_ce_user_management.md`.
 
 **New feature:** the Claude Enterprise (claude.ai) User Management API,
 beta since July 14, 2026 — Members, Invites, Groups, and read-only
@@ -170,7 +170,7 @@ pre-existing, unrelated environment gaps — see the writeup).
 
 ## v1.37.0 — Closing out v1.36.0's three deferred items
 
-Full detail in `docs/49_upgrade_v1.37.0_deferred_items.md`.
+Full detail in `docs/releases/49_upgrade_v1.37.0_deferred_items.md`.
 
 **Opus 4.1 deprecation (implemented):** added `DEPRECATED_MODELS` — a new
 registry distinct from `RETIRED_MODELS` for "announced retirement, still
@@ -197,7 +197,7 @@ three weeks before those endpoints stop working.
 
 ## v1.36.0 — Mid-system model-gate regression, cross-file doc bookkeeping
 
-Full detail in `docs/48_upgrade_v1.36.0_mid_system_gate_fix.md`.
+Full detail in `docs/releases/48_upgrade_v1.36.0_mid_system_gate_fix.md`.
 
 **Finding 1 (🔴 P0, regression):** `claude_cache.py`'s
 `MID_SYSTEM_SUPPORTED_MODELS` had been `{"claude-opus-4-8"}` since the
@@ -211,7 +211,7 @@ model set, already correct). 3 new/changed tests.
 
 **Finding 2 (bookkeeping):** v1.35.0 shipped with working code and an
 accurate `CHANGELOG.md` entry, but `pyproject.toml`'s version, the
-referenced `docs/47_*.md` writeup, and this README's headline never
+referenced `docs/releases/47_*.md` writeup, and this README's headline never
 actually landed. Backfilled all three.
 
 Also re-confirmed as non-gaps: Opus 5 catalog/fast-mode/effort-thinking
@@ -224,7 +224,7 @@ surface changes (usage-tier consolidation, Workbench retirement).
 
 ## v1.35.0 — Dreaming audit: model-support expansion, missing archive, unreachable cancel
 
-Full detail in `docs/47_upgrade_v1.35.0_dreaming_audit.md`. First
+Full detail in `docs/releases/47_upgrade_v1.35.0_dreaming_audit.md`. First
 Dreaming-focused audit cycle since it was originally closed in v1.20.0.
 
 **Finding 1 (🔴 P0, bug):** `create_dream()` sent `model={"id": model}`
@@ -259,7 +259,7 @@ documented signature) plus `--agent-dream-list-limit/-page/
 
 ## v1.34.0 — Re-validation cycle: Opus, Sonnet, Haiku, Fable, Mythos
 
-Full detail in `docs/46_upgrade_v1.34.0_model_revalidation.md`. Targeted
+Full detail in `docs/releases/46_upgrade_v1.34.0_model_revalidation.md`. Targeted
 re-audit of the five per-model modules against a fresh fetch of the
 release notes overview (2026-07-26; nothing newer than July 24, 2026
 exists yet). Model catalog, fast-mode sets, and existing per-model
@@ -283,7 +283,7 @@ accepts and rejects them client-side before building a request.
 
 ## v1.33.0 — Dedicated deep-detail modules: Opus 5, Sonnet 5, Haiku 4.5
 
-Full detail in `docs/45_upgrade_v1.33.0_current_tier_deep_modules.md`.
+Full detail in `docs/releases/45_upgrade_v1.33.0_current_tier_deep_modules.md`.
 
 `claude_fable5.py` / `claude_mythos5.py` were the only per-model modules
 in the project — every current-tier model (Opus 5, Sonnet 5, Haiku 4.5)
@@ -328,7 +328,7 @@ total; full existing suite still green.
 
 Fetched `platform.claude.com/docs/en/release-notes/overview` directly
 (2026-07-26) covering everything since the last audit (2026-07-14).
-Full detail in `docs/44_upgrade_v1.32.0_release_validation.md`.
+Full detail in `docs/releases/44_upgrade_v1.32.0_release_validation.md`.
 
 **Claude Opus 5** (launched 2026-07-24) added to `claude_models.
 MODEL_CATALOG`: 1M context window (default and max), 128k max output,
@@ -372,7 +372,7 @@ from `main.py`. Four modules — `claude_github.py`, `claude_router.py`,
 `claude_prompt_optimizer.py`, `claude_metrics.py` — were fully
 implemented, each with its own `CLI flags:` docstring specifying exactly
 what should exist, and none of it wired since `v1.9.1`. Full detail in
-`docs/43_upgrade_v1.31.0_cli_wiring_audit.md`.
+`docs/releases/43_upgrade_v1.31.0_cli_wiring_audit.md`.
 
 Added: `--gh-review-pr`, `--gh-triage-issues`, `--gh-summarise-commits`,
 `--gh-pr-description`, `--gh-token`, `--gh-max-items` (GitHub
@@ -551,7 +551,7 @@ Re-ran the `ROADMAP.md` gap-audit methodology against the live docs
 (previous audit: 2026-07-13; this one: 2026-07-13, same-day re-run with
 a full re-read of the Managed Agents memory docs page rather than just
 the top-level release notes). One regression fixed, one gap closed —
-full detail in `docs/39_upgrade_v1.27.0_audit_and_impl.md`.
+full detail in `docs/releases/39_upgrade_v1.27.0_audit_and_impl.md`.
 
 **🔴 Regression fix:** `ManagedAgentsClient.create_memory_store()` and
 `.list_memories()` were sending both `managed-agents-2026-04-01` and
@@ -684,7 +684,7 @@ Agents argument group; tests added to `tests/test_claude_agents_sdk.py`.
 Re-ran the `ROADMAP.md` gap-audit methodology against the live docs
 (previous audit: 2026-07-11; this one: 2026-07-13). One finding, closed
 in this release — full detail in
-`docs/38_upgrade_v1.26.0_audit_and_impl.md`.
+`docs/releases/38_upgrade_v1.26.0_audit_and_impl.md`.
 
 **Self-hosted sandboxes** (public beta, new): run Managed Agents tool
 execution on infrastructure you control instead of Anthropic's cloud
@@ -713,7 +713,7 @@ Re-ran the `ROADMAP.md` gap-audit methodology against the live docs
 (previous audit: 2026-07-08; this one: 2026-07-08). Three findings,
 closed in this release; one further finding (native Multiagent
 orchestration) confirmed real but deliberately deferred — full detail
-in `docs/33_upgrade_v1.20.0.md`.
+in `docs/releases/33_upgrade_v1.20.0.md`.
 
 **Dreaming** (research preview, new): reviews a memory store alongside
 past session transcripts and produces a new, curated output memory
@@ -753,7 +753,7 @@ coordinator topology configured on the Agent resource itself
 Managed Agents session or filesystem). Confirmed real and absent, but
 left undocumented-as-built pending a concrete use case — same pattern
 as the Compliance API between v1.15.0 and v1.16.0. See
-`docs/33_upgrade_v1.20.0.md` for the full reasoning and exit condition.
+`docs/releases/33_upgrade_v1.20.0.md` for the full reasoning and exit condition.
 
 Total test count: 176 (up from 160 in v1.19.0) — 16 new tests in
 `tests/test_claude_agents_sdk.py` covering Dreaming, Outcomes, and
@@ -763,7 +763,7 @@ Webhooks.
 
 Re-ran the `ROADMAP.md` gap-audit methodology against the live docs
 (previous audit: 2026-07-08; this one: 2026-07-08). One finding, closed
-in this release — full detail in `docs/32_upgrade_v1.19.0.md`.
+in this release — full detail in `docs/releases/32_upgrade_v1.19.0.md`.
 
 **Managed Agents memory stores** (new, genuinely missing): a workspace-
 scoped, persistent, versioned file directory (`memory_store`) that can
@@ -787,7 +787,7 @@ the 150 pre-existing tests — 160 total).
 
 Re-ran the `ROADMAP.md` gap-audit methodology against the live docs
 (previous audit: 2026-07-04; this one: 2026-07-08). Two findings, both
-closed in this release — full detail in `docs/31_upgrade_v1.18.0.md`.
+closed in this release — full detail in `docs/releases/31_upgrade_v1.18.0.md`.
 
 **Mid-conversation system messages** (new, genuinely missing): Opus
 4.8-only feature that lets you append a `role: "system"` message partway
@@ -860,7 +860,7 @@ access to the chats, files, and projects those activities reference,
 plus directory (orgs/users/roles/settings/groups) endpoints. Every
 destructive op is dry-run by default and requires `--compliance-yes`.
 Retry/backoff and pagination-cursor handling follow the documented
-compliance-errors contract exactly (see `docs/30_upgrade_v1.16.0.md`).
+compliance-errors contract exactly (see `docs/releases/30_upgrade_v1.16.0.md`).
 28 new tests in `tests/test_claude_compliance_api.py`, all passing.
 
 ## v1.15.0 — Roadmap gap-audit implementation
@@ -868,7 +868,7 @@ compliance-errors contract exactly (see `docs/30_upgrade_v1.16.0.md`).
 Implements the five buildable items from `ROADMAP.md`'s gap audit against
 platform.claude.com/docs (checked 2026-07-04); the sixth (Compliance API)
 stays a documented gap per the roadmap's own recommendation. See
-`docs/29_upgrade_v1.15.0.md` for the full write-up and `CHECKLIST.md` for
+`docs/releases/29_upgrade_v1.15.0.md` for the full write-up and `CHECKLIST.md` for
 the itemized task list this release closes out.
 
 - **P0 — Server-side `fallbacks` param** (`claude_fable5.py`): new
@@ -882,7 +882,7 @@ the itemized task list this release closes out.
   `claude_code.py`'s `--code-agent` loop never called it). New
   `--agent-context-editing` flag wires `clear_tool_uses` into the agent
   loop, complementary to the existing Compaction support. See
-  `docs/29_upgrade_v1.15.0.md` for a worked example combining both.
+  `docs/releases/29_upgrade_v1.15.0.md` for a worked example combining both.
 - **P1 — Agent Skills API** (new `claude_skills_api.py`): `skill_id`-based
   platform Skills, distinct from `claude_code.py`'s local
   `.claude/skills/*/SKILL.md` loader. New `--skills-list` / `--skills-info
@@ -908,19 +908,19 @@ dead argparse flag since v1.7.0) now runs a real persistent chat REPL, and
 a new `--excel` conversational spreadsheet assistant builds financial
 models, cleans messy data, and creates tables/charts against a live
 `.xlsx` workbook. No existing flags changed. See
-`docs/28_upgrade_v1.14.0.md`.
+`docs/releases/28_upgrade_v1.14.0.md`.
 
 ## v1.13.0 — Enterprise hardening
 
 Structured logging with secret redaction, retry + circuit breaking around
 the core API call, path/URL/input security controls, a `--health-check`
 for orchestrators, and a full test/CI/Docker setup. No CLI flags removed
-or renamed. See `docs/27_upgrade_v1.13.0.md`.
+or renamed. See `docs/releases/27_upgrade_v1.13.0.md`.
 
 ## v1.12.1 — 2026-07-03
 
 Deep-dive bug pass against v1.12.0, plus a new bulk model-upgrade feature.
-See `docs/26_upgrade_v1.12.1.md` for full detail.
+See `docs/releases/26_upgrade_v1.12.1.md` for full detail.
 
 - Fixed `coder.py`'s `Coder.generate()` silently mishandling responses from
   thinking-capable models (Sonnet 5, Opus 4.8, Fable 5/Mythos 5) and any
@@ -964,12 +964,12 @@ Packaging-only release. No API/functional changes from v1.11.1.
   competing implementations behind the same CLI flags and import names —
   picked the one already wired into 900+ lines of `main.py` and this
   project's own audit history rather than replacing it. See
-  `docs/25_merge_v2_into_release.md` for the full reasoning.
+  `docs/releases/25_merge_v2_into_release.md` for the full reasoning.
 
 ## v1.11.1 and earlier
 
 See `docs/*_upgrade_*.md` for the full per-release history, starting from
-`docs/17_projects_and_artifacts.md`. Highlights:
+`docs/releases/17_projects_and_artifacts.md`. Highlights:
 
 - **v1.11.1**: MCP tunnels (`claude_agents_sdk.McpTunnel`), retired
   tool-version tracking (`claude_tools.RETIRED_TOOL_VERSIONS`), refusal

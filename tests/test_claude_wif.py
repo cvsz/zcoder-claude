@@ -1,7 +1,7 @@
 """tests/test_claude_wif.py
 
 Covers claude_wif.py — Workload Identity Federation (v1.23.0).
-See docs/35_upgrade_v1.23.0_audit_and_impl.md Finding 1.
+See docs/releases/35_upgrade_v1.23.0_audit_and_impl.md Finding 1.
 """
 
 import json

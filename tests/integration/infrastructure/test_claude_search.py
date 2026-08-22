@@ -5,7 +5,7 @@ WEB_SEARCH_TOOL/WEB_FETCH_TOOL constants had drifted from
 claude_tools.py's version tracking entirely (still on
 web_search_20250305/web_fetch_20250124). Bumped to
 web_search_20260318/web_fetch_20260318 and threaded response_inclusion
-through — see docs/36_upgrade_v1.24.0_audit_and_impl.md Finding 1.
+through — see docs/releases/36_upgrade_v1.24.0_audit_and_impl.md Finding 1.
 """
 
 import types

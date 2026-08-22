@@ -1,7 +1,7 @@
 """tests/test_claude_cost_optimizer.py
 
 claude_cost_optimizer.py had zero test coverage before this release-gate
-pass (2026-08-14) — flagged in docs/53_release_gate_v1.40.0.md as the
+pass (2026-08-14) — flagged in docs/releases/53_release_gate_v1.40.0.md as the
 reason a stale Sonnet 5 price ($3/$15 instead of the now-permanent $2/$10)
 went undetected. This file covers the pricing table, estimate_cost()'s
 surcharge/geo-multiplier logic, and the complexity router, so a future

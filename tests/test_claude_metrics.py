@@ -2,7 +2,7 @@
 
 claude_metrics.py had zero test coverage before this release-gate pass
 (2026-08-14) — flagged alongside claude_cost_optimizer.py in
-docs/53_release_gate_v1.40.0.md as the reason a stale Sonnet 5 price
+docs/releases/53_release_gate_v1.40.0.md as the reason a stale Sonnet 5 price
 ($3/$15 instead of the now-permanent $2/$10) went undetected in a third
 copy of the same pricing table. Covers _price(), the not_billed/refusal
 handling from v1.11.0, and summarise().

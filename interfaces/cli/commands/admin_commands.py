@@ -94,7 +94,7 @@ def cmd_cmek_list(admin_api_key: str, workspace_id: str | None = None):
 
     print(
         "\n\033[94mCMEK external keys\033[0m  "
-        "\033[93m(unverified endpoint shape — see docs/37_upgrade_v1.25.0_audit_and_impl.md)\033[0m\n"
+        "\033[93m(unverified endpoint shape — see docs/releases/37_upgrade_v1.25.0_audit_and_impl.md)\033[0m\n"
     )
     for k in data.get("data", []):
         print(

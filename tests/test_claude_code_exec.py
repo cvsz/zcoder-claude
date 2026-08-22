@@ -4,7 +4,7 @@ Covers claude_code_exec.py, specifically the v1.22.0 drift fix: the
 code_execution tool version bump from code_execution_20250522 (pre-GA,
 required the code-execution-2025-05-22 beta header) to
 code_execution_20260120 (GA, no beta header, REPL-state persistence) —
-see docs/34_upgrade_v1.22.0_audit_and_impl.md Finding 4.
+see docs/releases/34_upgrade_v1.22.0_audit_and_impl.md Finding 4.
 
 Exercises the real _call()/execute() path by monkeypatching
 urllib.request.urlopen, per this repo's existing pattern in

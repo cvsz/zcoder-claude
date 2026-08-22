@@ -9,7 +9,7 @@ import json
 import urllib.error
 import urllib.request
 
-from resilience import raise_for_http_error, retry, urlopen_json
+from infrastructure.anthropic_api.http_client import raise_for_http_error, retry, urlopen_json
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
 

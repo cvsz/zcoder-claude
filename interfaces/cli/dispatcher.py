@@ -2,27 +2,14 @@ import os
 import sys
 from pathlib import Path
 
-VERSION = "1.42.0"
+# Both live outside interfaces/ now (version.py / domain/agents/role_prompts.py)
+# so the TUI and webapp front ends read the same values without importing CLI
+# presentation code; these re-exports keep every existing consumer working.
+from version import VERSION
 
 BANNER = f"\033[94mAI Model Coder CLI v{VERSION}\033[0m"
 
-AGENT_SYSTEM_PROMPTS = {
-    "code_generator": "You are a full-project code generation agent. Produce complete, "
-    "runnable code for the request, not a partial sketch.",
-    "code_reviewer": "You are a code review agent. Focus on correctness, readability, "
-    "and maintainability; call out concrete issues with line-level detail.",
-    "testing_agent": "You are a testing agent. Produce comprehensive test suites, "
-    "covering edge cases and failure modes, not just the happy path.",
-    "documentation_agent": "You are a documentation agent. Write clear docs, READMEs, and API "
-    "references aimed at a reader new to this codebase.",
-    "optimizer": "You are a performance optimization agent. Identify concrete "
-    "bottlenecks and propose measurable improvements.",
-    "security_auditor": "You are a security audit agent. Review for vulnerabilities "
-    "(injection, auth, secrets handling, unsafe deserialization, etc.) "
-    "and rate severity for each finding.",
-    "full_stack": "You are a full-stack engineering agent. Consider frontend, backend, "
-    "and data-layer concerns together when responding.",
-}
+from domain.agents.role_prompts import AGENT_SYSTEM_PROMPTS  # noqa: E402
 
 
 def _api_key(args):
@@ -71,7 +58,7 @@ def dispatch(args):
 
     # ── No-key listing ──
     if args.list_skills:
-        from skills import SkillManager
+        from domain.skill_catalog import SkillManager
 
         for s in SkillManager().list_skills():
             print(f"  {s['name']:<25} — {s['description']}")
@@ -84,7 +71,7 @@ def dispatch(args):
             print(f"  {n:<25} — {sys_prompt}")
         return
     if args.list_personalities:
-        from personalities import PersonalityManager
+        from domain.personalities import PersonalityManager
 
         for p_ in PersonalityManager().list_personalities():
             print(f"  {p_['name']:<12} — {p_['description']}")
@@ -717,39 +704,37 @@ def dispatch(args):
         return
 
     if args.project_list:
-        from projects import cmd_project_list
+        from interfaces.cli.commands.projects_commands import cmd_project_list
 
         cmd_project_list()
         return
     if args.project_templates:
-        from projects import cmd_project_templates
+        from interfaces.cli.commands.projects_commands import cmd_project_templates
 
         cmd_project_templates()
         return
     if args.project_show:
-        from projects import cmd_project_show
+        from interfaces.cli.commands.projects_commands import cmd_project_show
 
         cmd_project_show(args.project_show)
         return
     if args.project_delete:
-        from projects import ProjectManager
+        from interfaces.cli.commands.projects_commands import cmd_project_delete
 
-        ProjectManager().delete_project(args.project_delete)
-        print("✓ Deleted.")
+        cmd_project_delete(args.project_delete)
         return
     if args.project_archive:
-        from projects import ProjectManager
+        from interfaces.cli.commands.projects_commands import cmd_project_archive
 
-        ProjectManager().archive_project(args.project_archive)
-        print("✓ Archived.")
+        cmd_project_archive(args.project_archive)
         return
     if args.project_create:
-        from projects import cmd_project_create
+        from interfaces.cli.commands.projects_commands import cmd_project_create
 
         cmd_project_create(args.project_create, args.project_desc, args.project_template)
         return
     if args.project_add_task:
-        from projects import cmd_project_add_task
+        from interfaces.cli.commands.projects_commands import cmd_project_add_task
 
         cmd_project_add_task(
             args.project_add_task,
@@ -760,12 +745,12 @@ def dispatch(args):
         )
         return
     if args.artifact_types:
-        from artifacts import cmd_artifact_types
+        from interfaces.cli.commands.artifacts_commands import cmd_artifact_types
 
         cmd_artifact_types()
         return
     if args.artifact_list:
-        from artifacts import cmd_artifact_list
+        from interfaces.cli.commands.artifacts_commands import cmd_artifact_list
 
         cmd_artifact_list(
             query=args.artifact_query,
@@ -775,37 +760,37 @@ def dispatch(args):
         )
         return
     if args.artifact_show:
-        from artifacts import cmd_artifact_show
+        from interfaces.cli.commands.artifacts_commands import cmd_artifact_show
 
         cmd_artifact_show(args.artifact_show, args.artifact_version)
         return
     if args.artifact_export:
-        from artifacts import cmd_artifact_export
+        from interfaces.cli.commands.artifacts_commands import cmd_artifact_export
 
         cmd_artifact_export(args.artifact_export, args.output or "", args.artifact_version)
         return
     if args.artifact_export_all:
-        from artifacts import cmd_artifact_export_all
+        from interfaces.cli.commands.artifacts_commands import cmd_artifact_export_all
 
         cmd_artifact_export_all(args.artifact_export_all, args.artifact_output_dir)
         return
     if args.artifact_diff:
-        from artifacts import cmd_artifact_diff
+        from interfaces.cli.commands.artifacts_commands import cmd_artifact_diff
 
         cmd_artifact_diff(args.artifact_diff, args.v1, args.v2)
         return
     if args.artifact_delete:
-        from artifacts import cmd_artifact_delete
+        from interfaces.cli.commands.artifacts_commands import cmd_artifact_delete
 
         cmd_artifact_delete(args.artifact_delete)
         return
     if args.artifact_tag:
-        from artifacts import cmd_artifact_tag
+        from interfaces.cli.commands.artifacts_commands import cmd_artifact_tag
 
         cmd_artifact_tag(args.artifact_tag, args.tag)
         return
     if args.artifact_attach:
-        from artifacts import cmd_artifact_attach
+        from interfaces.cli.commands.artifacts_commands import cmd_artifact_attach
 
         cmd_artifact_attach(args.artifact_attach, args.to_project)
         return
@@ -833,7 +818,7 @@ def dispatch(args):
             print(f"  Supported models: {', '.join(sorted(MID_CONVERSATION_TOOL_CHANGES_SUPPORTED))}")
         return
     if args.cowork_list:
-        from cowork import cmd_cowork_list
+        from interfaces.cli.commands.cowork_commands import cmd_cowork_list
 
         cmd_cowork_list()
         return
@@ -1903,7 +1888,7 @@ def dispatch(args):
         )
         return
     if args.cowork:
-        from cowork import cmd_cowork
+        from interfaces.cli.commands.cowork_commands import cmd_cowork
 
         prompt = args.cowork_prompt or args.prompt or ""
         if not prompt:
@@ -1979,19 +1964,19 @@ def dispatch(args):
 
     if args.project_plan:
         from infrastructure.anthropic_api.core_gateway import Coder
-        from projects import cmd_project_plan
+        from interfaces.cli.commands.projects_commands import cmd_project_plan
 
         cmd_project_plan(args.project_plan, Coder(api_key=key, model=model))
         return
     if args.project_run:
         from infrastructure.anthropic_api.core_gateway import Coder
-        from projects import cmd_project_run
+        from interfaces.cli.commands.projects_commands import cmd_project_run
 
         cmd_project_run(args.project_run, args.task or "all", Coder(api_key=key, model=model))
         return
     if args.artifact_create:
-        from artifacts import cmd_artifact_create
         from infrastructure.anthropic_api.core_gateway import Coder
+        from interfaces.cli.commands.artifacts_commands import cmd_artifact_create
 
         if not args.prompt:
             print("[ERROR] --artifact-create requires -p")
@@ -2008,8 +1993,8 @@ def dispatch(args):
         )
         return
     if args.artifact_iterate:
-        from artifacts import cmd_artifact_iterate
         from infrastructure.anthropic_api.core_gateway import Coder
+        from interfaces.cli.commands.artifacts_commands import cmd_artifact_iterate
 
         cmd_artifact_iterate(args.artifact_iterate, args.prompt or "", Coder(api_key=key, model=model))
         return
@@ -2034,7 +2019,7 @@ def dispatch(args):
         # and discarded.
         system_parts = []
         if args.skill:
-            from skills import SkillManager
+            from domain.skill_catalog import SkillManager
 
             skill = SkillManager().get_skill(args.skill)
             if skill:

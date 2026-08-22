@@ -91,39 +91,29 @@ def test_run_tui_entry_point_exists():
     assert callable(tui.run_tui)
 
 
+def test_tui_has_no_presentation_layer_imports():
+    """Architectural rule (exec-planning §2/§7): non-CLI front ends call the
+    application layer, never interfaces/cli. Guards against regressing back
+    to the dispatcher's AGENT_SYSTEM_PROMPTS import."""
+    import inspect
+
+    src = inspect.getsource(tui)
+    assert "from interfaces" not in src
+    assert "import interfaces" not in src
+
+
 def test_streamed_reply_shows_full_text_even_when_gated(monkeypatch):
     """A fast, short stream must flush its final unpainted deltas."""
-    import sys
     import types
 
-    class Delta:
-        type = "text_delta"
+    def fake_stream_chat_turn(prompt, api_key, model, system=None, history=None,
+                              temperature=None, max_tokens=4096, on_text=None):
+        assert history == []
+        for chunk in ("Hi", " there", "!"):
+            on_text(chunk)
+        return "Hi there!"
 
-        def __init__(self, text):
-            self.text = text
-
-    class Event:
-        type = "content_block_delta"
-
-        def __init__(self, text):
-            self.delta = Delta(text)
-
-    class Stream:
-        def __enter__(self):
-            return iter([Event("Hi"), Event(" there"), Event("!")])
-
-        def __exit__(self, *args):
-            return False
-
-    class Messages:
-        def stream(self, **kwargs):
-            return Stream()
-
-    class Client:
-        def __init__(self, **kwargs):
-            self.messages = Messages()
-
-    monkeypatch.setitem(sys.modules, "anthropic", types.SimpleNamespace(Anthropic=Client))
+    monkeypatch.setattr(tui.messaging_service, "stream_chat_turn", fake_stream_chat_turn)
     monkeypatch.setattr(tui.time, "monotonic", lambda: 1.0)
 
     updates = []

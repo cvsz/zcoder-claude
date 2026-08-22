@@ -21,6 +21,7 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
+from infrastructure.anthropic_api.core_gateway import Coder
 from infrastructure.anthropic_api.messaging_gateway import (
     CitationsCoder,
     LiveSession,
@@ -34,6 +35,55 @@ _NOOP = lambda *a, **k: None  # noqa: E731
 
 
 # ── Streaming ────────────────────────────────────────────────────────────
+
+
+def chat_turn(
+    prompt: str,
+    api_key: str | None = None,
+    model: str = "claude-sonnet-5",
+    temperature: float = 0.3,
+    max_tokens: int = 4096,
+    system: str | None = None,
+    history: list | None = None,
+    personality_style: str | None = None,
+) -> str:
+    """One complete non-streaming chat turn (multi-turn aware). Used by the
+    webapp's POST /api/chat and the TUI's non-streaming send — both were
+    constructing the core_gateway.Coder class directly before this
+    extraction (2026-08-22, Phase F web/TUI audit)."""
+    coder = Coder(
+        api_key=api_key or None,
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        personality_style=personality_style,
+    )
+    return coder.generate(prompt, system=system, history=list(history or []))
+
+
+def stream_chat_turn(
+    prompt: str,
+    api_key: str,
+    model: str,
+    system: str | None = None,
+    history: list | None = None,
+    temperature: float | None = None,
+    max_tokens: int = 4096,
+    on_text: Callable[[str], None] = _NOOP,
+) -> str:
+    """One streaming chat turn (multi-turn aware): invokes on_text per
+    text delta, returns the full response. Replaces the raw
+    anthropic.Anthropic SSE loops that webapp/server.py and tui.py each
+    maintained inline; the SSE event-shape handling lives in the gateway's
+    StreamCoder.stream."""
+    sc = StreamCoder(api_key=api_key, model=model, max_tokens=max_tokens)
+    return sc.stream(
+        prompt,
+        system=system,
+        history=list(history or []),
+        temperature=temperature,
+        on_text=on_text,
+    )
 
 
 def stream_text(

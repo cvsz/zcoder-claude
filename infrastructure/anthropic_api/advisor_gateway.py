@@ -9,7 +9,7 @@ import urllib.request
 
 from domain.advisor import ADVISOR_TOOL_BETA, ADVISOR_TOOL_TYPE, strip_advisor_blocks
 from exceptions import AICoderError
-from resilience import CircuitBreaker, retry, urlopen_json
+from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 ENDPOINT = "https://api.anthropic.com/v1/messages"
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)

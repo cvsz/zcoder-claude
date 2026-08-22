@@ -22,7 +22,7 @@ import anthropic
 
 from domain.agent_execution import Plan, PlanStep
 from exceptions import AICoderError
-from resilience import CircuitBreaker, retry, urlopen_json
+from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 from utils import sampling_kwargs
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"

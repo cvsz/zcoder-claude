@@ -10,8 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import resilience
 from infrastructure.anthropic_api.core_gateway import Coder
+from infrastructure.anthropic_api.http_client import CircuitBreaker
 
 
 @pytest.fixture(autouse=True)
@@ -20,7 +20,7 @@ def fresh_breaker(monkeypatch):
     don't trip the breaker for the next one."""
     monkeypatch.setattr(
         "infrastructure.anthropic_api.core_gateway._default_breaker",
-        resilience.CircuitBreaker(failure_threshold=10, reset_timeout=0.01),
+        CircuitBreaker(failure_threshold=10, reset_timeout=0.01),
     )
 
 

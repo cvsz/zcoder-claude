@@ -1,18 +1,20 @@
 """
 webapp/backend/server.py — FastAPI backend for the zcoder web UI.
 
-This is a thin HTTP adapter around the existing CLI core -- it does not
-reimplement any behaviour. Every endpoint delegates to the same classes
-and modules `main.py` already uses:
+This is a thin HTTP adapter around the application/ use-case layer -- it
+does not reimplement any behaviour and (since the 2026-08-22 Phase F
+audit) never imports interfaces/cli or constructs infrastructure
+gateways directly. Every endpoint delegates to the same modules the CLI
+does:
 
-    coder.Coder              -> chat/generation
-    personalities.py         -> PersonalityManager
-    skills.py                -> SkillManager
-    claude_models.py         -> MODEL_CATALOG (dropdown list)
-    main.py                  -> VERSION, AGENT_SYSTEM_PROMPTS
-    config.py                -> Config (persisted to ~/.ai-coder-config.json)
-    health.py                -> run_health_check (used for Docker/orchestrator
-                                 probes and the CLI's --health-check flag)
+    application/messaging_service.py -> chat_turn / stream_chat_turn
+    domain.agents.role_prompts       -> AGENT_SYSTEM_PROMPTS (/api/agents)
+    version.py                       -> VERSION
+    config.py                        -> Config (persisted to ~/.ai-coder-config.json)
+    health.py                        -> run_health_check (used for Docker/orchestrator
+                                          probes and the CLI's --health-check flag)
+    domain.models.catalog            -> MODEL_CATALOG (dropdown list)
+    domain.personalities/skill_catalog -> listing data for the sidebar
 
 Run with:  uvicorn webapp.backend.server:app --host 0.0.0.0 --port 8420
 (or just `make start`, see the project Makefile).
@@ -21,7 +23,9 @@ Run with:  uvicorn webapp.backend.server:app --host 0.0.0.0 --port 8420
 from __future__ import annotations
 
 import json
+import queue
 import sys
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -37,14 +41,15 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from application import messaging_service  # noqa: E402
 from config import Config  # noqa: E402
+from domain.agents.role_prompts import AGENT_SYSTEM_PROMPTS  # noqa: E402
 from domain.models.catalog import MODEL_CATALOG  # noqa: E402
+from domain.personalities import PersonalityManager  # noqa: E402
+from domain.skill_catalog import SkillManager  # noqa: E402
 from health import run_health_check  # noqa: E402
-from infrastructure.anthropic_api.core_gateway import Coder  # noqa: E402
-from interfaces.cli.dispatcher import AGENT_SYSTEM_PROMPTS, VERSION  # noqa: E402
 from logging_config import get_logger  # noqa: E402
-from personalities import PersonalityManager  # noqa: E402
-from skills import SkillManager  # noqa: E402
+from version import VERSION  # noqa: E402
 
 logger = get_logger("webapp.server")
 
@@ -70,6 +75,9 @@ _skill_mgr = SkillManager()
 # `--interactive` REPL history -- just reachable over HTTP instead of a
 # terminal. Restarting the server clears all sessions.
 _sessions: dict[str, list[dict]] = {}
+_sessions_lock = threading.Lock()  # guards read-modify-write of _sessions
+# (chat + stream worker both append a turn; without the lock two concurrent
+# turns on one session can clobber each other's snapshot)
 _SESSION_LIMIT = 200  # oldest session dropped past this to bound memory
 
 
@@ -257,22 +265,25 @@ def chat(req: ChatRequest, request: Request):
 
     system = _build_system_prompt(req)
 
-    coder = Coder(
+    reply = messaging_service.chat_turn(
+        req.prompt,
         api_key=req.api_key or None,
         model=req.model,
         temperature=req.temperature,
         max_tokens=req.max_tokens,
+        system=system,
+        history=history,
         personality_style=req.personality,
     )
-    reply = coder.generate(req.prompt, system=system, history=history)
 
     history = history + [
         {"role": "user", "content": req.prompt},
         {"role": "assistant", "content": reply},
     ]
-    _sessions[session_id] = history
-    if len(_sessions) > _SESSION_LIMIT:
-        _sessions.pop(next(iter(_sessions)), None)
+    with _sessions_lock:
+        _sessions[session_id] = history
+        if len(_sessions) > _SESSION_LIMIT:
+            _sessions.pop(next(iter(_sessions)), None)
 
     return ChatResponse(session_id=session_id, response=reply, model=req.model)
 
@@ -281,9 +292,10 @@ def chat(req: ChatRequest, request: Request):
 def chat_stream(req: ChatRequest, request: Request):
     """Server-Sent Events variant of /api/chat. Same request body and same
     session-history semantics; the difference is purely transport — tokens
-    arrive as they're generated instead of after the full response. Reuses
-    claude_stream.py's event-handling shape (content_block_delta/text_delta)
-    rather than reimplementing SSE parsing.
+    arrive as they're generated instead of after the full response. The
+    generation itself goes through application/messaging_service's
+    stream_chat_turn (gateway SSE loop); this handler only bridges the
+    service's on_text callback onto SSE `data:` lines.
 
     Each SSE `data:` line is a small JSON object:
       {"type": "token", "text": "..."}          — one delta, may repeat
@@ -303,39 +315,56 @@ def chat_stream(req: ChatRequest, request: Request):
     if not api_key:
         raise HTTPException(400, "No API key configured. Set one via /api/config or pass api_key.")
 
-    def event_stream():
-        import anthropic
+    # messaging_service.stream_chat_turn is a blocking call with an on_text
+    # callback; run it on a worker thread and ferry deltas to this response
+    # generator through a queue so tokens still arrive incrementally.
+    q: queue.Queue = queue.Queue()
 
+    def worker() -> None:
         full_text = ""
+
+        def on_text(text: str) -> None:
+            nonlocal full_text
+            full_text += text
+            q.put(("token", text))
+
         try:
-            client = anthropic.Anthropic(api_key=api_key)
-            messages = list(history) + [{"role": "user", "content": req.prompt}]
-            kwargs = dict(model=req.model, max_tokens=req.max_tokens, messages=messages)
-            if system:
-                kwargs["system"] = system
-            if 0.0 <= req.temperature <= 1.0:
-                kwargs["temperature"] = req.temperature
-            with client.messages.stream(**kwargs) as stream:
-                for event in stream:
-                    if getattr(event, "type", "") == "content_block_delta":
-                        delta = event.delta
-                        if getattr(delta, "type", "") == "text_delta":
-                            text = getattr(delta, "text", "")
-                            full_text += text
-                            yield f"data: {json.dumps({'type': 'token', 'text': text})}\n\n"
+            messaging_service.stream_chat_turn(
+                req.prompt,
+                api_key=api_key,
+                model=req.model,
+                system=system,
+                history=history,
+                temperature=req.temperature,
+                max_tokens=req.max_tokens,
+                on_text=on_text,
+            )
         except Exception as e:
             logger.exception("stream_chat_failed", extra={"model": req.model})
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            q.put(("error", str(e)))
             return
 
-        new_history = history + [
-            {"role": "user", "content": req.prompt},
-            {"role": "assistant", "content": full_text},
-        ]
-        _sessions[session_id] = new_history
-        if len(_sessions) > _SESSION_LIMIT:
-            _sessions.pop(next(iter(_sessions)), None)
-        yield f"data: {json.dumps({'type': 'done', 'session_id': session_id, 'model': req.model})}\n\n"
+        with _sessions_lock:
+            _sessions[session_id] = history + [
+                {"role": "user", "content": req.prompt},
+                {"role": "assistant", "content": full_text},
+            ]
+            if len(_sessions) > _SESSION_LIMIT:
+                _sessions.pop(next(iter(_sessions)), None)
+        q.put(("done", None))
+
+    def event_stream():
+        threading.Thread(target=worker, daemon=True).start()
+        while True:
+            kind, payload = q.get()
+            if kind == "token":
+                yield f"data: {json.dumps({'type': 'token', 'text': payload})}\n\n"
+            elif kind == "done":
+                yield f"data: {json.dumps({'type': 'done', 'session_id': session_id, 'model': req.model})}\n\n"
+                return
+            else:  # error
+                yield f"data: {json.dumps({'type': 'error', 'message': payload})}\n\n"
+                return
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 

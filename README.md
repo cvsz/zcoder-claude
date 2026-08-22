@@ -24,8 +24,8 @@ make build && make start
 
 - [`COMMAND.md`](COMMAND.md) — full command and capability reference
 - [`CHANGELOG.md`](CHANGELOG.md) — release history
-- [`ROADMAP.md`](ROADMAP.md) — planned work and capability gaps
-- [`IMPLEMENTATION_CHECKLIST.md`](IMPLEMENTATION_CHECKLIST.md) — implementation/audit tracking
+- [`ROADMAP.md`](docs/planning/ROADMAP.md) — planned work and capability gaps
+- [`IMPLEMENTATION_CHECKLIST.md`](docs/planning/IMPLEMENTATION_CHECKLIST.md) — implementation/audit tracking
 - [`docs/`](docs/) — detailed upgrade and feature notes
 
 ## Current release

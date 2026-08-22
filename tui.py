@@ -5,17 +5,21 @@ Launched via `python main.py --tui` (see main.py). This is a second front
 end alongside the plain-argparse CLI and the FastAPI web console
 (webapp/), reusing the exact same core the other two do:
 
-    coder.Coder               -> chat/generation (streamed, via the
-                                  anthropic SDK -- same shape as
-                                  claude_stream.StreamCoder)
-    personalities.py          -> PersonalityManager
-    skills.py                 -> SkillManager
-    claude_models.py          -> MODEL_CATALOG
-    main.py                   -> AGENT_SYSTEM_PROMPTS, VERSION
-    config.py                 -> Config (persisted to ~/.ai-coder-config.json)
+    application/messaging_service.py -> chat_turn / stream_chat_turn
+                                         (streamed via the gateway's SSE
+                                         loop -- same shape as webapp's)
+    domain.personalities             -> PersonalityManager
+    domain.skill_catalog             -> SkillManager
+    domain.models.catalog            -> MODEL_CATALOG
+    domain.agents.role_prompts       -> AGENT_SYSTEM_PROMPTS
+    version.py                       -> VERSION
+    config.py                        -> Config (persisted to ~/.ai-coder-config.json)
 
 No business logic lives here -- this module is purely presentation, same
-principle webapp/backend/server.py documents for itself.
+principle webapp/backend/server.py documents for itself. What stays
+presentation-specific by design: widget composition, the argparse-free
+interactive loop, and the StreamRenderGate frame-throttling of stream
+deltas (a terminal-rendering concern, not a use case).
 
 `textual` is an optional dependency (see requirements.txt): importing
 this module raises a clear, actionable ImportError if it isn't
@@ -48,21 +52,15 @@ except ImportError as e:  # pragma: no cover - exercised only w/o textual instal
         "(or: pip install -r requirements.txt, it's an optional extra there)"
     ) from e
 
+from application import messaging_service
 from config import Config
+from domain.agents.role_prompts import AGENT_SYSTEM_PROMPTS
 from domain.models.catalog import MODEL_CATALOG
-from personalities import PersonalityManager
-from skills import SkillManager
+from domain.personalities import PersonalityManager
+from domain.skill_catalog import SkillManager
 from tui_streaming import StreamRenderGate
 
 DEFAULT_MODEL = "claude-sonnet-5"
-
-
-def _agent_prompts() -> dict:
-    # Imported lazily to avoid a circular import -- interfaces.cli.dispatcher
-    # lazy-imports tui itself, so tui can't import dispatcher at module scope.
-    from interfaces.cli.dispatcher import AGENT_SYSTEM_PROMPTS
-
-    return AGENT_SYSTEM_PROMPTS
 
 
 class ChatMessage(Static):
@@ -97,7 +95,7 @@ class SessionSidebar(Vertical):
         personality_options = [("none", "")] + [
             (p["name"], p["name"]) for p in PersonalityManager().list_personalities()
         ]
-        agent_options = [("none", "")] + [(name, name) for name in _agent_prompts().keys()]
+        agent_options = [("none", "")] + [(name, name) for name in AGENT_SYSTEM_PROMPTS.keys()]
         skill_options = [("none", "")] + [(s["name"], s["name"]) for s in SkillManager().list_skills()]
 
         yield Label("model", classes="side-label")
@@ -213,7 +211,7 @@ class ZCoderTUI(App):
         parts = []
         agent = self._selected("agent_select")
         if agent:
-            parts.append(_agent_prompts().get(agent, ""))
+            parts.append(AGENT_SYSTEM_PROMPTS.get(agent, ""))
         skill = self._selected("skill_select")
         if skill:
             info = SkillManager().get_skill(skill)
@@ -254,10 +252,14 @@ class ZCoderTUI(App):
                     prompt, model, system, temperature, history_snapshot, reply_widget
                 )
             else:
-                from infrastructure.anthropic_api.core_gateway import Coder
-
-                coder = Coder(api_key=self.api_key, model=model, temperature=temperature)
-                full_text = coder.generate(prompt, system=system, history=history_snapshot)
+                full_text = messaging_service.chat_turn(
+                    prompt,
+                    api_key=self.api_key,
+                    model=model,
+                    temperature=temperature,
+                    system=system,
+                    history=history_snapshot,
+                )
                 self.call_from_thread(reply_widget.update_text, full_text)
         except Exception as e:  # keep the TUI alive on any generation failure
             full_text = f"[ERROR] {e}"
@@ -270,32 +272,32 @@ class ZCoderTUI(App):
         ]
 
     def _stream_reply(self, prompt, model, system, temperature, history, reply_widget) -> str:
-        import anthropic
-
-        client = anthropic.Anthropic(api_key=self.api_key)
-        messages = list(history) + [{"role": "user", "content": prompt}]
-        kwargs = dict(model=model, max_tokens=4096, messages=messages)
-        if system:
-            kwargs["system"] = system
-        if 0.0 <= temperature <= 1.0:
-            kwargs["temperature"] = temperature
-
+        # Generation goes through the application layer; what remains here is
+        # purely presentation: throttling gateway deltas to ~30 fps via the
+        # render gate so textual isn't flooded with layout work.
         full_text = ""
         render_gate = StreamRenderGate()
         try:
-            with client.messages.stream(**kwargs) as stream:
-                for event in stream:
-                    if getattr(event, "type", "") == "content_block_delta":
-                        delta = event.delta
-                        if getattr(delta, "type", "") == "text_delta":
-                            text = getattr(delta, "text", "")
-                            full_text += text
-                            # Rendering every provider delta can enqueue hundreds of
-                            # expensive layout/scroll operations per second. Coalesce
-                            # them to at most ~30 fps (or a visibly large chunk).
-                            if render_gate.should_render(text, time.monotonic()):
-                                self.call_from_thread(reply_widget.update_text, full_text)
-                                self.call_from_thread(self.query_one("#transcript").scroll_end, animate=False)
+
+            def on_text(text: str) -> None:
+                nonlocal full_text
+                full_text += text
+                # Rendering every provider delta can enqueue hundreds of
+                # expensive layout/scroll operations per second. Coalesce
+                # them to at most ~30 fps (or a visibly large chunk).
+                if render_gate.should_render(text, time.monotonic()):
+                    self.call_from_thread(reply_widget.update_text, full_text)
+                    self.call_from_thread(self.query_one("#transcript").scroll_end, animate=False)
+
+            messaging_service.stream_chat_turn(
+                prompt,
+                api_key=self.api_key,
+                model=model,
+                system=system,
+                history=history,
+                temperature=temperature if 0.0 <= temperature <= 1.0 else None,
+                on_text=on_text,
+            )
         except Exception as e:
             full_text = full_text or f"[ERROR] {e}"
         finally:

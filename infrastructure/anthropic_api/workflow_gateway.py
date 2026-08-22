@@ -9,7 +9,7 @@ import json
 import time
 import urllib.request
 
-from resilience import urlopen_json
+from infrastructure.anthropic_api.http_client import urlopen_json
 
 
 class WorkflowGateway:

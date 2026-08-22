@@ -57,7 +57,12 @@ from domain.model_wrappers import (
 )
 from domain.models.catalog import FAST_MODE_SUPPORTED
 from exceptions import AICoderError, APIError
-from resilience import CircuitBreaker, retry, urlopen_json, urlopen_json_with_headers
+from infrastructure.anthropic_api.http_client import (
+    CircuitBreaker,
+    retry,
+    urlopen_json,
+    urlopen_json_with_headers,
+)
 
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
 

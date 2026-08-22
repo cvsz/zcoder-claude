@@ -22,8 +22,8 @@ import urllib.request
 
 from config import Config
 from exceptions import APIError, AuthenticationError, RateLimitError, TransientAPIError
+from infrastructure.anthropic_api.http_client import CircuitBreaker, retry
 from logging_config import get_logger
-from resilience import CircuitBreaker, retry
 from utils import sampling_kwargs
 
 logger = get_logger("coder")
@@ -85,7 +85,7 @@ class Coder:
 
         if self.personality_style:
             try:
-                from personalities import PersonalityManager
+                from domain.personalities import PersonalityManager
 
                 pm = PersonalityManager()
                 addition = pm.build_prompt_addition(self.personality_style)

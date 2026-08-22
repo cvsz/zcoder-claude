@@ -26,7 +26,7 @@ from domain.agents.agent_config import (
     _list_cost_cents,
 )
 from exceptions import AICoderError
-from resilience import CircuitBreaker, raise_for_http_error, retry, urlopen_json
+from infrastructure.anthropic_api.http_client import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 
 ENDPOINT = "https://api.anthropic.com/v1/messages"
 MCP_TUNNELS_BETA = "mcp-tunnels-2026-06-22"

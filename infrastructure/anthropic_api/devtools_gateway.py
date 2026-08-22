@@ -32,7 +32,7 @@ from domain.devtools import (
     extract_page_text,
 )
 from exceptions import APIError
-from resilience import raise_for_http_error, retry
+from infrastructure.anthropic_api.http_client import raise_for_http_error, retry
 from utils import sampling_kwargs
 
 # ── git ───────────────────────────────────────────────────────────────

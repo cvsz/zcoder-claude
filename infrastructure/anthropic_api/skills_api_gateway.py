@@ -17,7 +17,7 @@ from domain.skills_api import (
     build_container_skills,
 )
 from exceptions import AICoderError
-from resilience import CircuitBreaker, retry, urlopen_json
+from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
 

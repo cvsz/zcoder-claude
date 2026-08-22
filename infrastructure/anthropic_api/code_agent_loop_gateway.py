@@ -38,8 +38,8 @@ from domain.agent_execution import SandboxViolation, enforce
 from domain.code_agent import READ_ONLY_TOOLS, build_tool_definitions
 from domain.tools import CONTEXT_MANAGEMENT_BETA
 from exceptions import AICoderError
+from infrastructure.anthropic_api.http_client import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 from infrastructure.local_storage.code_agent_store import CodeSession, HooksEngine, MemoryManager, TodoManager
-from resilience import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
 _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)

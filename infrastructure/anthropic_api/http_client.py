@@ -1,12 +1,12 @@
 """
-resilience.py — Retries, backoff, and circuit breaking for outbound API calls
+infrastructure/anthropic_api/http_client.py — Retries, backoff, and circuit breaking for outbound API calls
 
 Everything in this module is dependency-free (stdlib only) so it works in
 the PyInstaller-packaged binary the same as from source.
 
 Usage:
 
-    from resilience import retry, CircuitBreaker
+    from infrastructure.anthropic_api.http_client import retry, CircuitBreaker
     from exceptions import TransientAPIError, RateLimitError
 
     breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
@@ -212,7 +212,7 @@ def retry(
     """Decorator: retry a callable on retryable AICoderError subclasses.
 
     `sleep` is injectable for tests so retry-delay tests don't actually
-    sleep in the process; see tests/test_resilience.py.
+    sleep in the process; see tests/integration/infrastructure/test_resilience.py.
     """
 
     def decorator(fn: Callable[..., T]) -> Callable[..., T]:

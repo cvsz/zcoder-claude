@@ -6,9 +6,35 @@ high-level index. Two project lineages (`ai-coder-cli-v1`, the modular
 single-`coder.py` CLI with its own PyInstaller packaging) were merged into
 this release; see "v1.12.0" below for exactly what came from where.
 
+## v1.43.0 — repo organization + last flat modules migrated + webapp on the application layer
+
+**Last flat feature modules migrated:** `artifacts.py`, `cowork.py`,
+`projects.py` folded into domain/application/infrastructure/interfaces
+layers (print-for-print faithful; `cmd_cowork`'s KeyError-on-API-error
+crash fixed via `.get()`); root `skills.py` →
+`domain/skill_catalog.py`, `personalities.py` → `domain/personalities.py`.
+
+**Shim era fully closed:** `resilience.py` retired (~21 consumers repointed
+to `http_client`), fixing the latent `plugins_store` broken import that had
+been silently disabling plugin loading.
+
+**Webapp/TUI onto the application layer:** `/api/chat` and `/api/chat/stream`
+now call `application.messaging_service.chat_turn`/`stream_chat_turn`
+instead of constructing gateways or capturing CLI stdout; TUI send/stream
+paths likewise; agent system prompts deduped into
+`domain/agents/role_prompts.py` (was 3 copies); session-history writes now
+lock-guarded; new single-source `version.py`.
+
+**Repo organization:** planning docs → `docs/planning/`, build/setup
+scripts → `scripts/`, references updated (README/QUICKSTART/ARCHITECTURE).
+
+**Quality gates:** 1060 tests passing; ruff/mypy/pyflakes clean;
+`--help` byte-identical through every step. Independent verifier +
+adversarial reviewer sign-off (APPROVE-WITH-NITS, all fixes applied).
+
 ## v1.42.0 — Clean Architecture refactor complete (Context #6 + final gates)
 
-Full detail in `exec-planning.md` §8 history log.
+Full detail in `docs/planning/exec-planning.md` §8 history log.
 
 **Migration complete:** all 6 model-specific wrapper modules
 (`claude_fable5.py`, `claude_mythos5.py`, `claude_opus5.py`,

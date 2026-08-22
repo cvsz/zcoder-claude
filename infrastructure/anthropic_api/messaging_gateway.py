@@ -41,7 +41,7 @@ from domain.messaging import (
 )
 from domain.models.catalog import get_price
 from exceptions import AICoderError
-from resilience import CircuitBreaker, retry, urlopen_json
+from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
 COUNT_TOKENS_ENDPOINT = "https://api.anthropic.com/v1/messages/count_tokens"
@@ -70,20 +70,30 @@ class StreamCoder:
         system: str | None = None,
         tools: list = None,
         show_thinking: bool = False,
+        history: list | None = None,
+        temperature: float | None = None,
         on_text: Callable[[str], None] = _NOOP,
         on_thinking: Callable[[str], None] = _NOOP,
         on_thinking_start: Callable[[], None] = _NOOP,
         on_thinking_stop: Callable[[], None] = _NOOP,
         on_usage: Callable[[dict], None] = _NOOP,
     ) -> str:
-        """Stream a response, invoking callbacks live. Returns full text."""
-        messages = [{"role": "user", "content": prompt}]
+        """Stream a response, invoking callbacks live. Returns full text.
+
+        history: prior [{"role", "content"}, ...] turns prepended to the
+        prompt (multi-turn chat shape used by the webapp/TUI front ends).
+        temperature: sent only when not None — omitting it lets the API
+        apply its model default.
+        """
+        messages = list(history or []) + [{"role": "user", "content": prompt}]
 
         kwargs = dict(model=self.model, max_tokens=self.max_tokens, messages=messages)
         if system:
             kwargs["system"] = system
         if tools:
             kwargs["tools"] = tools
+        if temperature is not None:
+            kwargs["temperature"] = temperature
 
         full_text = ""
         in_thinking = False

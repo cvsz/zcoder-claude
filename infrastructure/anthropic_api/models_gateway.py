@@ -19,7 +19,7 @@ import urllib.error
 import urllib.request
 
 from exceptions import AICoderError
-from resilience import CircuitBreaker, retry, urlopen_json
+from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 MODELS_ENDPOINT = "https://api.anthropic.com/v1/models"
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"

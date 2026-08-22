@@ -21,8 +21,8 @@ from pathlib import Path
 
 from domain.files import BETA_HEADER, MAX_FILE_SIZE_BYTES, _validate_filename
 from exceptions import AICoderError
+from infrastructure.anthropic_api.http_client import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 from infrastructure.local_storage import files_registry_store as registry
-from resilience import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 
 FILES_BASE = "https://api.anthropic.com/v1/files"
 MESSAGES_BASE = "https://api.anthropic.com/v1/messages"

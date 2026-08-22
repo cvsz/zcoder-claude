@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zcoder"
-version = "1.42.0"
+version = "1.43.0"
 description = "AI Model Coder CLI — enterprise-grade edition"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -49,10 +49,6 @@ module = [
     "domain.*",
     "infrastructure.anthropic_api.core_gateway",
     "infrastructure.anthropic_api.core_gateway.*",
-    "artifacts",
-    "artifacts.*",
-    "projects",
-    "projects.*",
     "personalities",
     "personalities.*",
     "skills",
@@ -65,8 +61,6 @@ module = [
     "health.*",
     "logging_config",
     "logging_config.*",
-    "resilience",
-    "resilience.*",
     "security",
     "security.*",
     "utils",
@@ -75,8 +69,6 @@ module = [
     "tui.*",
     "tui_streaming",
     "tui_streaming.*",
-    "cowork",
-    "cowork.*",
 ]
 ignore_errors = true
 

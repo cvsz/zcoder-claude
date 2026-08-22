@@ -1,17 +1,33 @@
 """
-projects.py — Feature Projects subsystem
-AI Model Coder CLI v1.7.0
+infrastructure/local_storage/projects_store.py — Feature Projects
+subsystem local-disk persistence
+AI Model Coder CLI v1.42.0 (Clean Architecture refactor)
 
-Manages full project lifecycles: create, plan, scaffold, track tasks,
-run agents across a project, and maintain a project manifest.
+ProjectManager and its manifest helpers, extracted 2026-08-22 from
+projects.py. Everything here is local-disk I/O under ~/.ai-coder/
+projects/ — same bucket as the other *_store.py modules (see
+infrastructure/local_storage/devtools_store.py's docstring for the
+precedent). The class is kept intact rather than split method-by-method,
+matching the CodeSession/PptxSession/ExcelSession precedent:
+generate_plan()/run_task()/run_all_pending() call a caller-supplied
+`coder` object (duck-typed generate()), while CRUD methods are pure
+manifest manipulation over disk.
+
+The only behavioral change from projects.py: run_all_pending()'s inline
+print(f"  → Running: {t['title']}") moved to an on_progress(str)
+callback per the established HooksEngine/batch_gateway convention —
+cmd_project_run wires on_progress=print, reproducing the original output.
 """
 
 import json
 import os
 import shutil
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+
+from domain.projects import ProjectStatus, Task
 
 PROJECTS_DIR = os.path.expanduser("~/.ai-coder/projects")
 
@@ -52,47 +68,7 @@ def _save_manifest(project_id: str, data: dict):
         json.dump(data, f, indent=2)
 
 
-# ── Project Status ──────────────────────────────────────────────────────────
-
-
-class ProjectStatus:
-    PLANNING = "planning"
-    ACTIVE = "active"
-    PAUSED = "paused"
-    DONE = "done"
-    ARCHIVED = "archived"
-
-
-# ── Task ───────────────────────────────────────────────────────────────────
-
-
-class Task:
-    def __init__(
-        self,
-        title: str,
-        description: str = "",
-        agent: str = "",
-        priority: str = "medium",
-        task_id: str = None,
-    ):
-        self.id = task_id or str(uuid.uuid4())[:8]
-        self.title = title
-        self.description = description
-        self.agent = agent  # which agent handles this
-        self.priority = priority  # low / medium / high / critical
-        self.status = "todo"  # todo / in_progress / done / blocked
-        self.created_at = _now()
-        self.updated_at = _now()
-        self.result = ""
-
-    def to_dict(self) -> dict:
-        return self.__dict__
-
-    @classmethod
-    def from_dict(cls, d: dict) -> Task:
-        t = cls.__new__(cls)
-        t.__dict__.update(d)
-        return t
+_NOOP: Callable[..., None] = lambda *a, **k: None  # noqa: E731
 
 
 # ── ProjectManager ─────────────────────────────────────────────────────────
@@ -298,13 +274,15 @@ class ProjectManager:
 
         return result
 
-    def run_all_pending(self, project_id: str, coder) -> dict:
+    def run_all_pending(
+        self, project_id: str, coder, on_progress: Callable[[str], None] = _NOOP
+    ) -> dict:
         """Run all todo tasks in sequence."""
         m = _load_manifest(project_id)
         results = {}
         pending = [t for t in m["tasks"] if t.get("status") == "todo"]
         for t in pending:
-            print(f"  → Running: {t['title']}")
+            on_progress(f"  → Running: {t['title']}")
             results[t["id"]] = self.run_task(project_id, t["id"], coder)
         return results
 
@@ -418,73 +396,8 @@ class ProjectManager:
         return list(self._builtin_templates().keys())
 
 
-# ── CLI helpers (called from main.py) ─────────────────────────────────────
-
-
-def cmd_project_create(name, description="", template="blank"):
-    pm = ProjectManager()
-    m = pm.create_project(name, description, template)
-    print(f"\033[92m✓ Project created: {m['name']} (ID: {m['id']})\033[0m")
-    print(f"  Template: {template}  |  Tasks: {len(m['tasks'])}")
-    print(f"  Workspace: {_project_path(m['id']) / 'workspace'}")
-    return m
-
-
-def cmd_project_list():
-    pm = ProjectManager()
-    projects = pm.list_projects()
-    if not projects:
-        print("No projects yet. Create one with --project-create <name>")
-        return
-    print(f"\n{'ID':<14}{'NAME':<25}{'STATUS':<12}{'PROGRESS':<12}{'UPDATED'}")
-    print("─" * 75)
-    for p in projects:
-        done = p["tasks_done"]
-        total = p["tasks_total"]
-        prog = f"{done}/{total}" if total else "—"
-        print(f"{p['id']:<14}{p['name'][:24]:<25}{p['status']:<12}{prog:<12}{p['updated_at'][:10]}")
-
-
-def cmd_project_show(project_id):
-    pm = ProjectManager()
-    print(pm.show_project(project_id))
-
-
-def cmd_project_plan(project_id, coder):
-    pm = ProjectManager()
-    print(f"\033[94mℹ Generating AI plan for project {project_id}…\033[0m")
-    result = pm.generate_plan(project_id, coder)
-    print(result)
-    print(pm.show_project(project_id))
-
-
-def cmd_project_run(project_id, task_id, coder):
-    pm = ProjectManager()
-    if task_id == "all":
-        results = pm.run_all_pending(project_id, coder)
-        print(f"\033[92m✓ Completed {len(results)} tasks.\033[0m")
-    else:
-        result = pm.run_task(project_id, task_id, coder)
-        print(result)
-
-
-def cmd_project_add_task(project_id, title, description="", agent="", priority="medium"):
-    pm = ProjectManager()
-    t = pm.add_task(project_id, title, description, agent, priority)
-    print(f"\033[92m✓ Task added: [{t['id']}] {t['title']}\033[0m")
-
-
-def cmd_project_templates():
-    pm = ProjectManager()
-    templates = pm.list_templates()
-    print("\nAvailable project templates:")
-    descriptions = {
-        "blank": "Empty project — start from scratch",
-        "web_app": "Full-stack web app (backend + frontend + DB + security)",
-        "api": "REST API with auth, tests, and OpenAPI docs",
-        "cli_tool": "Command-line tool with packaging and README",
-        "data_pipeline": "ETL/data pipeline with validation and monitoring",
-        "ml_model": "Machine learning project from data prep to serving",
-    }
-    for t in templates:
-        print(f"  {t:<18} — {descriptions.get(t, '')}")
+def workspace_dir(project_id: str) -> Path:
+    """Public accessor for a project's workspace directory — used by
+    interfaces/ for cmd_project_create's display line (was the private
+    module helper _project_path(...) / 'workspace' pre-split)."""
+    return _project_path(project_id) / "workspace"

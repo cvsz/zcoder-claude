@@ -23,7 +23,7 @@ from domain.plugins import (
     read_manifest,
 )
 from exceptions import AICoderError, TransientAPIError
-from resilience import retry
+from infrastructure.anthropic_api.http_client import retry
 
 
 def _load_registry() -> dict:

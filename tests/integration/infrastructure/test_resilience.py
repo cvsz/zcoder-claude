@@ -3,7 +3,7 @@
 import pytest
 
 from exceptions import APIError, CircuitOpenError, TransientAPIError
-from resilience import CircuitBreaker, retry
+from infrastructure.anthropic_api.http_client import CircuitBreaker, retry
 
 
 def test_retry_succeeds_after_transient_failures():

@@ -3,7 +3,7 @@
 Two invariants:
 
 1. Every `cmd_*` function defined in interfaces/cli/commands/
-   wrapper_commands.py is dispatched by interfaces/cli/dispatcher.py.
+   *_commands.py is dispatched by interfaces/cli/dispatcher.py.
 2. The retired repo-root compatibility shims (claude_*.py, coder.py)
    never come back.
 
@@ -46,22 +46,24 @@ def main_source():
 
 
 def _interfaces_cmd_functions():
-    """cmd_* functions defined in the migrated wrapper command module."""
-    path = os.path.join(REPO_ROOT, "interfaces/cli/commands/wrapper_commands.py")
-    return _cmd_functions(path)
+    """cmd_* functions defined across every migrated command module."""
+    fns = []
+    for path in sorted(glob.glob(os.path.join(REPO_ROOT, "interfaces/cli/commands/*_commands.py"))):
+        fns.extend((os.path.basename(path), name) for name in _cmd_functions(path))
+    return fns
 
 
-def test_every_wrapper_commands_function_is_dispatched(main_source):
-    """The Context #6 fold-in moved the wrappers' cmd_* entry points into
-    interfaces/cli/commands/wrapper_commands.py — this keeps the
-    no-orphaned-command guarantee for their canonical home."""
+def test_every_commands_function_is_dispatched(main_source):
+    """Every cmd_* defined in interfaces/cli/commands/*_commands.py must
+    be dispatched by interfaces/cli/dispatcher.py — the no-orphaned-command
+    guarantee, generalized from wrapper_commands.py to all command modules."""
     dispatcher_path = os.path.join(REPO_ROOT, "interfaces/cli/dispatcher.py")
     with open(dispatcher_path, encoding="utf-8") as f:
         dispatcher_source = f.read()
-    for fn in _interfaces_cmd_functions():
+    for module, fn in _interfaces_cmd_functions():
         pattern = r"\b" + re.escape(fn) + r"\b"
         assert re.search(pattern, dispatcher_source), (
-            f"wrapper_commands.{fn}() is defined but never dispatched by "
+            f"{module}.{fn}() is defined but never dispatched by "
             f"interfaces/cli/dispatcher.py — add a CLI flag and dispatch "
             f"line, or remove the dead function."
         )

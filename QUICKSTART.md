@@ -3,8 +3,8 @@
 ## Run from source
 
 ```bash
-./setup.sh              # macOS/Linux — creates venv, installs deps, makes .env
-# or setup.bat on Windows
+./scripts/setup.sh      # macOS/Linux — creates venv, installs deps, makes .env
+# or scripts/setup.bat on Windows
 
 # edit .env and set ANTHROPIC_API_KEY
 
@@ -17,8 +17,8 @@ python main.py -p "Write a function to reverse a string"
 No local Python needed to *run* the result — only to build it:
 
 ```bash
-./build.sh               # macOS/Linux — produces dist/ai-coder
-# or build.bat on Windows — produces dist\ai-coder.exe
+./scripts/build.sh       # macOS/Linux — produces dist/ai-coder
+# or scripts/build.bat on Windows — produces dist\ai-coder.exe
 
 export ANTHROPIC_API_KEY=sk-ant-...
 ./dist/ai-coder -p "Create a Flask REST API"

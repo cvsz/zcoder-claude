@@ -1,9 +1,12 @@
 """tests/test_webapp_server.py — webapp/backend/server.py
 
 Uses FastAPI's TestClient (httpx-based, no real network/socket). The
-Coder.generate() / anthropic streaming calls are monkeypatched so no real
-API calls happen anywhere in this file, same convention as
-tests/test_coder.py.
+application-layer generation functions (chat_turn / stream_chat_turn) are
+monkeypatched so no real API calls happen anywhere in this file, same
+convention as tests/test_coder.py. Since the 2026-08-22 Phase F audit,
+server.py goes through application/messaging_service instead of
+core_gateway.Coder / raw anthropic — these patches were re-pointed
+accordingly (the standard "second repoint" pattern).
 """
 
 import sys
@@ -58,7 +61,7 @@ def test_chat_rejects_out_of_range_max_tokens(client):
 
 
 def test_chat_happy_path(client, monkeypatch):
-    monkeypatch.setattr(server.Coder, "generate", lambda self, *a, **k: "mock reply")
+    monkeypatch.setattr(server.messaging_service, "chat_turn", lambda prompt, **k: "mock reply")
     resp = client.post("/api/chat", json={"prompt": "hello", "api_key": "sk-ant-test"})
     assert resp.status_code == 200
     data = resp.json()
@@ -67,7 +70,7 @@ def test_chat_happy_path(client, monkeypatch):
 
 
 def test_chat_rate_limit_returns_429(client, monkeypatch):
-    monkeypatch.setattr(server.Coder, "generate", lambda self, *a, **k: "ok")
+    monkeypatch.setattr(server.messaging_service, "chat_turn", lambda prompt, **k: "ok")
     monkeypatch.setattr(server, "_RATE_LIMIT", 2)
     for _ in range(2):
         resp = client.post("/api/chat", json={"prompt": "hi", "api_key": "sk-ant-test"})
@@ -83,7 +86,7 @@ def test_sessions_list_empty_by_default(client):
 
 
 def test_sessions_list_reflects_chat_history(client, monkeypatch):
-    monkeypatch.setattr(server.Coder, "generate", lambda self, *a, **k: "reply text")
+    monkeypatch.setattr(server.messaging_service, "chat_turn", lambda prompt, **k: "reply text")
     chat_resp = client.post("/api/chat", json={"prompt": "what is python", "api_key": "sk-ant-test"})
     sid = chat_resp.json()["session_id"]
 
@@ -95,7 +98,7 @@ def test_sessions_list_reflects_chat_history(client, monkeypatch):
 
 
 def test_sessions_get_and_delete(client, monkeypatch):
-    monkeypatch.setattr(server.Coder, "generate", lambda self, *a, **k: "reply")
+    monkeypatch.setattr(server.messaging_service, "chat_turn", lambda prompt, **k: "reply")
     sid = client.post("/api/chat", json={"prompt": "hi", "api_key": "sk-ant-test"}).json()["session_id"]
 
     got = client.get(f"/api/sessions/{sid}")
@@ -114,41 +117,55 @@ def test_chat_stream_requires_api_key(client, monkeypatch):
 
 
 def test_chat_stream_yields_tokens_and_done(client, monkeypatch):
-    class FakeDelta:
-        def __init__(self, text):
-            self.type = "text_delta"
-            self.text = text
+    def fake_stream_chat_turn(prompt, api_key, model, system=None, history=None,
+                              temperature=None, max_tokens=4096, on_text=None):
+        assert prompt == "hi"
+        for chunk in ("Hel", "lo", "!"):
+            on_text(chunk)
+        return "Hello!"
 
-    class FakeEvent:
-        def __init__(self, text):
-            self.type = "content_block_delta"
-            self.delta = FakeDelta(text)
-
-    class FakeStreamCtx:
-        def __init__(self, chunks):
-            self.chunks = chunks
-
-        def __enter__(self):
-            return iter(FakeEvent(c) for c in self.chunks)
-
-        def __exit__(self, *a):
-            return False
-
-    class FakeMessages:
-        def stream(self, **kwargs):
-            return FakeStreamCtx(["Hel", "lo", "!"])
-
-    class FakeAnthropic:
-        def __init__(self, api_key=None):
-            self.messages = FakeMessages()
-
-    import types
-
-    fake_anthropic_module = types.SimpleNamespace(Anthropic=FakeAnthropic)
-    monkeypatch.setitem(sys.modules, "anthropic", fake_anthropic_module)
+    monkeypatch.setattr(server.messaging_service, "stream_chat_turn", fake_stream_chat_turn)
 
     resp = client.post("/api/chat/stream", json={"prompt": "hi", "api_key": "sk-ant-test"})
     assert resp.status_code == 200
     body = resp.text
     assert '"type": "token"' in body or '"type":"token"' in body
-    assert "done" in body
+    assert "Hel" in body and "lo" in body and '"type": "done"' in body
+
+
+def test_chat_stream_error_event_when_service_raises(client, monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr(server.messaging_service, "stream_chat_turn", boom)
+    resp = client.post("/api/chat/stream", json={"prompt": "hi", "api_key": "sk-ant-test"})
+    assert resp.status_code == 200
+    assert '"type": "error"' in resp.text
+    assert "network down" in resp.text
+
+
+def test_streamed_turn_is_persisted_to_session_store(client, monkeypatch):
+    def fake_stream_chat_turn(prompt, api_key, model, system=None, history=None,
+                              temperature=None, max_tokens=4096, on_text=None):
+        on_text("streamed reply")
+        return "streamed reply"
+
+    monkeypatch.setattr(server.messaging_service, "stream_chat_turn", fake_stream_chat_turn)
+    resp = client.post("/api/chat/stream", json={"prompt": "hi", "api_key": "sk-ant-test"})
+    assert resp.status_code == 200
+    listing = client.get("/api/sessions").json()
+    assert len(listing) == 1
+    got = client.get(f"/api/sessions/{listing[0]['session_id']}")
+    roles = [m["role"] for m in got.json()["history"]]
+    assert roles == ["user", "assistant"]
+
+
+def test_server_has_no_presentation_layer_imports():
+    """Architectural rule (exec-planning §2/§7): non-CLI front ends call the
+    application layer, never interfaces/cli. Guard the webapp against
+    regressing to dispatcher/cmd_* imports."""
+    import inspect
+
+    src = inspect.getsource(server)
+    assert "from interfaces" not in src
+    assert "import interfaces" not in src

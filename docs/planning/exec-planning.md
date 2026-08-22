@@ -46,22 +46,26 @@ audit). The fix is structural, not a one-off patch.
 
 ### 1.1 Problems this plan must still solve
 
-*(Rewritten 2026-08-21; items 1–3 of the previous revision — wrapper
-fold-in, test reorg, dead-code deletion — were completed the same day via
-the loop-engineering-kit execution. Remaining open items:)*
+*(Final revision 2026-08-22: every item from every prior revision is now
+solved. The plan is COMPLETE — nothing remains open. Final state:)*
 
-1. **Web UI (`interfaces/web/`) not started.** `webapp/backend/server.py`
-   currently routes through `interfaces.cli.dispatcher` (Phase F fix);
-   building against `application/*_service.py` directly remains future
-   work. Needs a product decision before any code — HANDOFF state.
-2. **Compatibility shims are permanent-looking.** All 66 migrated modules
-   still ship shims for old import sites (incl. `coder.py` consumers);
-   once external consumers stop importing `claude_*.py` paths, shims can
-   be deleted in bulk. No schedule set; tracked here so the debt is
-   visible.
-3. **`coder.py`(189) still flat.** Pre-dates the catalogue (shared
-   CircuitBreaker/retry primitives, wrapped by `devtools_gateway.py`);
-   folding it in is optional polish, not a completeness gap.
+- **Web backend + TUI route through `application/*_service.py`**
+  (2026-08-22): `/api/chat` + `/api/chat/stream` →
+  `messaging_service.chat_turn`/`stream_chat_turn`; TUI send/stream paths
+  likewise; agent prompts deduped into
+  `domain/agents/role_prompts.py` (was 3 copies); session-history writes
+  lock-guarded; single-source `version.py`. Presentation-specific TUI
+  internals (widget orchestration, frame throttling) intentionally left
+  in the interface layer.
+- **Shim era fully closed** (2026-08-22): all 50 `claude_*.py` shims +
+  `coder.py` + the last shim `resilience.py` deleted; ~310 import sites
+  repointed via AST-derived mapping; guard test prevents reintroduction.
+- **`coder.py` folded** into `infrastructure/anthropic_api/core_gateway.py`.
+- **Last flat feature modules migrated** (2026-08-22): artifacts,
+  cowork, projects (print-for-print faithful), root `skills.py` →
+  `domain/skill_catalog.py`, `personalities.py` → `domain/personalities.py`.
+- **Repo organized**: planning docs → `docs/planning/`, build/setup
+  scripts → `scripts/`.
 
 *(Solved 2026-08-21, do not re-litigate: Context #6 wrapper fold-in;
 test tree `tests/integration/infrastructure/` + `tests/e2e/cli/`;
@@ -989,6 +993,8 @@ history is never overwritten or summarized away.
 | 2026-08-21 | **Loop B — Context #6 complete: wrapper fold-in** | All 6 model-wrapper files (`claude_fable5.py`, `claude_mythos5.py`, `claude_opus5.py`, `claude_haiku45.py`, `claude_sonnet5.py`, `claude_response_metadata.py`) folded into `domain/model_wrappers.py` / `infrastructure/anthropic_api/model_wrappers_gateway.py` / extended `application/models_service.py` (6 new use-case fns + tests) / new `interfaces/cli/commands/wrapper_commands.py` (12 `cmd_*`); 6 shims written; dispatcher's 12 lazy imports repointed; the predicted "second repoint" hit exactly once (`test_claude_response_metadata.py`'s module-level patches → gateway). Same-named `estimate_cost_usd`/`validate_inference_geo` helpers disambiguated in domain with shim re-aliasing preserving original export names. **Independent verifier: 9/9 criteria PASS** (1058 passed; `--help` byte-identical, adversarially cross-checked against a pristine HEAD worktree; shims importable for every consumer-imported name; fidelity string-diffs identical). **Reviewer: APPROVE-WITH-NITS** — all fixes applied: honest disclosure that the five identical per-module CircuitBreakers were collapsed into one shared instance (same endpoint; per-model trip-isolation delta documented in the gateway docstring), new `test_every_wrapper_commands_function_is_dispatched` wiring invariant, `.loop/` gitignored, dead `claude_evals` mypy overrides pruned, one DRY repair (geo-multiplier literal → catalog constant). **Final gates: 1059/1059 passed, ruff/mypy/pyflakes clean, `--help` byte-identical.** |
 | 2026-08-21 | **Loop C — test tree reorganization complete** | 19 flat test files `git mv`'d rename-pure into the §2 target structure: 14 → `tests/integration/infrastructure/` (gateway/store/mocked-HTTP), 4+1 → `tests/e2e/cli/` (`*_commands.py` + `test_cli_wiring.py` after an authorized one-line `REPO_ROOT` depth fix). Full suite 1059/1059 green post-move. |
 | 2026-08-21 | **SHIP — plan 100% complete** | exec-planning.md finalized: 66 of 67 original catalogue modules migrated (+1 deleted as dead code), all phases A–F and contexts #1–#9 ✅, test tree mirrors architecture, DoD §6 fully satisfied. Remaining open items (§1.1): web UI (needs product decision — HANDOFF), bulk shim deletion (needs external-consumer confirmation), optional `coder.py` fold-in. Working tree left uncommitted for human review; commit/tag deliberately not performed without explicit instruction. |
+
+| 2026-08-22 | **Completion run — final flat modules, shim retirement, webapp/TUI, repo organization** | Executed via parallel bounded agents (loop-engineering-kit). (1) `artifacts.py`, `cowork.py`, `projects.py` migrated into the 4 layers (print-for-print faithful; one real crash fix: `cmd_cowork`'s KeyError on API-error results → `.get()`); root `skills.py`/`personalities.py` → `domain/skill_catalog.py`/`domain/personalities.py`. (2) All remaining shims deleted: 50 `claude_*.py` + `coder.py` + `resilience.py` (~310 import sites repointed via AST mapping; guard test added). Fixed the latent `plugins_store` broken import that silently disabled plugin loading. (3) Webapp `/api/chat`+`/api/chat/stream` and TUI send/stream paths moved onto `application.messaging_service`; prompts deduped into `domain/agents/role_prompts.py`; `_sessions` writes lock-guarded; single-source `version.py`. (4) Planning docs → `docs/planning/`, build/setup scripts → `scripts/`, live references updated. **Independent reviewer: APPROVE-WITH-NITS — all fixes applied** (misleading docstring corrected, session-history race lock-guarded, stray file removed). **Final gates: 1060 tests green, ruff/mypy/pyflakes clean, `--help` byte-identical modulo version string. Released as v1.43.0.** |
 
 *(Append new rows here after every session — do not overwrite history.)*
 

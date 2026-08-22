@@ -1,4 +1,4 @@
-"""skills.py — Skills system"""
+"""domain/skill_catalog.py — Built-in skill catalog (pure data)."""
 
 SKILLS = [
     {"name": "code_generation", "description": "Create production-ready code from a description"},

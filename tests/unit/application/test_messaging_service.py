@@ -14,6 +14,108 @@ import application.messaging_service as service
 # ── streaming ────────────────────────────────────────────────────────────
 
 
+def test_chat_turn_builds_coder_with_request_params(monkeypatch):
+    calls = {}
+
+    class FakeCoder:
+        def __init__(self, api_key=None, model=None, temperature=None, max_tokens=None, personality_style=None):
+            calls["init"] = (api_key, model, temperature, max_tokens, personality_style)
+
+        def generate(self, prompt, system=None, file_content=None, history=None):
+            calls["generate"] = (prompt, system, history)
+            return "reply"
+
+    monkeypatch.setattr(service, "Coder", FakeCoder)
+    result = service.chat_turn(
+        "hi",
+        api_key="k",
+        model="claude-opus-5",
+        temperature=0.7,
+        max_tokens=1024,
+        system="be brief",
+        history=[{"role": "user", "content": "earlier"}],
+        personality_style="concise",
+    )
+    assert result == "reply"
+    assert calls["init"] == ("k", "claude-opus-5", 0.7, 1024, "concise")
+    assert calls["generate"] == (
+        "hi",
+        "be brief",
+        [{"role": "user", "content": "earlier"}],
+    )
+
+
+def test_chat_turn_defaults_and_empty_history(monkeypatch):
+    calls = {}
+
+    class FakeCoder:
+        def __init__(self, api_key=None, model=None, temperature=None, max_tokens=None, personality_style=None):
+            calls["init"] = (api_key, model)
+
+        def generate(self, prompt, system=None, history=None):
+            calls["generate"] = (prompt, system, history)
+            return "ok"
+
+    monkeypatch.setattr(service, "Coder", FakeCoder)
+    assert service.chat_turn("hi") == "ok"
+    assert calls["init"] == (None, "claude-sonnet-5")
+    assert calls["generate"] == ("hi", None, [])
+
+
+def test_stream_chat_turn_passes_history_temperature_and_on_text(monkeypatch):
+    calls = {}
+    seen_chunks = []
+
+    class FakeStreamCoder:
+        def __init__(self, api_key, model, max_tokens=4096):
+            calls["init"] = (api_key, model, max_tokens)
+
+        def stream(self, prompt, system=None, tools=None, show_thinking=False,
+                   history=None, temperature=None, **cb):
+            calls["stream"] = {
+                "prompt": prompt,
+                "system": system,
+                "history": history,
+                "temperature": temperature,
+                "on_text": cb.get("on_text"),
+            }
+            return "full text"
+
+    monkeypatch.setattr(service, "StreamCoder", FakeStreamCoder)
+    on_text_cb = seen_chunks.append
+    result = service.stream_chat_turn(
+        "hi",
+        api_key="k",
+        model="claude-sonnet-5",
+        system="s",
+        history=[{"role": "assistant", "content": "prev"}],
+        temperature=0.5,
+        max_tokens=2048,
+        on_text=on_text_cb,
+    )
+    assert result == "full text"
+    assert calls["init"] == ("k", "claude-sonnet-5", 2048)
+    assert calls["stream"]["history"] == [{"role": "assistant", "content": "prev"}]
+    assert calls["stream"]["temperature"] == 0.5
+    assert calls["stream"]["on_text"] is on_text_cb
+
+
+def test_stream_chat_turn_omits_temperature_when_none(monkeypatch):
+    calls = {}
+
+    class FakeStreamCoder:
+        def __init__(self, api_key, model, max_tokens=4096):
+            pass
+
+        def stream(self, prompt, system=None, history=None, temperature=None, **cb):
+            calls["temperature"] = temperature
+            return ""
+
+    monkeypatch.setattr(service, "StreamCoder", FakeStreamCoder)
+    service.stream_chat_turn("hi", api_key="k", model="m")
+    assert calls["temperature"] is None
+
+
 def test_stream_text_plain(monkeypatch):
     calls = {}
 

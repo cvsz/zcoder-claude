@@ -1,20 +1,19 @@
 """
-artifacts.py — Artifacts subsystem
-AI Model Coder CLI v1.7.0
+infrastructure/local_storage/artifacts_store.py — Artifacts subsystem
+local-disk persistence
+AI Model Coder CLI v1.42.0 (Clean Architecture refactor)
 
-An Artifact is any named, versioned, AI-generated output:
-  code, documentation, test suites, architecture diagrams (as text/mermaid),
-  schemas, configs, changelogs, reports, etc.
+ArtifactManager and its module-level meta/version helpers, extracted
+2026-08-22 from artifacts.py. Everything here is local-disk I/O under
+~/.ai-coder/artifacts/ — same bucket as the other *_store.py modules
+(see infrastructure/local_storage/devtools_store.py's docstring for the
+precedent). The class is kept intact rather than split method-by-method,
+matching the CodeSession/PptxSession/ExcelSession precedent: create()/
+iterate() call a caller-supplied `coder` object (duck-typed generate()),
+while the rest of the methods are pure manifest manipulation over disk.
 
-Artifacts can be:
-  • Created from a prompt                 --artifact-create
-  • Listed and searched                   --artifact-list [query]
-  • Viewed / diffed across versions       --artifact-show <id>
-  • Exported to a file                    --artifact-export <id>
-  • Iterated / regenerated with feedback  --artifact-iterate <id>
-  • Tagged for search                     --artifact-tag <id> <tag>
-  • Attached to a project                 --artifact-attach <artifact_id> <project_id>
-  • Deleted                               --artifact-delete <id>
+The only behavioral change from artifacts.py: none in this module — it
+never had inline print() calls; nothing needed converting.
 """
 
 import hashlib
@@ -24,6 +23,8 @@ import shutil
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+
+from domain.artifacts import TYPE_EXTENSIONS
 
 ARTIFACTS_DIR = os.path.expanduser("~/.ai-coder/artifacts")
 
@@ -72,40 +73,6 @@ def _checksum(content: str) -> str:
     return hashlib.sha256(content.encode()).hexdigest()[:12]
 
 
-# ── Artifact types ─────────────────────────────────────────────────────────
-
-ARTIFACT_TYPES = {
-    "code": "Source code in any language",
-    "docs": "Documentation, README, API reference",
-    "tests": "Test suites and test cases",
-    "schema": "Database schemas, JSON schemas, Pydantic models",
-    "config": "Config files, YAML/TOML/JSON settings",
-    "diagram": "Architecture / flow diagrams (Mermaid or ASCII)",
-    "report": "Analysis, audit, or performance reports",
-    "plan": "Project plans, task breakdowns, roadmaps",
-    "changelog": "CHANGELOG entries and release notes",
-    "prompt": "Reusable system prompts and few-shot examples",
-    "script": "Shell / build / deployment scripts",
-    "template": "Code or document templates",
-}
-
-# Extensions to suggest for each type
-TYPE_EXTENSIONS = {
-    "code": ".py",
-    "docs": ".md",
-    "tests": ".py",
-    "schema": ".json",
-    "config": ".yaml",
-    "diagram": ".md",
-    "report": ".md",
-    "plan": ".md",
-    "changelog": ".md",
-    "prompt": ".txt",
-    "script": ".sh",
-    "template": ".txt",
-}
-
-
 # ── ArtifactManager ────────────────────────────────────────────────────────
 
 
@@ -120,7 +87,7 @@ class ArtifactManager:
         prompt: str,
         artifact_type: str = "code",
         language: str = "",
-        tags: list = None,
+        tags: list | None = None,
         project_id: str = "",
         coder=None,
     ) -> dict:
@@ -186,7 +153,7 @@ class ArtifactManager:
 
     # ── Read ───────────────────────────────────────────────────────────────
 
-    def get_content(self, artifact_id: str, version: int = None) -> str:
+    def get_content(self, artifact_id: str, version: int | None = None) -> str:
         meta = _load_meta(artifact_id)
         v = version or meta["version"]
         vp = _version_path(artifact_id, v)
@@ -266,7 +233,7 @@ class ArtifactManager:
 
     # ── Export ─────────────────────────────────────────────────────────────
 
-    def export(self, artifact_id: str, output_path: str = "", version: int = None) -> str:
+    def export(self, artifact_id: str, output_path: str = "", version: int | None = None) -> str:
         meta = _load_meta(artifact_id)
         content = self.get_content(artifact_id, version)
         v = version or meta["version"]
@@ -316,7 +283,7 @@ class ArtifactManager:
 
     # ── Display ────────────────────────────────────────────────────────────
 
-    def show(self, artifact_id: str, version: int = None, preview_lines: int = 40) -> str:
+    def show(self, artifact_id: str, version: int | None = None, preview_lines: int = 40) -> str:
         meta = _load_meta(artifact_id)
         content = self.get_content(artifact_id, version)
         v = version or meta["version"]
@@ -368,93 +335,3 @@ class ArtifactManager:
         if language:
             base += f" Use {language}."
         return base
-
-
-# ── CLI helpers ─────────────────────────────────────────────────────────────
-
-
-def cmd_artifact_create(
-    name, prompt, artifact_type="code", language="", tags=None, project_id="", coder=None
-):
-    am = ArtifactManager()
-    print(f"\033[94mℹ Generating artifact '{name}' (type: {artifact_type})…\033[0m")
-    meta = am.create(name, prompt, artifact_type, language, tags, project_id, coder)
-    print(f"\033[92m✓ Artifact created: {meta['name']} (ID: {meta['id']}, v1)\033[0m")
-    print(am.show(meta["id"]))
-    return meta
-
-
-def cmd_artifact_list(query="", artifact_type="", project_id="", tag=""):
-    am = ArtifactManager()
-    arts = am.list_artifacts(query, artifact_type, project_id, tag)
-    if not arts:
-        print("No artifacts found.")
-        return
-    print(f"\n{'ID':<14}{'NAME':<25}{'TYPE':<12}{'VER':<6}{'TAGS':<20}{'UPDATED'}")
-    print("─" * 85)
-    for a in arts:
-        tags = ", ".join(a["tags"][:3]) or "—"
-        print(
-            f"{a['id']:<14}{a['name'][:24]:<25}{a['type']:<12}v{a['version']:<5}{tags[:19]:<20}{a['updated_at'][:10]}"
-        )
-    print(f"\n{len(arts)} artifact(s)")
-
-
-def cmd_artifact_show(artifact_id, version=None):
-    am = ArtifactManager()
-    print(am.show(artifact_id, version))
-
-
-def cmd_artifact_iterate(artifact_id, feedback, coder):
-    am = ArtifactManager()
-    print(f"\033[94mℹ Generating new version of artifact {artifact_id}…\033[0m")
-    meta = am.iterate(artifact_id, feedback, coder)
-    print(f"\033[92m✓ Artifact updated to v{meta['version']}\033[0m")
-    print(am.show(artifact_id))
-
-
-def cmd_artifact_export(artifact_id, output_path="", version=None):
-    am = ArtifactManager()
-    path = am.export(artifact_id, output_path, version)
-    print(f"\033[92m✓ Exported to: {path}\033[0m")
-
-
-def cmd_artifact_tag(artifact_id, tag):
-    am = ArtifactManager()
-    meta = am.add_tag(artifact_id, tag)
-    print(f"\033[92m✓ Tag '{tag}' added. Tags: {', '.join(meta['tags'])}\033[0m")
-
-
-def cmd_artifact_attach(artifact_id, project_id):
-    am = ArtifactManager()
-    am.attach_to_project(artifact_id, project_id)
-    print(f"\033[92m✓ Artifact {artifact_id} attached to project {project_id}\033[0m")
-
-
-def cmd_artifact_diff(artifact_id, v1, v2):
-    am = ArtifactManager()
-    diff = am.diff(artifact_id, int(v1), int(v2))
-    print(diff)
-
-
-def cmd_artifact_delete(artifact_id):
-    am = ArtifactManager()
-    ok = am.delete(artifact_id)
-    if ok:
-        print(f"\033[92m✓ Artifact {artifact_id} deleted.\033[0m")
-    else:
-        print(f"\033[91m✗ Artifact {artifact_id} not found.\033[0m")
-
-
-def cmd_artifact_types():
-    print("\nAvailable artifact types:")
-    for t, desc in ARTIFACT_TYPES.items():
-        print(f"  {t:<14} — {desc}")
-
-
-def cmd_artifact_export_all(project_id, output_dir=""):
-    am = ArtifactManager()
-    exported = am.export_all(project_id, output_dir)
-    print(f"\033[92m✓ Exported {len(exported)} artifacts:\033[0m")
-    for p in exported:
-        print(f"  {p}")

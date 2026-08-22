@@ -147,8 +147,8 @@ here so it isn't rediscovered as a surprise.
 ## Packaging
 
 Two ways to run this:
-1. **From source**: `setup.sh`/`setup.bat` create a venv and `.env`.
-2. **Standalone binary**: `build.sh`/`build.bat` + `ai-coder.spec` produce
+1. **From source**: `scripts/setup.sh`/`scripts/setup.bat` create a venv and `.env`.
+2. **Standalone binary**: `scripts/build.sh`/`scripts/build.bat` + `ai-coder.spec` produce
    a PyInstaller single-file executable with no local Python required.
 3. **Container**: `Dockerfile` (multi-stage, non-root, healthcheck) +
    `docker-compose.yml` for anything that wants to run this as a service

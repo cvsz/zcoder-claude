@@ -1,4 +1,4 @@
-"""personalities.py — Personality styles"""
+"""domain/personalities.py — Personality styles (pure data)."""
 
 PERSONALITIES = {
     "precise": "Be concise, technical, and precise. Avoid fluff.",

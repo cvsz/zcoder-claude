@@ -26,7 +26,7 @@ def cmd_interactive(api_key, model, system=None, temperature=0.3, max_tokens=409
     while True:
         try:
             user_input = input("\\033[92myou›\\033[0m ").strip()
-        except (EOFError, KeyboardInterrupt):
+        except EOFError, KeyboardInterrupt:
             print()
             break
 

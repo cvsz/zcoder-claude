@@ -117,8 +117,9 @@ def test_chat_stream_requires_api_key(client, monkeypatch):
 
 
 def test_chat_stream_yields_tokens_and_done(client, monkeypatch):
-    def fake_stream_chat_turn(prompt, api_key, model, system=None, history=None,
-                              temperature=None, max_tokens=4096, on_text=None):
+    def fake_stream_chat_turn(
+        prompt, api_key, model, system=None, history=None, temperature=None, max_tokens=4096, on_text=None
+    ):
         assert prompt == "hi"
         for chunk in ("Hel", "lo", "!"):
             on_text(chunk)
@@ -145,8 +146,9 @@ def test_chat_stream_error_event_when_service_raises(client, monkeypatch):
 
 
 def test_streamed_turn_is_persisted_to_session_store(client, monkeypatch):
-    def fake_stream_chat_turn(prompt, api_key, model, system=None, history=None,
-                              temperature=None, max_tokens=4096, on_text=None):
+    def fake_stream_chat_turn(
+        prompt, api_key, model, system=None, history=None, temperature=None, max_tokens=4096, on_text=None
+    ):
         on_text("streamed reply")
         return "streamed reply"
 

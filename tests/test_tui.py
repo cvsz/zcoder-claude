@@ -106,8 +106,9 @@ def test_streamed_reply_shows_full_text_even_when_gated(monkeypatch):
     """A fast, short stream must flush its final unpainted deltas."""
     import types
 
-    def fake_stream_chat_turn(prompt, api_key, model, system=None, history=None,
-                              temperature=None, max_tokens=4096, on_text=None):
+    def fake_stream_chat_turn(
+        prompt, api_key, model, system=None, history=None, temperature=None, max_tokens=4096, on_text=None
+    ):
         assert history == []
         for chunk in ("Hi", " there", "!"):
             on_text(chunk)

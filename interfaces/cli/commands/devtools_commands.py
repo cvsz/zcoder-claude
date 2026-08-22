@@ -12,7 +12,6 @@ claude_chrome.py's cmd_browse (its print()-per-loop-step body converted
 to an on_step callback that reproduces every original message exactly).
 """
 
-
 from application import devtools_service as service
 from domain.devtools import BrowseStep
 

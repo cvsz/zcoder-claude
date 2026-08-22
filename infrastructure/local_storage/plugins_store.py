@@ -4,6 +4,7 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Local-disk I/O for plugin registry, marketplace fetching, and plugin
 install/uninstall. No network calls beyond marketplace fetch, no print().
 """
+
 # mypy: ignore-errors
 
 import json

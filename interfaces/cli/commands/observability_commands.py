@@ -12,7 +12,6 @@ cmd_obs_tail, and claude_eval.py's cmd_eval_run/cmd_eval_compare/
 cmd_eval_list/cmd_eval_scaffold.
 """
 
-
 from application import observability_service as service
 
 __all__ = [

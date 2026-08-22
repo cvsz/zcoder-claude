@@ -8,7 +8,6 @@ its own, no print(). Extracted 2026-08-18. Original cmd_* bodies were
 already thin (one MemoryStore call + prints), so these ops are thin too.
 """
 
-
 from domain.memory import MemEntry, MemType
 from infrastructure.local_storage.memory_store import MemoryStore
 

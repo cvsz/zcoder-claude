@@ -1128,9 +1128,7 @@ class ManagedAgentsClient:
             ),
         }
 
-    def list_dreams(
-        self, include_archived: bool = False, limit: int = 20, page: str | None = None
-    ) -> list:
+    def list_dreams(self, include_archived: bool = False, limit: int = 20, page: str | None = None) -> list:
         """List dreams in the workspace, newest first. `limit` defaults to
         20 (platform max 100); pass the `page` cursor from a previous call
         to continue paginating — both added in v1.35.0, matching

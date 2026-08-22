@@ -5,16 +5,13 @@ Orchestrates domain/skills_api.py + infrastructure/anthropic_api/
 skills_api_gateway.py — no print() of its own.
 """
 
-
 from domain.skills_api import (
     list_prebuilt_skills,
 )
 from infrastructure.anthropic_api.skills_api_gateway import SkillsApiGateway
 
 
-def call_with_skills(
-    gateway: SkillsApiGateway, prompt: str, skills: list, system: str | None = None
-) -> dict:
+def call_with_skills(gateway: SkillsApiGateway, prompt: str, skills: list, system: str | None = None) -> dict:
     return gateway.call_with_skills(prompt, skills, system)
 
 

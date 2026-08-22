@@ -218,7 +218,9 @@ def cmd_haiku45_call(
     system: str | None = None,
 ):
     try:
-        data = haiku45_call(prompt, api_key, thinking_budget=thinking_budget, fast=fast, use_geo=use_geo, system=system)
+        data = haiku45_call(
+            prompt, api_key, thinking_budget=thinking_budget, fast=fast, use_geo=use_geo, system=system
+        )
     except ValueError as e:
         print(f"\033[91m✗ {e}\033[0m")
         return None

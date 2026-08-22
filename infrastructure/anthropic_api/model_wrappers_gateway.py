@@ -162,9 +162,7 @@ class Fable5Client:
             extra_headers = {"anthropic-beta": SERVER_SIDE_FALLBACK_DEFAULT_BETA_HEADER}
         return self._post(payload, extra_headers=extra_headers)
 
-    def call_with_fallback(
-        self, prompt: str, system: str | None = None, allow_fallback: bool = True
-    ) -> dict:
+    def call_with_fallback(self, prompt: str, system: str | None = None, allow_fallback: bool = True) -> dict:
         """
         Call the configured model.
 

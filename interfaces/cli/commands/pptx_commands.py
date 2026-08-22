@@ -58,7 +58,7 @@ def cmd_pptx_chat(
     while True:
         try:
             user_input = input("\033[92myou›\033[0m ").strip()
-        except (EOFError, KeyboardInterrupt):
+        except EOFError, KeyboardInterrupt:
             print()
             break
         if not user_input:
@@ -144,7 +144,7 @@ def _cmd_pptx_chat_native(api_key, model, input_path=None, output_path=None, max
     while True:
         try:
             user_input = input("\033[92myou›\033[0m ").strip()
-        except (EOFError, KeyboardInterrupt):
+        except EOFError, KeyboardInterrupt:
             print()
             break
         if not user_input:

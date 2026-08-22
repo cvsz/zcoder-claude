@@ -43,7 +43,9 @@ def archive_project(project_id: str) -> dict:
     return ProjectManager().archive_project(project_id)
 
 
-def add_task(project_id: str, title: str, description: str = "", agent: str = "", priority: str = "medium") -> dict:
+def add_task(
+    project_id: str, title: str, description: str = "", agent: str = "", priority: str = "medium"
+) -> dict:
     return ProjectManager().add_task(project_id, title, description, agent, priority)
 
 

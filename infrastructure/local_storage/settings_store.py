@@ -4,6 +4,7 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Local-disk I/O for reading and writing settings JSON files. No network calls,
 no print().
 """
+
 # mypy: ignore-errors
 
 import json

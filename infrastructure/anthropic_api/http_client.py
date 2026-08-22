@@ -89,7 +89,7 @@ def raise_for_http_error(exc: BaseException) -> NoReturn:
             retry_after = None
             try:
                 retry_after = float(exc.headers.get("Retry-After", "")) if exc.headers else None
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 pass
             raise RateLimitError(
                 "Rate limited (429)", retry_after=retry_after, details={"body": body[:300]}

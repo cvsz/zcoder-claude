@@ -115,9 +115,7 @@ class FilesAPI:
 
     # ── List ──────────────────────────────────────────────────────────────
 
-    def list_files(
-        self, limit: int = 20, before_id: str | None = None, after_id: str | None = None
-    ) -> dict:
+    def list_files(self, limit: int = 20, before_id: str | None = None, after_id: str | None = None) -> dict:
         """List one page of files. Returns {"data": [...], "has_more": bool,
         "first_id": ..., "last_id": ...} per the paginated List Files endpoint."""
         params = {"limit": str(limit)}

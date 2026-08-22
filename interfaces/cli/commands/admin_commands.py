@@ -7,7 +7,6 @@ All actual HTTP calls now go through application/admin_service.py (not
 the gateway directly — closed in Phase A, exec-planing.md).
 """
 
-
 import application.admin_service as svc
 from infrastructure.anthropic_api.admin_gateway import CE_USER_MANAGEMENT_BETA
 

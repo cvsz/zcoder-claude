@@ -9,7 +9,6 @@ already print-free — only cmd_* had print(), now in
 interfaces/cli/commands/tools_commands.py.
 """
 
-
 import anthropic
 
 WEB_SEARCH_TOOL = {"type": "web_search_20260318", "name": "web_search"}

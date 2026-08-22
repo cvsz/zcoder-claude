@@ -5,7 +5,6 @@ Pure data + pure functions for the advisor tool. No I/O, no print(), no
 `import anthropic` — those belong to infrastructure/.
 """
 
-
 ADVISOR_TOOL_TYPE = "advisor_20260301"
 ADVISOR_TOOL_BETA = "advisor-tool-2026-03-01"
 

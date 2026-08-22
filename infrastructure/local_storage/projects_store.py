@@ -274,9 +274,7 @@ class ProjectManager:
 
         return result
 
-    def run_all_pending(
-        self, project_id: str, coder, on_progress: Callable[[str], None] = _NOOP
-    ) -> dict:
+    def run_all_pending(self, project_id: str, coder, on_progress: Callable[[str], None] = _NOOP) -> dict:
         """Run all todo tasks in sequence."""
         m = _load_manifest(project_id)
         results = {}

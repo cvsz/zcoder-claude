@@ -4,6 +4,7 @@ Wraps the official SDK beta.skills and beta.skills.versions surfaces.  This
 module contains network I/O only; local SKILL.md parsing/validation belongs in
 domain.skills.
 """
+
 # mypy: ignore-errors
 
 from collections.abc import Iterable

@@ -130,7 +130,7 @@ def test_plan_project_parses_json_array_into_tasks(tmp_path, monkeypatch):
 def test_plan_project_strips_markdown_fences(tmp_path, monkeypatch):
     _isolate(tmp_path, monkeypatch)
     m = service.create_project("Fenced")
-    reply = "```json\n[{\"title\": \"T\"}]\n```"
+    reply = '```json\n[{"title": "T"}]\n```'
     result = service.plan_project(m["id"], FakeCoder(reply))
     assert "Generated 1 tasks" in result
 

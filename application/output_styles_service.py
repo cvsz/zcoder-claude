@@ -5,7 +5,6 @@ Orchestrates domain/output_styles.py + infrastructure/local_storage/
 styles_store.py — no print() of its own.
 """
 
-
 from domain.output_styles import get_style, list_styles, system_prompt_fragment
 from infrastructure.local_storage.styles_store import (
     discover_custom_styles,

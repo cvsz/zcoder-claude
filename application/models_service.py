@@ -127,7 +127,7 @@ def scan_for_deprecated_models(path: str) -> dict:
                 for lineno, line in enumerate(fh, 1):
                     for m in pattern.finditer(line):
                         hits.setdefault(m.group(0), []).append((fp, lineno))
-        except (IsADirectoryError, PermissionError):
+        except IsADirectoryError, PermissionError:
             continue
 
     return {
@@ -170,7 +170,7 @@ def upgrade_all(path: str, target: str = "fable5", apply: bool = False, no_backu
         try:
             with open(fp, encoding="utf-8", errors="strict") as fh:
                 text = fh.read()
-        except (UnicodeDecodeError, PermissionError, IsADirectoryError):
+        except UnicodeDecodeError, PermissionError, IsADirectoryError:
             continue  # binary / unreadable — skip rather than risk corrupting it
 
         matches = pattern.findall(text)

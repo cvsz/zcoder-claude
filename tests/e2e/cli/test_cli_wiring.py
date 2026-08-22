@@ -21,9 +21,8 @@ import re
 
 import pytest
 
-REPO_ROOT = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 
 def _cmd_functions(path):
     """Top-level `def cmd_*` function names in a Python source file."""

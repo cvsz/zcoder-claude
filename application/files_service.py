@@ -11,7 +11,6 @@ layer's ops are thin too — same shape as Phase A's Admin/Compliance
 ops for equally thin original call sites.
 """
 
-
 from infrastructure.anthropic_api.files_gateway import FilesAPI
 
 

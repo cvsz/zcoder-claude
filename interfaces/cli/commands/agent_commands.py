@@ -9,7 +9,6 @@ application/agents_service.py (not the gateway directly — Phase A,
 exec-planing.md, now closed for all 4 originally-migrated modules).
 """
 
-
 import application.agents_service as svc
 from domain.agents.agent_config import TOOL_PRESETS
 
@@ -147,9 +146,7 @@ def cmd_agent_memory_store_archive(memory_store_id: str, api_key: str) -> dict:
     return result
 
 
-def cmd_agent_memory_store_delete(
-    memory_store_id: str, api_key: str, confirm: bool = False
-) -> dict | None:
+def cmd_agent_memory_store_delete(memory_store_id: str, api_key: str, confirm: bool = False) -> dict | None:
     """Permanently delete a memory store and everything in it (v1.27.0).
     Requires --agent-memory-store-delete-yes (confirm=True) — dry-run by
     default."""

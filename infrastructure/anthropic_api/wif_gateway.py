@@ -4,6 +4,7 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Real HTTP calls to api.anthropic.com for WIF token exchange and admin
 operations. No print().
 """
+
 # mypy: ignore-errors
 
 import json

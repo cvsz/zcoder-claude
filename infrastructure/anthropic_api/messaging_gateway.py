@@ -306,9 +306,7 @@ class StructuredCoder:
         text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
         return json.loads(text)
 
-    def json_schema(
-        self, prompt: str, schema: dict, name: str = "output", system: str | None = None
-    ) -> dict:
+    def json_schema(self, prompt: str, schema: dict, name: str = "output", system: str | None = None) -> dict:
         """Return JSON validated against a JSON Schema."""
         payload = {
             "model": self.model,
@@ -645,9 +643,7 @@ class TokenCounter:
         self.api_key = api_key
         self.model = model
 
-    def count(
-        self, prompt: str, system: str | None = None, tools: list = None, history: list = None
-    ) -> dict:
+    def count(self, prompt: str, system: str | None = None, tools: list = None, history: list = None) -> dict:
         messages = list(history or [])
         messages.append({"role": "user", "content": prompt})
 

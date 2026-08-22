@@ -63,9 +63,7 @@ def test_cmd_model_info_warns_on_retired_id(capsys, monkeypatch):
                 "created_at": "2025-08-05T00:00:00Z",
             }
 
-    monkeypatch.setattr(
-        "infrastructure.anthropic_api.models_gateway.ModelsAPI", _FakeModelsAPI
-    )
+    monkeypatch.setattr("infrastructure.anthropic_api.models_gateway.ModelsAPI", _FakeModelsAPI)
     cmd_model_info("claude-opus-4-1-20250805", api_key="k")
     out = capsys.readouterr().out
     assert "retired" in out.lower()

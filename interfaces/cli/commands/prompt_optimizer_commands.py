@@ -4,6 +4,7 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Only print() lives here — all real work delegated to
 application/prompt_optimizer_service.py.
 """
+
 # mypy: ignore-errors
 
 from application import prompt_optimizer_service as service

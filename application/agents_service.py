@@ -476,7 +476,7 @@ def list_local_sessions(max_results: int = 20) -> list:
     for sf in sessions[-max_results:]:
         try:
             parsed.append(json.loads(sf.read_text()))
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             continue
     return parsed
 

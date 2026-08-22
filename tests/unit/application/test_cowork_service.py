@@ -120,20 +120,30 @@ def test_run_cowork_task_delegates_to_gateway_with_callbacks(monkeypatch):
             seen["api_key"], seen["model"] = api_key, model
 
         def run(self, task_type, prompt, files=None, depth=3, output_fmt="markdown", on_progress=None):
-            seen.update(task_type=task_type, prompt=prompt, files=files, depth=depth,
-                        output_fmt=output_fmt)
+            seen.update(task_type=task_type, prompt=prompt, files=files, depth=depth, output_fmt=output_fmt)
             on_progress("banner")
             return {"output": "done", "task_name": "T"}
 
     monkeypatch.setattr(service, "CoworkAgent", FakeAgent)
     result = service.run_cowork_task(
-        "key", "claude-opus-5", "plan", "build it",
-        files=["a.txt"], depth=5, output_fmt="bullets", on_progress=lines.append,
+        "key",
+        "claude-opus-5",
+        "plan",
+        "build it",
+        files=["a.txt"],
+        depth=5,
+        output_fmt="bullets",
+        on_progress=lines.append,
     )
     assert result["output"] == "done"
     assert seen == {
-        "api_key": "key", "model": "claude-opus-5", "task_type": "plan",
-        "prompt": "build it", "files": ["a.txt"], "depth": 5, "output_fmt": "bullets",
+        "api_key": "key",
+        "model": "claude-opus-5",
+        "task_type": "plan",
+        "prompt": "build it",
+        "files": ["a.txt"],
+        "depth": 5,
+        "output_fmt": "bullets",
     }
     assert lines == ["banner"]
 

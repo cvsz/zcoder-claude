@@ -9,7 +9,6 @@ cmd_file_upload, cmd_file_list, cmd_file_delete, cmd_file_ask,
 cmd_file_download.
 """
 
-
 from application import files_service as service
 
 __all__ = [

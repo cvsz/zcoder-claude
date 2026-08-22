@@ -4,6 +4,7 @@ AI Model Coder CLI v1.55.0 (Clean Architecture refactor, Phase D, Context #9)
 Orchestrates domain/wif.py + infrastructure/anthropic_api/wif_gateway.py
 — no print() of its own.
 """
+
 # mypy: ignore-errors
 
 import os

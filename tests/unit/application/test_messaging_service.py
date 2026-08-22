@@ -18,7 +18,9 @@ def test_chat_turn_builds_coder_with_request_params(monkeypatch):
     calls = {}
 
     class FakeCoder:
-        def __init__(self, api_key=None, model=None, temperature=None, max_tokens=None, personality_style=None):
+        def __init__(
+            self, api_key=None, model=None, temperature=None, max_tokens=None, personality_style=None
+        ):
             calls["init"] = (api_key, model, temperature, max_tokens, personality_style)
 
         def generate(self, prompt, system=None, file_content=None, history=None):
@@ -49,7 +51,9 @@ def test_chat_turn_defaults_and_empty_history(monkeypatch):
     calls = {}
 
     class FakeCoder:
-        def __init__(self, api_key=None, model=None, temperature=None, max_tokens=None, personality_style=None):
+        def __init__(
+            self, api_key=None, model=None, temperature=None, max_tokens=None, personality_style=None
+        ):
             calls["init"] = (api_key, model)
 
         def generate(self, prompt, system=None, history=None):
@@ -70,8 +74,9 @@ def test_stream_chat_turn_passes_history_temperature_and_on_text(monkeypatch):
         def __init__(self, api_key, model, max_tokens=4096):
             calls["init"] = (api_key, model, max_tokens)
 
-        def stream(self, prompt, system=None, tools=None, show_thinking=False,
-                   history=None, temperature=None, **cb):
+        def stream(
+            self, prompt, system=None, tools=None, show_thinking=False, history=None, temperature=None, **cb
+        ):
             calls["stream"] = {
                 "prompt": prompt,
                 "system": system,

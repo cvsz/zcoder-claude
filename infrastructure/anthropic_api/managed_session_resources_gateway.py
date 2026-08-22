@@ -1,4 +1,5 @@
 """Managed Agents session-resource transport adapter."""
+
 # mypy: ignore-errors
 
 from collections.abc import Iterable

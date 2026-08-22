@@ -152,7 +152,7 @@ class ComplianceApiError(Exception):
             err = parsed.get("error", {})
             error_type = err.get("type", error_type)
             message = err.get("message", message)
-        except (json.JSONDecodeError, UnicodeDecodeError):
+        except json.JSONDecodeError, UnicodeDecodeError:
             pass
         return cls(
             status=status,

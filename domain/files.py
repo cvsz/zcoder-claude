@@ -17,7 +17,6 @@ established for infrastructure/anthropic_api/messaging_gateway.py's
 MESSAGES_ENDPOINT.
 """
 
-
 BETA_HEADER = "files-api-2025-04-14"
 
 # platform.claude.com/docs/en/build-with-claude/files — File storage and limits

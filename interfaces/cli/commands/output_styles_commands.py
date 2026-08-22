@@ -5,7 +5,6 @@ Only print() lives here — all real work delegated to
 application/output_styles_service.py.
 """
 
-
 from application import output_styles_service as service
 
 

@@ -215,9 +215,7 @@ def generate_thinking(
     )
 
 
-def resolve_thinking_mode_label(
-    api_key: str, model: str, adaptive: bool | None, legacy_budget: bool
-) -> str:
+def resolve_thinking_mode_label(api_key: str, model: str, adaptive: bool | None, legacy_budget: bool) -> str:
     """ "adaptive" or "manual budget_tokens" — used by the CLI layer to
     print the mode banner before making the call."""
     tc = ThinkingCoder(api_key=api_key, model=model)

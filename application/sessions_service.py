@@ -8,7 +8,6 @@ its own, no print(). Extracted 2026-08-18. Original cmd_* bodies were
 already thin (one store call + prints), so these ops are thin too.
 """
 
-
 from domain.sessions import Checkpoint, Session
 from infrastructure.local_storage import sessions_store as store
 

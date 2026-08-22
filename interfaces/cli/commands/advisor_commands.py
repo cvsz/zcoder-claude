@@ -5,7 +5,6 @@ Only print() lives here — all real work delegated to
 application/advisor_service.py.
 """
 
-
 from application import advisor_service as service
 from domain.advisor import build_advisor_tool
 from infrastructure.anthropic_api.advisor_gateway import AdvisorGateway

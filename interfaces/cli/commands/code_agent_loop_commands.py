@@ -92,7 +92,7 @@ def _interactive_can_use_tool(name: str, inputs: dict) -> bool:
     try:
         ans = input("  Approve? [Y/n] ").strip().lower()
         return ans != "n"
-    except (EOFError, KeyboardInterrupt):
+    except EOFError, KeyboardInterrupt:
         return False
 
 

@@ -40,7 +40,7 @@ def confirm(prompt):
     try:
         ans = input(f"{prompt} [y/N] ").strip().lower()
         return ans in ("y", "yes")
-    except (EOFError, KeyboardInterrupt):
+    except EOFError, KeyboardInterrupt:
         return False
 
 

@@ -5,7 +5,6 @@ Orchestrates domain/research.py + infrastructure/anthropic_api/
 research_gateway.py — no print() of its own.
 """
 
-
 from domain.research import (
     SYS_ANAL,
     SYS_PLAN,

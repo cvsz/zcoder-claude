@@ -183,9 +183,7 @@ class HooksEngine:
             from domain.plugins import enabled_plugin_dirs, load_plugin_hooks
             from infrastructure.local_storage.plugins_store import _load_registry
 
-            plugin_hooks = load_plugin_hooks(
-                enabled_plugin_dirs(_load_registry().get("installed", {}))
-            )
+            plugin_hooks = load_plugin_hooks(enabled_plugin_dirs(_load_registry().get("installed", {})))
         except ImportError:
             return base
         merged = dict(base.config)
@@ -281,9 +279,7 @@ class McpConnector:
         self.servers: dict = {}
 
     @classmethod
-    def from_json_file(
-        cls, path: Path = MCP_JSON, on_warning: Callable[[str], None] = _NOOP
-    ) -> McpConnector:
+    def from_json_file(cls, path: Path = MCP_JSON, on_warning: Callable[[str], None] = _NOOP) -> McpConnector:
         mc = cls()
         if path.exists():
             try:
@@ -296,9 +292,7 @@ class McpConnector:
             from infrastructure.local_storage.plugins_store import _load_registry
 
             mc.servers.update(
-                load_plugin_mcp_servers(
-                    enabled_plugin_dirs(_load_registry().get("installed", {}))
-                )
+                load_plugin_mcp_servers(enabled_plugin_dirs(_load_registry().get("installed", {})))
             )
         except ImportError:
             pass
@@ -349,9 +343,7 @@ class SubagentRegistry:
             from domain.plugins import enabled_plugin_dirs, load_plugin_agents
             from infrastructure.local_storage.plugins_store import _load_registry
 
-            for entry in load_plugin_agents(
-                enabled_plugin_dirs(_load_registry().get("installed", {}))
-            ):
+            for entry in load_plugin_agents(enabled_plugin_dirs(_load_registry().get("installed", {}))):
                 self._load_one(
                     Path(entry["path"]),
                     plugin=entry["plugin"],
@@ -434,9 +426,7 @@ class SkillsRegistry:
             from domain.plugins import enabled_plugin_dirs, load_plugin_skills
             from infrastructure.local_storage.plugins_store import _load_registry
 
-            for entry in load_plugin_skills(
-                enabled_plugin_dirs(_load_registry().get("installed", {}))
-            ):
+            for entry in load_plugin_skills(enabled_plugin_dirs(_load_registry().get("installed", {}))):
                 content = Path(entry["path"]).read_text()
                 key = f"{entry['plugin']}:{entry['name']}"
                 self._skills[key] = {

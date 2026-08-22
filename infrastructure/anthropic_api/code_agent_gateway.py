@@ -274,7 +274,7 @@ def classify(prompt: str, table: dict, api_key: str, model: str) -> tuple[str, s
         if agent not in table:
             agent = "code"
         return agent, reason
-    except (json.JSONDecodeError, KeyError):
+    except json.JSONDecodeError, KeyError:
         return "code", "classifier output not parseable; defaulting to code agent"
 
 

@@ -115,6 +115,7 @@ class Coder:
             payload["inference_geo"] = self.inference_geo
         if self.fast_mode:
             from domain.models.catalog import FAST_MODE_REMOVED_ERROR, validate_fast_mode
+
             reason = validate_fast_mode(self.model)
             if self.model in FAST_MODE_REMOVED_ERROR:
                 logger.error("fast_mode_removed", extra={"model": self.model})
@@ -148,7 +149,7 @@ class Coder:
                     retry_after = None
                     try:
                         retry_after = float(e.headers.get("Retry-After", "")) if e.headers else None
-                    except (TypeError, ValueError):
+                    except TypeError, ValueError:
                         pass
                     raise RateLimitError(
                         "Rate limited (429)", retry_after=retry_after, details={"body": body[:300]}

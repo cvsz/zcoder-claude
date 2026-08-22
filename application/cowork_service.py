@@ -33,5 +33,6 @@ def run_cowork_task(
 ) -> dict:
     """Execute one cowork task end-to-end and return its result dict."""
     agent = CoworkAgent(api_key=api_key, model=model)
-    return agent.run(task_type, prompt, files=files, depth=depth, output_fmt=output_fmt,
-                     on_progress=on_progress)
+    return agent.run(
+        task_type, prompt, files=files, depth=depth, output_fmt=output_fmt, on_progress=on_progress
+    )

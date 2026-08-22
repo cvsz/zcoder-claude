@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 main.py — AI Model Coder CLI (entry-point stub)
-AI Model Coder CLI v1.43.0
+AI Model Coder CLI v1.44.0
 
 Delegates to interfaces/cli/parser.py and interfaces/cli/dispatcher.py.
 Extracted 2026-08-21 (Phase E).

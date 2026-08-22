@@ -6,4 +6,4 @@ webapp FastAPI) reads the same string without importing presentation-layer
 code from each other. Extracted 2026-08-22 from interfaces/cli/dispatcher.py.
 """
 
-VERSION = "1.43.0"
+VERSION = "1.44.0"

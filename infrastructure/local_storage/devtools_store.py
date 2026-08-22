@@ -41,18 +41,32 @@ def get_file_blame_log(file: str, cwd: str = ".") -> str:
 
 
 def read_file_lines(cwd: str, file: str, line_start: int, line_end: int) -> str:
-    """Returns the requested line range, or a placeholder string on any
-    read failure (matches claude_git.py's original broad except)."""
+    """Returns the requested line range joined with single newlines, or a
+    placeholder string on any read failure.
+
+    v1.44.0 fix: the original fed readlines() straight into "\\n".join(),
+    keeping each line's own trailing newline AND inserting the join
+    separator — doubled newlines between requested lines."""
     try:
-        return "\n".join(open(f"{cwd}/{file}").readlines()[line_start - 1 : line_end])
+        with open(f"{cwd}/{file}") as f:
+            lines = f.readlines()[line_start - 1 : line_end]
+        return "\n".join(line.rstrip("\n") for line in lines)
     except Exception:
         return "(could not read file)"
 
 
 def commit_with_message(message: str, cwd: str = ".") -> tuple[bool, str]:
-    """Runs `git commit -m <message>`. Returns (success, stderr-or-empty)."""
+    """Runs `git commit -m <message>`. Returns (success, status-message).
+
+    v1.44.0 fix: on failure, the human-readable status is now returned
+    regardless of which stream git wrote it to. The original always
+    returned result.stderr, but git writes some failure messages (notably
+    "nothing to commit") to stdout — leaving callers with an empty string
+    on that failure path. Success still returns ""."""
     result = subprocess.run(["git", "commit", "-m", message], cwd=cwd, capture_output=True, text=True)
-    return result.returncode == 0, result.stderr
+    if result.returncode == 0:
+        return True, ""
+    return False, result.stderr.strip() or result.stdout.strip()
 
 
 def write_text_file(path: str, text: str) -> None:

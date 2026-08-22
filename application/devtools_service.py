@@ -196,12 +196,12 @@ def browse_session(
             url = next_url
             continue
 
-        on_step(BrowseStep(step, url, "unknown_action", detail=repr(decision.get("action"))))
-        break
-
-    # Reached whenever the loop broke early (loop/blocked/fetch_error/
-    # unknown_action) OR ran out of steps — matches claude_chrome.py's
-    # original unconditional tail print+return after the for-loop; only
-    # the "unparsable" and "answer" branches above return early instead.
+    # Reached whenever the loop broke early (loop/blocked/fetch_error) OR
+    # ran out of steps — matches claude_chrome.py's original unconditional
+    # tail print+return after the for-loop; only the "unparsable" and
+    # "answer" branches above return early instead. (v1.44.0: the old
+    # trailing "unknown_action" branch was removed — parse_json_action()
+    # already returns None for any action other than navigate/answer, so
+    # it could never fire; unknown actions take the "unparsable" path.)
     on_step(BrowseStep(step=max_steps, url=url, action="max_steps"))
     return None

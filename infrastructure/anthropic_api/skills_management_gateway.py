@@ -10,7 +10,6 @@ domain.skills.
 from collections.abc import Iterable
 from pathlib import Path
 
-SKILLS_BETA = "skills-2025-10-02"
 
 
 class SkillsManagementGateway:
@@ -34,7 +33,7 @@ class SkillsManagementGateway:
     def create_skill(self, file_paths: Iterable[str], display_title: str | None = None):
         handles = self._open_files(file_paths)
         try:
-            kwargs = {"files": handles, "betas": [SKILLS_BETA]}
+            kwargs = {"files": handles}
             if display_title is not None:
                 kwargs["display_title"] = display_title
             return self.client.beta.skills.create(**kwargs)
@@ -43,7 +42,7 @@ class SkillsManagementGateway:
                 handle.close()
 
     def list_skills(self, *, limit: int = 20, page: str | None = None, source: str | None = None):
-        kwargs = {"limit": limit, "betas": [SKILLS_BETA]}
+        kwargs = {"limit": limit}
         if page is not None:
             kwargs["page"] = page
         if source is not None:
@@ -51,30 +50,30 @@ class SkillsManagementGateway:
         return self.client.beta.skills.list(**kwargs)
 
     def get_skill(self, skill_id: str):
-        return self.client.beta.skills.retrieve(skill_id, betas=[SKILLS_BETA])
+        return self.client.beta.skills.retrieve(skill_id)
 
     def delete_skill(self, skill_id: str):
-        return self.client.beta.skills.delete(skill_id, betas=[SKILLS_BETA])
+        return self.client.beta.skills.delete(skill_id)
 
     def create_version(self, skill_id: str, file_paths: Iterable[str]):
         handles = self._open_files(file_paths)
         try:
-            return self.client.beta.skills.versions.create(skill_id, files=handles, betas=[SKILLS_BETA])
+            return self.client.beta.skills.versions.create(skill_id, files=handles)
         finally:
             for handle in handles:
                 handle.close()
 
     def list_versions(self, skill_id: str, *, limit: int = 20, page: str | None = None):
-        kwargs = {"limit": limit, "betas": [SKILLS_BETA]}
+        kwargs = {"limit": limit}
         if page is not None:
             kwargs["page"] = page
         return self.client.beta.skills.versions.list(skill_id, **kwargs)
 
     def get_version(self, skill_id: str, version: str):
-        return self.client.beta.skills.versions.retrieve(version, skill_id=skill_id, betas=[SKILLS_BETA])
+        return self.client.beta.skills.versions.retrieve(version, skill_id=skill_id)
 
     def download_version(self, skill_id: str, version: str):
-        return self.client.beta.skills.versions.download(version, skill_id=skill_id, betas=[SKILLS_BETA])
+        return self.client.beta.skills.versions.download(version, skill_id=skill_id)
 
     def delete_version(self, skill_id: str, version: str):
-        return self.client.beta.skills.versions.delete(version, skill_id=skill_id, betas=[SKILLS_BETA])
+        return self.client.beta.skills.versions.delete(version, skill_id=skill_id)

@@ -12,13 +12,30 @@ on every skill upload/edit. There is NO API endpoint to trigger a scan or
 poll a scan result — the /v1/skills upload/version endpoints are unchanged
 by the feature. Nothing to wire here; this comment is the documented
 disposition.
+
+Beta-header status (Files API + Agent Skills API GA, Aug 19–20 2026):
+SKILLS_BETA ("skills-2025-10-02") and FILES_API_BETA
+("files-api-2025-04-14") are NO LONGER SENT by ZCoder's own gateways —
+both APIs went GA, so /v1/skills, /v1/files, and Messages container /
+file-reference calls work without them (GA responses add file
+expiration fields and list pagination; legacy beta-header requests
+still get the old response format). The two constants are RETAINED
+only because non-gateway modules still import them for display/
+compat purposes: agents_gateway.py imports FILES_API_BETA for its own
+managed-agents calls, and interfaces/cli/commands/skills_api_commands.py
+references SKILLS_BETA in its info text. Do not re-add either to any
+outgoing request headers. CODE_EXECUTION_BETA remains actively sent:
+the code-execution tool beta has NOT gone GA.
 """
 
 from dataclasses import dataclass
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
 CODE_EXECUTION_BETA = "code-execution-2025-08-25"
+# Retained for import compatibility only — no longer sent on the wire (see GA note above).
 SKILLS_BETA = "skills-2025-10-02"
+# Retained for import compatibility only — no longer sent on the wire (see GA note above);
+# still referenced by infrastructure/anthropic_api/agents_gateway.py.
 FILES_API_BETA = "files-api-2025-04-14"
 
 PREBUILT_SKILLS = {

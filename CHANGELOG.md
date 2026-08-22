@@ -6,6 +6,30 @@ high-level index. Two project lineages (`zcoder-cli-v1`, the modular
 single-`coder.py` CLI with its own PyInstaller packaging) were merged into
 this release; see "v1.12.0" below for exactly what came from where.
 
+## v1.44.0 — Anthropic GA adoption (Files API, Skills API, computer use) + devtools quirk fixes
+
+**Files API → GA:** legacy `files-api-2025-04-14` beta header no longer sent;
+GA response handling (`expires_at` normalization, `next_page` pagination with
+legacy fallback) in `files_gateway.py`.
+
+**Skills API → GA:** skills beta header removed from `skills_api_gateway.py`
+and `skills_management_gateway.py`; only code-execution beta remains.
+
+**Computer use → GA toolset:** `computer_toolset_20260801` is the new default
+request shape (batch actions, zoom default-on, per-member `configs`, no beta
+header); model-gated to Fable 5 / Mythos 5 / Opus 5 / Sonnet 5 / Opus 4.8;
+legacy shape opt-in via `toolset="legacy"`.
+
+**Devtools quirk fixes (intentional behavior changes):**
+`read_file_lines()` no longer doubles newlines; `commit_with_message()`
+returns git's status on the failure path instead of an empty string; dead
+`unknown_action` branch removed from `browse_session()` (routing unchanged:
+unknown actions → unparsable).
+
+**Gates:** 1092 tests passing (+32 net-new); ruff/mypy/black/pyflakes clean;
+`--help` output-neutral vs HEAD; all smoke paths reach the real stack with
+clean 401s.
+
 ## v1.43.0 — repo organization + last flat modules migrated + webapp on the application layer
 
 **Last flat feature modules migrated:** `artifacts.py`, `cowork.py`,

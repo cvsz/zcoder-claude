@@ -241,7 +241,10 @@ def test_upgrade_all_opus_target_unchanged_for_backward_compat(tmp_path):
 
 def test_run_computer_use_delegates_to_gateway(monkeypatch):
     class FakeComputerUseCoder:
-        def __init__(self, api_key, model):
+        # Signature mirrors the real ComputerUseCoder: toolset="ga" is
+        # the GA computer_toolset_20260801 default (see
+        # tests/test_computer_use_ga.py for the wire-shape coverage).
+        def __init__(self, api_key, model, toolset="ga"):
             pass
 
         def run_task(self, task):
@@ -250,6 +253,36 @@ def test_run_computer_use_delegates_to_gateway(monkeypatch):
     monkeypatch.setattr("application.models_service.ComputerUseCoder", FakeComputerUseCoder)
     result = run_computer_use("open a file", "k", "claude-sonnet-5")
     assert result["text"] == "did open a file"
+
+
+def test_run_computer_use_defaults_to_ga_toolset(monkeypatch):
+    captured = {}
+
+    class FakeComputerUseCoder:
+        def __init__(self, api_key, model, toolset="ga"):
+            captured["toolset"] = toolset
+
+        def run_task(self, task):
+            return {"text": "", "tool_calls": []}
+
+    monkeypatch.setattr("application.models_service.ComputerUseCoder", FakeComputerUseCoder)
+    run_computer_use("x", "k", "claude-sonnet-5")
+    assert captured["toolset"] == "ga"
+
+
+def test_run_computer_use_passes_legacy_toolset_through(monkeypatch):
+    captured = {}
+
+    class FakeComputerUseCoder:
+        def __init__(self, api_key, model, toolset="ga"):
+            captured["toolset"] = toolset
+
+        def run_task(self, task):
+            return {"text": "", "tool_calls": []}
+
+    monkeypatch.setattr("application.models_service.ComputerUseCoder", FakeComputerUseCoder)
+    run_computer_use("x", "k", "claude-sonnet-4-5", toolset="legacy")
+    assert captured["toolset"] == "legacy"
 
 
 def test_run_adaptive_thinking_delegates_to_gateway(monkeypatch):

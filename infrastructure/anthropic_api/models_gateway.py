@@ -31,6 +31,30 @@ _breaker = CircuitBreaker(failure_threshold=5, reset_timeout=30)
 # only ComputerUseCoder (this file) uses them, leaving both this file and
 # the CLI file broken (NameError at call time — nothing caught it because
 # neither had test coverage that exercised these code paths).
+#
+# Two request shapes are supported (2026-08-19/20 GA release notes):
+#
+#   "ga"     — the computer_toolset_20260801 toolset, GA as of Aug 2026.
+#              ONE consolidated tool descriptor whose members (computer /
+#              bash / text_editor) are configured via `configs`. Batch
+#              actions (the model may emit several actions per turn) and
+#              `zoom` (default-on) are declared on the descriptor itself.
+#              No beta header needed — it is GA. Supported models only:
+#              Fable 5, Mythos 5, Opus 5, Sonnet 5, Opus 4.8; anything
+#              else raises ZCoderError client-side.
+#   "legacy" — the pre-GA beta shape (separate computer_20250124 / bash /
+#              text_editor tools + the computer-use beta header). Opt-in
+#              via toolset="legacy" for older models and rollback.
+COMPUTER_USE_TOOLSET_GA = "computer_toolset_20260801"
+GA_COMPUTER_USE_SUPPORTED_MODELS = frozenset(
+    {
+        "claude-fable-5",
+        "claude-mythos-5",
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "claude-opus-4-8",
+    }
+)
 COMPUTER_USE_TOOLS = [
     {
         "type": "computer_20250124",
@@ -49,6 +73,41 @@ COMPUTER_USE_TOOLS = [
     },
 ]
 COMPUTER_USE_BETA = "computer-use-2025-01-24"
+DEFAULT_COMPUTER_USE_SHAPE = "ga"
+
+
+def computer_use_toolset_for_model(model: str, width: int = 1024, height: int = 768, configs: dict = None):
+    """Return the GA computer_toolset_20260801 tool descriptor for `model`.
+
+    Raises ZCoderError for models outside GA_COMPUTER_USE_SUPPORTED_MODELS
+    (the API would reject them; failing client-side gives a clearer error
+    than a round-trip 400). `configs` replaces the default per-member
+    configuration wholesale when provided."""
+    if model not in GA_COMPUTER_USE_SUPPORTED_MODELS:
+        supported = ", ".join(sorted(GA_COMPUTER_USE_SUPPORTED_MODELS))
+        raise ZCoderError(
+            f"{model} does not support the {COMPUTER_USE_TOOLSET_GA} toolset "
+            f"(GA, no beta header). Supported models: {supported}. "
+            f"Use toolset='legacy' for pre-GA models."
+        )
+    return {
+        "type": COMPUTER_USE_TOOLSET_GA,
+        "name": "computer",
+        "display_width_px": width,
+        "display_height_px": height,
+        # GA defaults per the 2026-08-19/20 release notes: zoom enabled by
+        # default; batch actions let the model emit several actions per turn.
+        "zoom": True,
+        "batch_actions": True,
+        # Per-member configuration. Defaults enable every member of the
+        # toolset; callers override the whole mapping, not individual keys.
+        "configs": configs
+        or {
+            "bash": {"enabled": True},
+            "text_editor": {"enabled": True},
+        },
+    }
+
 
 # Adaptive + Interleaved Thinking — same relocation, same reason (only
 # AdaptiveThinkingCoder, this file, uses it).
@@ -86,7 +145,13 @@ class ModelsAPI:
 
 
 class ComputerUseCoder:
-    """Claude with computer use tools."""
+    """Claude with computer use tools.
+
+    toolset="ga" (default) sends the computer_toolset_20260801 request
+    shape — single consolidated descriptor, batch actions, zoom on, per
+    -member `configs`, no beta header. toolset="legacy" opts back into
+    the pre-GA shape (separate dated tools + the computer-use beta
+    header) for pre-GA models and rollback."""
 
     def __init__(
         self,
@@ -95,21 +160,30 @@ class ComputerUseCoder:
         max_tokens: int = 4096,
         width: int = 1024,
         height: int = 768,
+        toolset: str = DEFAULT_COMPUTER_USE_SHAPE,
+        configs: dict = None,
     ):
+        if toolset not in ("ga", "legacy"):
+            raise ValueError(f"Unknown computer-use toolset '{toolset}' — expected 'ga' or 'legacy'")
         self.api_key = api_key
         self.model = model
         self.max_tokens = max_tokens
         self.width = width
         self.height = height
+        self.toolset = toolset
+        self.configs = configs
 
     @retry(max_attempts=4, base_delay=1.0, max_delay=15.0, breaker=_breaker)
-    def _call(self, payload: dict) -> dict:
+    def _call(self, payload: dict, beta_header: str = None) -> dict:
         headers = {
             "Content-Type": "application/json",
             "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
-            "anthropic-beta": COMPUTER_USE_BETA,
         }
+        # GA toolset needs no anthropic-beta header; only the legacy
+        # opt-in shape still carries one.
+        if beta_header:
+            headers["anthropic-beta"] = beta_header
         req = urllib.request.Request(
             MESSAGES_ENDPOINT,
             data=json.dumps(payload).encode(),
@@ -118,19 +192,26 @@ class ComputerUseCoder:
         )
         return urlopen_json(req, timeout=120)
 
-    def _post(self, payload: dict) -> dict:
+    def _post(self, payload: dict, beta_header: str = None) -> dict:
         try:
-            return self._call(payload)
+            return self._call(payload, beta_header)
         except ZCoderError as e:
             return {"error": e.message, "status": getattr(e, "status_code", None)}
         except Exception as e:
             return {"error": str(e)}
 
     def run_task(self, task: str, system: str = None) -> dict:
-        """Submit a computer use task. Returns tool calls for execution."""
-        tools = [dict(t) for t in COMPUTER_USE_TOOLS]
-        tools[0]["display_width_px"] = self.width
-        tools[0]["display_height_px"] = self.height
+        """Submit a computer use task. Returns tool calls for execution.
+        With the GA toolset a single response turn may carry several
+        actions; every one of them lands in `tool_calls` in order."""
+        if self.toolset == "ga":
+            tools = [computer_use_toolset_for_model(self.model, self.width, self.height, self.configs)]
+            beta_header = None  # GA — no beta header
+        else:
+            tools = [dict(t) for t in COMPUTER_USE_TOOLS]
+            tools[0]["display_width_px"] = self.width
+            tools[0]["display_height_px"] = self.height
+            beta_header = COMPUTER_USE_BETA
 
         system_prompt = system or (
             "You have access to a computer with a display. "
@@ -145,7 +226,7 @@ class ComputerUseCoder:
             "tools": tools,
             "messages": [{"role": "user", "content": task}],
         }
-        data = self._post(payload)
+        data = self._post(payload, beta_header)
         if "error" in data:
             return {"text": f"[ERROR] {data['error']}", "tool_calls": []}
 

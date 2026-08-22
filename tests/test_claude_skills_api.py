@@ -7,6 +7,7 @@ file_id extraction helper, and the two info-only CLI commands.
 
 import pytest
 
+import infrastructure.anthropic_api.skills_api_gateway as gateway_module
 from domain.skills_api import (
     CODE_EXECUTION_BETA,
     FILES_API_BETA,
@@ -68,6 +69,9 @@ def test_build_user_content_with_file_ids():
 
 
 # ── SkillsApiClient.call_with_skills / call_with_skills_turn ─────────────
+#
+# GA note (2026-08-22): the Skills API and Files API betas are no longer
+# sent — only CODE_EXECUTION_BETA rides along.
 
 
 def test_call_with_skills_sends_expected_betas_and_container(monkeypatch):
@@ -82,7 +86,9 @@ def test_call_with_skills_sends_expected_betas_and_container(monkeypatch):
     monkeypatch.setattr(client, "_post", fake_post)
     client.call_with_skills("do something", skills=["xlsx"])
 
-    assert captured["betas"] == [CODE_EXECUTION_BETA, SKILLS_BETA]
+    assert captured["betas"] == [CODE_EXECUTION_BETA]
+    assert SKILLS_BETA not in captured["betas"]
+    assert FILES_API_BETA not in captured["betas"]
     assert captured["payload"]["container"] == {"skills": [{"type": "anthropic", "skill_id": "xlsx"}]}
     assert captured["payload"]["tools"] == [{"type": "code_execution_20250825", "name": "code_execution"}]
 
@@ -104,9 +110,12 @@ def test_call_with_skills_turn_reuses_container_id(monkeypatch):
 
     assert captured["payload"]["container"]["id"] == "cont_123"
     assert FILES_API_BETA not in captured["betas"]
+    assert SKILLS_BETA not in captured["betas"]
+    assert captured["betas"] == [CODE_EXECUTION_BETA]
 
 
-def test_call_with_skills_turn_adds_files_beta_when_uploading(monkeypatch):
+def test_call_with_skills_turn_no_files_beta_when_uploading(monkeypatch):
+    """GA (2026-08-22): container_upload file references need no beta header."""
     client = SkillsApiClient(api_key="k")
     captured = {}
     monkeypatch.setattr(
@@ -119,7 +128,43 @@ def test_call_with_skills_turn_adds_files_beta_when_uploading(monkeypatch):
         has_file_uploads=True,
     )
 
-    assert captured["betas"] == [CODE_EXECUTION_BETA, SKILLS_BETA, FILES_API_BETA]
+    assert captured["betas"] == [CODE_EXECUTION_BETA]
+    assert FILES_API_BETA not in captured["betas"]
+
+
+def test_wire_request_never_sends_skills_or_files_beta(monkeypatch):
+    """Wire-level: the actual outgoing anthropic-beta header carries only
+    the code-execution beta — never skills/files beta strings."""
+    client = SkillsApiClient(api_key="k")
+    captured = {}
+
+    def fake_urlopen_json(req, timeout):
+        captured["headers"] = dict(req.header_items())
+        return {"content": []}
+
+    monkeypatch.setattr(gateway_module, "urlopen_json", fake_urlopen_json)
+    client.call_with_skills("hi", skills=["xlsx"])
+
+    header_value = (
+        captured["headers"].get("Anthropic-beta") or captured["headers"].get("anthropic-beta") or ""
+    )
+    assert SKILLS_BETA not in header_value
+    assert FILES_API_BETA not in header_value
+
+
+def test_wire_request_omits_beta_header_when_no_betas(monkeypatch):
+    client = SkillsApiClient(api_key="k")
+    captured = {}
+
+    def fake_urlopen_json(req, timeout):
+        captured["req"] = req
+        return {"content": []}
+
+    monkeypatch.setattr(gateway_module, "urlopen_json", fake_urlopen_json)
+    client._call({"model": "m"}, betas=[])
+
+    names = {k.lower() for k in dict(captured["req"].header_items())}
+    assert "anthropic-beta" not in names
 
 
 # ── extract_output_file_ids ───────────────────────────────────────────────

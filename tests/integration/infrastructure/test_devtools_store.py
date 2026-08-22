@@ -88,12 +88,11 @@ def test_get_file_blame_log(git_repo):
 def test_read_file_lines_returns_requested_range(git_repo):
     (git_repo / "multi.txt").write_text("line1\nline2\nline3\nline4\n")
     result = store.read_file_lines(str(git_repo), "multi.txt", 2, 3)
-    # "\n".join() of readlines() keeps each line's own trailing "\n" *and*
-    # inserts the join separator between them — a double newline between
-    # entries. This is claude_git.py's original behavior verbatim
-    # (open(...).readlines()[start-1:end] fed straight into "\n".join()),
-    # not something this migration changed.
-    assert result == "line2\n\nline3\n"
+    # v1.44.0 fix: lines are joined with single newlines — each line's
+    # trailing newline is stripped before joining, so no doubled newlines
+    # between entries (the original fed readlines() straight into
+    # "\n".join(), keeping both each line's "\n" and the join separator).
+    assert result == "line2\nline3"
 
 
 def test_read_file_lines_missing_file_returns_placeholder(git_repo):
@@ -101,23 +100,31 @@ def test_read_file_lines_missing_file_returns_placeholder(git_repo):
     assert result == "(could not read file)"
 
 
+def test_read_file_lines_single_line_range_has_no_trailing_newline(git_repo):
+    (git_repo / "multi.txt").write_text("line1\nline2\n")
+    # v1.44.0 fix: a single requested line comes back without its trailing
+    # newline — consistent with the stripped-then-joined multi-line case.
+    assert store.read_file_lines(str(git_repo), "multi.txt", 1, 1) == "line1"
+
+
 def test_commit_with_message_success(git_repo):
     (git_repo / "a.txt").write_text("hello\nworld\n")
     _run("git add a.txt", git_repo)
     success, err = store.commit_with_message("test commit", str(git_repo))
     assert success is True
+    # v1.44.0 fix keeps the success path identical: "" regardless of git's
+    # stdout commit summary, so failure-only callers are unaffected.
+    assert err == ""
 
 
 def test_commit_with_message_failure_when_nothing_staged(git_repo):
     success, err = store.commit_with_message("empty commit", str(git_repo))
     assert success is False
-    # git's "nothing to commit" message goes to stdout, not stderr, so
-    # `err` (== result.stderr) is empty on this particular failure path —
-    # this matches claude_git.py's original commit_with_message() verbatim
-    # (it always returned result.stderr, whether or not stderr was
-    # actually populated for a given failure reason); not something this
-    # migration changed or should "fix" silently.
-    assert err == ""
+    # v1.44.0 fix: git writes "nothing to commit" to stdout, not stderr;
+    # the original returned result.stderr verbatim, leaving callers with
+    # an empty string on this failure path. The status is now routed from
+    # whichever stream carries it, so callers get the human-readable reason.
+    assert "nothing to commit" in err
 
 
 def test_write_text_file(tmp_path):

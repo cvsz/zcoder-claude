@@ -19,7 +19,7 @@ def cmd_skills_list():
 
 
 def cmd_skills_info(skill_id: str):
-    from domain.skills_api import CODE_EXECUTION_BETA, PREBUILT_SKILLS, SKILLS_BETA, SkillRef
+    from domain.skills_api import CODE_EXECUTION_BETA, PREBUILT_SKILLS, SkillRef
 
     info = PREBUILT_SKILLS.get(skill_id)
     if not info:
@@ -32,5 +32,5 @@ def cmd_skills_info(skill_id: str):
         f"  Reference in a request as: "
         f"SkillRef.prebuilt({skill_id!r}) -> {SkillRef.prebuilt(skill_id).to_dict()}"
     )
-    print(f"  Requires beta headers: {CODE_EXECUTION_BETA}, {SKILLS_BETA}\n")
+    print(f"  Code execution requires beta header: {CODE_EXECUTION_BETA}\n")
     return info

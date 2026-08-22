@@ -246,22 +246,20 @@ def test_browse_session_unparsable_reply_returns_raw_reply(monkeypatch):
 
 
 def test_browse_session_action_outside_navigate_answer_is_unparsable(monkeypatch):
-    """Confirms a genuine, pre-existing dead-code finding carried over
-    faithfully from claude_chrome.py: domain.parse_json_action() already
-    returns None for any action other than "navigate"/"answer" (see its
-    own `if data.get("action") not in ("navigate", "answer"): return None`
-    — a byte-exact port of the original _parse_json_action()), so
-    browse_session()'s "unknown_action" on_step branch below can never
-    actually fire; a syntactically-invalid-but-well-formed-JSON action
-    like {"action": "delete"} takes the "unparsable" path instead, both
-    in the original and here. Not "fixed" as part of this migration —
-    changing runtime behavior wasn't in scope, only moving code."""
+    """v1.44.0 fix: browse_session()'s old trailing "unknown_action"
+    on_step branch was dead code and has been removed. domain
+    .parse_json_action() returns None for any action other than
+    "navigate"/"answer", so a well-formed-JSON action like
+    {"action": "delete"} takes the "unparsable" path (raw reply returned,
+    early return before the max-steps tail) — this test now pins that
+    actual routing as the intended behavior."""
     monkeypatch.setattr(service, "make_coder", lambda *a, **k: FakeCoder())
     monkeypatch.setattr(service, "fetch_page", lambda url: ("page text", [], None))
     monkeypatch.setattr(service, "browse_decide", lambda coder, prompt: '{"action": "delete"}')
     steps = []
     result = service.browse_session("key", "m", "https://x.com", "find X", on_step=steps.append)
     assert result == '{"action": "delete"}'  # returned verbatim as the "unparsable" reply
+    # early return on "unparsable" — no "max_steps" tail event fires
     assert [s.action for s in steps] == ["start", "fetching", "unparsable"]
 
 

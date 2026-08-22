@@ -201,9 +201,12 @@ def upgrade_all(path: str, target: str = "fable5", apply: bool = False, no_backu
     }
 
 
-def run_computer_use(task: str, api_key: str, model: str) -> dict:
-    """{'text': str, 'tool_calls': [...]} from ComputerUseCoder.run_task()."""
-    cu = ComputerUseCoder(api_key=api_key, model=model)
+def run_computer_use(task: str, api_key: str, model: str, toolset: str = "ga") -> dict:
+    """{'text': str, 'tool_calls': [...]} from ComputerUseCoder.run_task().
+    toolset="ga" (default) sends the GA computer_toolset_20260801 request
+    shape (batch actions, zoom on, per-member configs, no beta header);
+    toolset="legacy" opts back into the pre-GA beta shape."""
+    cu = ComputerUseCoder(api_key=api_key, model=model, toolset=toolset)
     return cu.run_task(task)
 
 

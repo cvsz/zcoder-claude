@@ -1,4 +1,4 @@
-"""utils.py — Terminal utilities & formatters"""
+"""core/utils.py — Terminal utilities & formatters"""
 
 import os
 import sys

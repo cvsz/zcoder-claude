@@ -18,8 +18,8 @@ import json
 import os
 import urllib.request
 
+from core.exceptions import ZCoderError
 from domain.tools import cosine_similarity
-from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 VOYAGE_ENDPOINT = "https://api.voyageai.com/v1/embeddings"

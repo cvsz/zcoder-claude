@@ -10,8 +10,8 @@ does:
     application/messaging_service.py -> chat_turn / stream_chat_turn
     domain.agents.role_prompts       -> AGENT_SYSTEM_PROMPTS (/api/agents)
     version.py                       -> VERSION
-    config.py                        -> Config (persisted to ~/.zcoder-config.json)
-    health.py                        -> run_health_check (used for Docker/orchestrator
+    core.config                      -> Config (persisted to ~/.zcoder-config.json)
+    core.health                      -> run_health_check (used for Docker/orchestrator
                                           probes and the CLI's --health-check flag)
     domain.models.catalog            -> MODEL_CATALOG (dropdown list)
     domain.personalities/skill_catalog -> listing data for the sidebar
@@ -42,13 +42,13 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from application import messaging_service  # noqa: E402
-from config import Config  # noqa: E402
+from core.config import Config  # noqa: E402
+from core.health import run_health_check  # noqa: E402
+from core.logging_config import get_logger  # noqa: E402
 from domain.agents.role_prompts import AGENT_SYSTEM_PROMPTS  # noqa: E402
 from domain.models.catalog import MODEL_CATALOG  # noqa: E402
 from domain.personalities import PersonalityManager  # noqa: E402
 from domain.skill_catalog import SkillManager  # noqa: E402
-from health import run_health_check  # noqa: E402
-from logging_config import get_logger  # noqa: E402
 from version import VERSION  # noqa: E402
 
 logger = get_logger("webapp.server")

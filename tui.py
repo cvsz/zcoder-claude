@@ -13,7 +13,7 @@ end alongside the plain-argparse CLI and the FastAPI web console
     domain.models.catalog            -> MODEL_CATALOG
     domain.agents.role_prompts       -> AGENT_SYSTEM_PROMPTS
     version.py                       -> VERSION
-    config.py                        -> Config (persisted to ~/.zcoder-config.json)
+    core.config                      -> Config (persisted to ~/.zcoder-config.json)
 
 No business logic lives here -- this module is purely presentation, same
 principle webapp/backend/server.py documents for itself. What stays
@@ -53,12 +53,12 @@ except ImportError as e:  # pragma: no cover - exercised only w/o textual instal
     ) from e
 
 from application import messaging_service
-from config import Config
+from core.config import Config
 from domain.agents.role_prompts import AGENT_SYSTEM_PROMPTS
 from domain.models.catalog import MODEL_CATALOG
 from domain.personalities import PersonalityManager
 from domain.skill_catalog import SkillManager
-from tui_streaming import StreamRenderGate
+from interfaces.cli.tui_streaming import StreamRenderGate
 
 DEFAULT_MODEL = "claude-sonnet-5"
 

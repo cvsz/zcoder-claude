@@ -55,7 +55,7 @@ def cmd_score(prompt: str, api_key: str, model: str):
 def cmd_ab_test(prompt_a: str, prompt_b: str, task: str, api_key: str, model: str):
     import anthropic
 
-    from utils import sampling_kwargs
+    from core.utils import sampling_kwargs
 
     judge_prompt, max_tokens, parse = service.ab_test(prompt_a, prompt_b, task)
 

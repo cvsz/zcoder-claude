@@ -19,8 +19,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from core.exceptions import ZCoderError
 from domain.files import BETA_HEADER, MAX_FILE_SIZE_BYTES, _validate_filename
-from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 from infrastructure.local_storage import files_registry_store as registry
 

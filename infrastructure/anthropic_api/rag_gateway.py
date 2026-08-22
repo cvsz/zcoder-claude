@@ -13,8 +13,8 @@ file is only the part that's a real HTTP call to Anthropic.
 
 import anthropic
 
+from core.utils import sampling_kwargs
 from domain.tools import Chunk
-from utils import sampling_kwargs
 
 
 def generate(query: str, chunks: list[Chunk], api_key: str, model: str = "claude-sonnet-5") -> str:

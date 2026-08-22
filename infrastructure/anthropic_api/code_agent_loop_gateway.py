@@ -34,10 +34,10 @@ import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 
+from core.exceptions import ZCoderError
 from domain.agent_execution import SandboxViolation, enforce
 from domain.code_agent import READ_ONLY_TOOLS, build_tool_definitions
 from domain.tools import CONTEXT_MANAGEMENT_BETA
-from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, raise_for_http_error, retry, urlopen_json
 from infrastructure.local_storage.code_agent_store import CodeSession, HooksEngine, MemoryManager, TodoManager
 

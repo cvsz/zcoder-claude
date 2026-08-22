@@ -18,7 +18,7 @@ repointing anywhere in this suite.
 import json
 
 import infrastructure.anthropic_api.model_wrappers_gateway as gw
-from exceptions import ZCoderError
+from core.exceptions import ZCoderError
 from infrastructure.anthropic_api.model_wrappers_gateway import get_response_metadata
 from interfaces.cli.commands.wrapper_commands import cmd_whoami
 

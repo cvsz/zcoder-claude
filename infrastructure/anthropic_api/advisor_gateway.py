@@ -7,8 +7,8 @@ Real HTTP calls to api.anthropic.com for the advisor tool. No print().
 import json
 import urllib.request
 
+from core.exceptions import ZCoderError
 from domain.advisor import ADVISOR_TOOL_BETA, ADVISOR_TOOL_TYPE, strip_advisor_blocks
-from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 ENDPOINT = "https://api.anthropic.com/v1/messages"

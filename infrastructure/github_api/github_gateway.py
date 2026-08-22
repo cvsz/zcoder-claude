@@ -19,7 +19,7 @@ directly").
 import os
 import urllib.request
 
-from exceptions import ZCoderError
+from core.exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import (
     CircuitBreaker,
     retry,

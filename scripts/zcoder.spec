@@ -1,13 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
 PyInstaller spec file for AI Model Coder CLI standalone executable
-Run: pyinstaller zcoder.spec
+Run from repo root: pyinstaller scripts/zcoder.spec
 """
+
+import os
 
 block_cipher = None
 
 a = Analysis(
-    ['main.py'],
+    [os.path.join(SPECPATH, 'main.py')],
     pathex=[],
     binaries=[],
     datas=[],

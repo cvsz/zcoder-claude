@@ -33,12 +33,12 @@ def _read_file(path):
 
 
 def dispatch(args):
-    from logging_config import new_correlation_id, setup_logging
+    from core.logging_config import new_correlation_id, setup_logging
 
     setup_logging()
     new_correlation_id()
 
-    from logging_config import new_correlation_id, setup_logging
+    from core.logging_config import new_correlation_id, setup_logging
 
     setup_logging()
     new_correlation_id()
@@ -50,7 +50,7 @@ def dispatch(args):
     if getattr(args, "health_check", False):
         import json as _json
 
-        from health import run_health_check
+        from core.health import run_health_check
 
         report = run_health_check(deep=getattr(args, "health_check_deep", False))
         print(_json.dumps(report.to_dict(), indent=2))

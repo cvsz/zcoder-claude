@@ -2,7 +2,7 @@
 
 import json
 
-from config import Config
+from core.config import Config
 
 
 def test_get_default_when_missing():

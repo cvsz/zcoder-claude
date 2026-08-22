@@ -1,4 +1,4 @@
-"""config.py — Configuration management"""
+"""core/config.py — Configuration management"""
 
 import json
 import os

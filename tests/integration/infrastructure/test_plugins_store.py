@@ -43,7 +43,7 @@ def plugins_root(tmp_path, monkeypatch):
 def test_plugins_store_imports_cleanly():
     """The import itself must not raise — a swallowed ImportError here is
     exactly the silent no-op this file exists to prevent."""
-    import exceptions
+    import core.exceptions as exceptions
     import infrastructure.local_storage.plugins_store as store
 
     # TransientAPIError comes from its real home, not the resilience shim.

@@ -2,7 +2,7 @@
 
 import pytest
 
-from exceptions import APIError, CircuitOpenError, TransientAPIError
+from core.exceptions import APIError, CircuitOpenError, TransientAPIError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry
 
 
@@ -49,7 +49,7 @@ def test_retry_does_not_retry_non_retryable_errors():
 
 
 def test_retry_respects_explicit_retry_after():
-    from exceptions import RateLimitError
+    from core.exceptions import RateLimitError
 
     sleeps = []
     calls = {"n": 0}

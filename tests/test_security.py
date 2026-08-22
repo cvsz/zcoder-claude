@@ -2,8 +2,8 @@
 
 import pytest
 
-from exceptions import SecurityError, ValidationError
-from security import (
+from core.exceptions import SecurityError, ValidationError
+from core.security import (
     assert_no_secret,
     contains_secret,
     env_flag,

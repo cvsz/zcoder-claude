@@ -1,5 +1,5 @@
 """
-health.py — Liveness/readiness checks for container orchestration
+core/health.py — Liveness/readiness checks for container orchestration
 
 Exposed via `--health-check` (main.py) and used as the Docker HEALTHCHECK
 command (see Dockerfile). Deliberately does NOT make a real API call on
@@ -19,7 +19,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 
-from config import CONFIG_PATH, Config
+from core.config import CONFIG_PATH, Config
 
 
 @dataclass

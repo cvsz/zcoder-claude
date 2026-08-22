@@ -35,6 +35,7 @@ docstring (preserved on its shim) for why this narrow path exists.
 import json
 import urllib.request
 
+from core.exceptions import APIError, ZCoderError
 from domain.model_wrappers import (
     FABLE5_MODEL_ID,
     FALLBACK_CREDIT_BETA_HEADER,
@@ -56,7 +57,6 @@ from domain.model_wrappers import (
     validate_service_tier,
 )
 from domain.models.catalog import FAST_MODE_SUPPORTED
-from exceptions import APIError, ZCoderError
 from infrastructure.anthropic_api.http_client import (
     CircuitBreaker,
     retry,

@@ -30,9 +30,11 @@ front end over the same application services.
                                    │  local_storage/*_store.py  JSON disk │
                                    └──────────────────────────────────────┘
 
-Root-level shared kernels used by every layer:
-  config.py  exceptions.py  utils.py  logging_config.py
-  security.py  health.py  tui_streaming.py  version.py
+Shared kernels used by every layer live in the `core/` package:
+  core/config.py  core/exceptions.py  core/utils.py
+  core/logging_config.py  core/security.py  core/health.py
+plus `interfaces/cli/tui_streaming.py` (TUI streaming helpers) and
+`version.py` at the root.
 ```
 
 Concrete layout:
@@ -50,7 +52,7 @@ Concrete layout:
   dependency: `anthropic_api/` (one `*_gateway.py` per Anthropic API
   surface), `github_api/`, `voyage_api/`, and `local_storage/` (one
   `*_store.py` per persisted resource). Gateways translate raw
-  HTTP/network failures into the typed exceptions in `exceptions.py`.
+  HTTP/network failures into the typed exceptions in `core.exceptions`.
 - **`interfaces/cli/`** — presentation only. `parser.py` builds
   argparse, `dispatcher.py` routes to `commands/*_commands.py`; command
   modules own every `print()`/`input()` and delegate all real work to
@@ -81,10 +83,11 @@ Dependencies point inward, and side effects stay at the edge:
 
 ## Cross-cutting kernels
 
-The root keeps only entry points and shared kernels so every bounded
-context gets the same behavior for free instead of re-implementing it:
+The root keeps only entry points; shared kernels live in the `core/`
+package so every bounded context gets the same behavior for free
+instead of re-implementing it:
 
-- **`exceptions.py`** — every deliberate error is an `ZCoderError`
+- **`core/exceptions.py`** — every deliberate error is an `ZCoderError`
   subclass with a stable `error_code` and a `RETRYABLE` flag. This is
   the contract `retry()` (see below) reads to decide what to retry.
 - **`infrastructure/anthropic_api/http_client.py`** — the retry and
@@ -99,16 +102,17 @@ context gets the same behavior for free instead of re-implementing it:
   dependency use `retry()` without a `CircuitBreaker`, since a breaker
   keyed on "this one dependency is down" means nothing when every call
   targets a different host.
-- **`logging_config.py`** — one structured logger per module via
+- **`core/logging_config.py`** — one structured logger per module via
   `get_logger(__name__)`, a correlation ID set once per invocation,
   and automatic secret redaction on every log record.
-- **`security.py`** — path traversal guards (`safe_resolve()`),
+- **`core/security.py`** — path traversal guards (`safe_resolve()`),
   name/URL validation (`validate_name()`). Anything that turns user
   input into a filesystem path goes through here rather than
   string-concatenating paths directly.
-- **`config.py`, `utils.py`, `health.py`, `tui_streaming.py`** —
-  configuration loading, small shared helpers, health reporting, and
-  the streaming plumbing shared by the CLI and TUI front ends.
+- **`core/config.py`, `core/utils.py`, `core/health.py`,
+  `interfaces/cli/tui_streaming.py`** — configuration loading, small
+  shared helpers, health reporting, and the streaming plumbing shared
+  by the CLI and TUI front ends.
 - **`version.py`** — bump `VERSION` here once; parser banner, TUI, and
   webapp all follow.
 

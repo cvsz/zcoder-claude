@@ -1,5 +1,5 @@
 """
-logging_config.py — Structured logging for production deployments
+core/logging_config.py — Structured logging for production deployments
 
 Provides:
 - `setup_logging()`: call once at process start (main.py entrypoint). Reads

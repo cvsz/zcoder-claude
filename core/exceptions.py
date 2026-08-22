@@ -1,5 +1,5 @@
 """
-exceptions.py — Structured exception hierarchy
+core/exceptions.py — Structured exception hierarchy
 
 Every error the CLI can raise deliberately (as opposed to an unexpected
 bug) should be one of these, not a bare Exception/RuntimeError. This lets

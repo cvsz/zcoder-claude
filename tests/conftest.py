@@ -13,7 +13,7 @@ def isolated_config(tmp_path, monkeypatch):
     """Every test gets its own config file path so tests never read/write
     a real ~/.zcoder-config.json on the machine running the suite."""
     fake_config = tmp_path / ".zcoder-config.json"
-    monkeypatch.setattr("config.CONFIG_PATH", str(fake_config))
+    monkeypatch.setattr("core.config.CONFIG_PATH", str(fake_config))
     yield fake_config
 
 
@@ -27,6 +27,6 @@ def no_real_api_key(monkeypatch):
 
 @pytest.fixture
 def fake_logger_setup():
-    from logging_config import setup_logging
+    from core.logging_config import setup_logging
 
     setup_logging(level="DEBUG", fmt="text")

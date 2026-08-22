@@ -1,5 +1,5 @@
 """
-security.py — Input validation and security controls
+core/security.py — Input validation and security controls
 
 Centralizes the checks that were previously either missing or duplicated
 ad hoc across claude_files.py, claude_code_exec.py, claude_sandbox.py,
@@ -28,7 +28,7 @@ import os
 import re
 from pathlib import Path
 
-from exceptions import SecurityError, ValidationError
+from core.exceptions import SecurityError, ValidationError
 
 # ── Path safety ──────────────────────────────────────────────────────────
 

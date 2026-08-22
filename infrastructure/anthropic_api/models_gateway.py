@@ -18,7 +18,7 @@ import json
 import urllib.error
 import urllib.request
 
-from exceptions import ZCoderError
+from core.exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 MODELS_ENDPOINT = "https://api.anthropic.com/v1/models"

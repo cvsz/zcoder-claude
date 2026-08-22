@@ -18,6 +18,7 @@ from collections.abc import Callable
 
 import anthropic
 
+from core.utils import sampling_kwargs
 from domain.observability import (
     EvalCase,
     EvalResult,
@@ -27,7 +28,6 @@ from domain.observability import (
     estimate_cost,
 )
 from infrastructure.local_storage.observability_store import log_spend
-from utils import sampling_kwargs
 
 _NOOP = lambda *a, **k: None  # noqa: E731
 

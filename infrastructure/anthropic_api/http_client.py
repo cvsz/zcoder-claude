@@ -40,7 +40,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import NoReturn, TypeVar
 
-from exceptions import (
+from core.exceptions import (
     APIError,
     AuthenticationError,
     CircuitOpenError,

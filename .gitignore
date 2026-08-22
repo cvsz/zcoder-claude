@@ -25,3 +25,6 @@ build/
 
 # loop-engineering-kit working state — never commit
 .loop/
+
+# stray scratch docs at repo root
+/my_doc_v*.md

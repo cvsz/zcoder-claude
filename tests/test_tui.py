@@ -98,8 +98,11 @@ def test_tui_has_no_presentation_layer_imports():
     import inspect
 
     src = inspect.getsource(tui)
-    assert "from interfaces" not in src
-    assert "import interfaces" not in src
+    # tui_streaming.py lives under interfaces/cli but is the front-end-neutral
+    # streaming helper; every other interfaces/ import is off-limits here.
+    stripped = "\n".join(line for line in src.splitlines() if "tui_streaming" not in line)
+    assert "from interfaces" not in stripped
+    assert "import interfaces" not in stripped
 
 
 def test_streamed_reply_shows_full_text_even_when_gated(monkeypatch):

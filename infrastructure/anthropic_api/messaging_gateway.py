@@ -31,6 +31,7 @@ from pathlib import Path
 
 import anthropic
 
+from core.exceptions import ZCoderError
 from domain.messaging import (
     EFFORT_BUDGETS,
     FINE_GRAINED_TOOL_STREAMING_BETA,
@@ -40,7 +41,6 @@ from domain.messaging import (
     with_eager_input_streaming,
 )
 from domain.models.catalog import get_price
-from exceptions import ZCoderError
 from infrastructure.anthropic_api.http_client import CircuitBreaker, retry, urlopen_json
 
 MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
@@ -709,7 +709,7 @@ class LiveSession:
         temperature: float = 0.7,
         personality_prompt: str = "",
     ):
-        from utils import sampling_kwargs  # local import: avoids a hard
+        from core.utils import sampling_kwargs  # local import: avoids a hard
 
         # dependency on utils.py for callers that only need the other
         # classes in this module (matches the original file's shape).

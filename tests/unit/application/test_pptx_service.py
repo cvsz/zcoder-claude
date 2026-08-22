@@ -170,12 +170,12 @@ def test_run_native_turn_downloads_generated_file(monkeypatch):
     fa = FakeFilesAPI()
 
     # extract_output_file_ids is imported inside the function from
-    # claude_skills_api, not as a service-module global — patch it there;
-    # the local `from claude_skills_api import ...` re-resolves the
+    # domain.skills_api, not as a service-module global — patch it there;
+    # the local `from domain.skills_api import ...` re-resolves the
     # attribute at call time, so this takes effect.
-    import claude_skills_api
+    from domain import skills_api
 
-    monkeypatch.setattr(claude_skills_api, "extract_output_file_ids", lambda data: ["file_out"])
+    monkeypatch.setattr(skills_api, "extract_output_file_ids", lambda data: ["file_out"])
 
     result = service.run_native_turn(
         client, fa, [], "make a deck", pending_file_ids=[], container_id=None, output_path="out.pptx"

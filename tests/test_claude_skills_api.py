@@ -7,19 +7,21 @@ file_id extraction helper, and the two info-only CLI commands.
 
 import pytest
 
-from claude_skills_api import (
+from domain.skills_api import (
     CODE_EXECUTION_BETA,
     FILES_API_BETA,
     PREBUILT_SKILLS,
     SKILLS_BETA,
     SkillRef,
-    SkillsApiClient,
     build_container_skills,
     build_user_content,
-    cmd_skills_info,
     extract_output_file_ids,
-    list_skills,
 )
+from domain.skills_api import (
+    list_prebuilt_skills as list_skills,
+)
+from infrastructure.anthropic_api.skills_api_gateway import SkillsApiGateway as SkillsApiClient
+from interfaces.cli.commands.skills_api_commands import cmd_skills_info
 
 # ── SkillRef / build_container_skills ────────────────────────────────────
 

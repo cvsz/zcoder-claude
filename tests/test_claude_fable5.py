@@ -9,14 +9,16 @@ Covers both fallback patterns documented in claude_fable5.py:
 
 import pytest
 
-from claude_fable5 import (
+from domain.model_wrappers import (
     FABLE5_MODEL_ID,
     SERVER_SIDE_FALLBACK_DEFAULT_BETA_HEADER,
-    Fable5Client,
     RefusalError,
-    estimate_cost_usd,
     parse_fallback_chain,
 )
+from domain.model_wrappers import (
+    estimate_fable_mythos_cost_usd as estimate_cost_usd,
+)
+from infrastructure.anthropic_api.model_wrappers_gateway import Fable5Client
 
 
 def _response(text="ok", stop_reason="end_turn", model=None, category=None):

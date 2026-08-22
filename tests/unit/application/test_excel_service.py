@@ -172,9 +172,9 @@ def test_run_native_turn_downloads_generated_file(monkeypatch):
     )
     fa = FakeFilesAPI()
 
-    import claude_skills_api
+    from domain import skills_api
 
-    monkeypatch.setattr(claude_skills_api, "extract_output_file_ids", lambda data: ["file_out"])
+    monkeypatch.setattr(skills_api, "extract_output_file_ids", lambda data: ["file_out"])
 
     result = service.run_native_turn(
         client, fa, [], "build a model", pending_file_ids=[], container_id=None, output_path="out.xlsx"

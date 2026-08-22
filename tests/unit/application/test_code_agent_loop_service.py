@@ -78,9 +78,9 @@ def test_apply_output_style_appends_fragment(monkeypatch):
     import sys
     import types
 
-    fake_mod = types.ModuleType("claude_output_styles")
-    fake_mod.system_prompt_fragment = lambda name: f"[{name} style]"
-    monkeypatch.setitem(sys.modules, "claude_output_styles", fake_mod)
+    fake_mod = types.ModuleType("application.output_styles_service")
+    fake_mod.build_system_prompt_fragment = lambda name: f"[{name} style]"
+    monkeypatch.setitem(sys.modules, "application.output_styles_service", fake_mod)
 
     session = service.CodeSession(cwd=".", model="claude-sonnet-5")
     session.system_prompt = "base"
@@ -94,7 +94,7 @@ def test_apply_output_style_missing_module_is_noop(monkeypatch):
     real_import = builtins.__import__
 
     def fake_import(name, *a, **k):
-        if name == "claude_output_styles":
+        if name == "application.output_styles_service":
             raise ImportError()
         return real_import(name, *a, **k)
 

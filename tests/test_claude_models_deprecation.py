@@ -15,12 +15,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from claude_models import (  # noqa: E402
+from domain.models.catalog import (  # noqa: E402
     DEPRECATED_MODELS,
     RETIRED_MODELS,
     _upgrade_source_ids,
     check_deprecated,
     check_retired,
+)
+from interfaces.cli.commands.model_commands import (  # noqa: E402
     cmd_check_deprecated,
     cmd_model_info,
 )
@@ -61,7 +63,9 @@ def test_cmd_model_info_warns_on_retired_id(capsys, monkeypatch):
                 "created_at": "2025-08-05T00:00:00Z",
             }
 
-    monkeypatch.setattr("claude_models.ModelsAPI", _FakeModelsAPI)
+    monkeypatch.setattr(
+        "infrastructure.anthropic_api.models_gateway.ModelsAPI", _FakeModelsAPI
+    )
     cmd_model_info("claude-opus-4-1-20250805", api_key="k")
     out = capsys.readouterr().out
     assert "retired" in out.lower()

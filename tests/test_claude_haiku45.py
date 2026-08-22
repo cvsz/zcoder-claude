@@ -2,16 +2,18 @@
 
 import pytest
 
-from claude_haiku45 import (
+from domain.model_wrappers import (
     HAIKU45_ALIAS,
     HAIKU45_MODEL_ID,
     MIN_THINKING_BUDGET,
-    Haiku45Client,
     build_thinking_param,
     resolve_model_id,
     validate_fast_mode,
-    validate_inference_geo,
 )
+from domain.model_wrappers import (
+    validate_haiku45_inference_geo as validate_inference_geo,
+)
+from infrastructure.anthropic_api.model_wrappers_gateway import Haiku45Client
 
 # ── build_thinking_param: always the extended shape, never adaptive ────
 

@@ -180,9 +180,12 @@ class HooksEngine:
     def with_plugins(cls, base: HooksEngine) -> HooksEngine:
         """Merge plugin-bundled hooks.json files into an existing engine's config."""
         try:
-            from claude_plugins import load_plugin_hooks
+            from domain.plugins import enabled_plugin_dirs, load_plugin_hooks
+            from infrastructure.local_storage.plugins_store import _load_registry
 
-            plugin_hooks = load_plugin_hooks()
+            plugin_hooks = load_plugin_hooks(
+                enabled_plugin_dirs(_load_registry().get("installed", {}))
+            )
         except ImportError:
             return base
         merged = dict(base.config)
@@ -289,9 +292,14 @@ class McpConnector:
             except Exception as e:
                 on_warning(f".mcp.json parse error: {e}")
         try:
-            from claude_plugins import load_plugin_mcp_servers
+            from domain.plugins import enabled_plugin_dirs, load_plugin_mcp_servers
+            from infrastructure.local_storage.plugins_store import _load_registry
 
-            mc.servers.update(load_plugin_mcp_servers())
+            mc.servers.update(
+                load_plugin_mcp_servers(
+                    enabled_plugin_dirs(_load_registry().get("installed", {}))
+                )
+            )
         except ImportError:
             pass
         return mc
@@ -338,9 +346,12 @@ class SubagentRegistry:
             for f in self.dir.glob("*.md"):
                 self._load_one(f, plugin=None, on_warning=on_warning)
         try:
-            from claude_plugins import load_plugin_agents
+            from domain.plugins import enabled_plugin_dirs, load_plugin_agents
+            from infrastructure.local_storage.plugins_store import _load_registry
 
-            for entry in load_plugin_agents():
+            for entry in load_plugin_agents(
+                enabled_plugin_dirs(_load_registry().get("installed", {}))
+            ):
                 self._load_one(
                     Path(entry["path"]),
                     plugin=entry["plugin"],
@@ -420,9 +431,12 @@ class SkillsRegistry:
         for name, desc in ANTHROPIC_MANAGED_SKILLS.items():
             self._skills[name] = {"name": name, "description": desc, "path": "", "source": "anthropic"}
         try:
-            from claude_plugins import load_plugin_skills
+            from domain.plugins import enabled_plugin_dirs, load_plugin_skills
+            from infrastructure.local_storage.plugins_store import _load_registry
 
-            for entry in load_plugin_skills():
+            for entry in load_plugin_skills(
+                enabled_plugin_dirs(_load_registry().get("installed", {}))
+            ):
                 content = Path(entry["path"]).read_text()
                 key = f"{entry['plugin']}:{entry['name']}"
                 self._skills[key] = {

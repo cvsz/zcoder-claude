@@ -21,6 +21,40 @@ from unittest.mock import MagicMock
 import pytest
 
 import application.agents_service as agent_svc
+from domain.agents.agent_config import (
+    DREAMING_BETA,
+    MEMORY_STORE_BETA,
+    TOOL_PRESETS,
+    AgentSession,
+    PermissionMode,
+    _encode_session_budget,
+    build_multiagent_config,
+    validate_dreaming_instructions,
+    validate_dreaming_model,
+)
+from interfaces.cli.commands.agent_commands import (
+    cmd_agent_create,
+    cmd_agent_dream,
+    cmd_agent_dream_archive,
+    cmd_agent_dream_cancel,
+    cmd_agent_dream_get,
+    cmd_agent_dream_list,
+    cmd_agent_env_self_hosted_create,
+    cmd_agent_env_work_stats,
+    cmd_agent_get,
+    cmd_agent_list,
+    cmd_agent_memory_delete,
+    cmd_agent_memory_list,
+    cmd_agent_memory_store_create,
+    cmd_agent_memory_store_delete,
+    cmd_agent_session_budget_remove,
+    cmd_agent_session_budget_set,
+    cmd_agent_session_get,
+    cmd_agent_update,
+    cmd_agent_vault_add_credential,
+    cmd_agent_webhook_register,
+    cmd_managed_agent_run,
+)
 
 
 def _install_fake_anthropic_module():
@@ -39,7 +73,7 @@ def agents_sdk(monkeypatch):
     _install_fake_anthropic_module()
     import importlib
 
-    import claude_agents_sdk as mod
+    import infrastructure.anthropic_api.agents_gateway as mod
 
     importlib.reload(mod)
     return mod
@@ -49,16 +83,16 @@ def agents_sdk(monkeypatch):
 
 
 def test_permission_mode_constants(agents_sdk):
-    assert agents_sdk.PermissionMode.ACCEPT_EDITS == "acceptEdits"
-    assert agents_sdk.PermissionMode.ASK_PERMISSION == "askPermission"
-    assert agents_sdk.PermissionMode.SUPERVISED == "supervised"
+    assert PermissionMode.ACCEPT_EDITS == "acceptEdits"
+    assert PermissionMode.ASK_PERMISSION == "askPermission"
+    assert PermissionMode.SUPERVISED == "supervised"
 
 
 def test_tool_presets_contains_expected_groups(agents_sdk):
-    assert "all" in agents_sdk.TOOL_PRESETS
-    assert "code" in agents_sdk.TOOL_PRESETS
-    assert "bash" in agents_sdk.TOOL_PRESETS["all"]
-    assert "web_search" not in agents_sdk.TOOL_PRESETS["code"]
+    assert "all" in TOOL_PRESETS
+    assert "code" in TOOL_PRESETS
+    assert "bash" in TOOL_PRESETS["all"]
+    assert "web_search" not in TOOL_PRESETS["code"]
 
 
 def test_managed_agents_beta_header_unchanged(agents_sdk):
@@ -72,7 +106,7 @@ def test_managed_agents_beta_header_unchanged(agents_sdk):
 
 
 def test_memory_store_beta_header(agents_sdk):
-    assert agents_sdk.MEMORY_STORE_BETA == "agent-memory-2026-07-22"
+    assert MEMORY_STORE_BETA == "agent-memory-2026-07-22"
 
 
 def test_create_memory_store_sends_expected_betas(agents_sdk):
@@ -89,7 +123,7 @@ def test_create_memory_store_sends_expected_betas(agents_sdk):
 
     client.client.beta.memory_stores.create.assert_called_once_with(
         name="project-x-memory",
-        betas=[agents_sdk.MEMORY_STORE_BETA],
+        betas=[MEMORY_STORE_BETA],
     )
     assert result == {"id": "store_123", "name": "project-x-memory"}
 
@@ -102,7 +136,7 @@ def test_create_memory_store_with_description(agents_sdk):
 
     _, kwargs = client.client.beta.memory_stores.create.call_args
     assert kwargs["description"] == "Per-user preferences"
-    assert kwargs["betas"] == [agents_sdk.MEMORY_STORE_BETA]
+    assert kwargs["betas"] == [MEMORY_STORE_BETA]
 
 
 def test_get_memory_store_uses_memory_store_beta_alone(agents_sdk):
@@ -113,7 +147,7 @@ def test_get_memory_store_uses_memory_store_beta_alone(agents_sdk):
 
     client.client.beta.memory_stores.retrieve.assert_called_once_with(
         "store_1",
-        betas=[agents_sdk.MEMORY_STORE_BETA],
+        betas=[MEMORY_STORE_BETA],
     )
 
 
@@ -124,7 +158,7 @@ def test_list_memory_stores_uses_memory_store_beta_alone(agents_sdk):
     client.list_memory_stores(include_archived=True)
 
     client.client.beta.memory_stores.list.assert_called_once_with(
-        betas=[agents_sdk.MEMORY_STORE_BETA],
+        betas=[MEMORY_STORE_BETA],
         limit=50,
         include_archived=True,
     )
@@ -138,7 +172,7 @@ def test_archive_memory_store_uses_memory_store_beta_alone(agents_sdk):
 
     client.client.beta.memory_stores.archive.assert_called_once_with(
         "store_1",
-        betas=[agents_sdk.MEMORY_STORE_BETA],
+        betas=[MEMORY_STORE_BETA],
     )
 
 
@@ -149,7 +183,7 @@ def test_delete_memory_store_uses_memory_store_beta_alone(agents_sdk):
 
     client.client.beta.memory_stores.delete.assert_called_once_with(
         "store_1",
-        betas=[agents_sdk.MEMORY_STORE_BETA],
+        betas=[MEMORY_STORE_BETA],
     )
     assert result == {"id": "store_1", "deleted": True}
 
@@ -164,7 +198,7 @@ def test_create_memory_uses_memory_store_beta_alone(agents_sdk):
         "store_1",
         path="/notes.md",
         content="hello",
-        betas=[agents_sdk.MEMORY_STORE_BETA],
+        betas=[MEMORY_STORE_BETA],
     )
     assert result["id"] == "mem_1"
 
@@ -178,7 +212,7 @@ def test_get_memory_uses_memory_store_beta_alone(agents_sdk):
     client.client.beta.memory_stores.memories.retrieve.assert_called_once_with(
         "store_1",
         "mem_1",
-        betas=[agents_sdk.MEMORY_STORE_BETA],
+        betas=[MEMORY_STORE_BETA],
     )
 
 
@@ -191,7 +225,7 @@ def test_update_memory_with_precondition(agents_sdk):
     _, kwargs = client.client.beta.memory_stores.memories.update.call_args
     assert kwargs["content"] == "new"
     assert kwargs["precondition"] == {"type": "content_sha256", "content_sha256": "abc123"}
-    assert kwargs["betas"] == [agents_sdk.MEMORY_STORE_BETA]
+    assert kwargs["betas"] == [MEMORY_STORE_BETA]
 
 
 def test_delete_memory_uses_memory_store_beta_alone(agents_sdk):
@@ -202,7 +236,7 @@ def test_delete_memory_uses_memory_store_beta_alone(agents_sdk):
     client.client.beta.memory_stores.memories.delete.assert_called_once_with(
         "store_1",
         "mem_1",
-        betas=[agents_sdk.MEMORY_STORE_BETA],
+        betas=[MEMORY_STORE_BETA],
     )
     assert result == {"id": "mem_1", "deleted": True}
 
@@ -211,7 +245,7 @@ def test_cmd_agent_memory_store_delete_dry_runs_by_default(agents_sdk, monkeypat
     mac = MagicMock()
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_agent_memory_store_delete("store_1", api_key="sk-test")
+    result = cmd_agent_memory_store_delete("store_1", api_key="sk-test")
 
     mac.delete_memory_store.assert_not_called()
     assert result is None
@@ -222,7 +256,7 @@ def test_cmd_agent_memory_store_delete_confirmed(agents_sdk, monkeypatch):
     mac.delete_memory_store.return_value = {"id": "store_1", "deleted": True}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_agent_memory_store_delete("store_1", api_key="sk-test", confirm=True)
+    result = cmd_agent_memory_store_delete("store_1", api_key="sk-test", confirm=True)
 
     mac.delete_memory_store.assert_called_once_with("store_1")
     assert result == {"id": "store_1", "deleted": True}
@@ -232,7 +266,7 @@ def test_cmd_agent_memory_delete_dry_runs_by_default(agents_sdk, monkeypatch):
     mac = MagicMock()
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_agent_memory_delete("store_1", "mem_1", api_key="sk-test")
+    result = cmd_agent_memory_delete("store_1", "mem_1", api_key="sk-test")
 
     mac.delete_memory.assert_not_called()
     assert result is None
@@ -261,7 +295,7 @@ def test_create_session_with_memory_store_mounts_resource(agents_sdk):
 
     _, kwargs = client.client.beta.sessions.create.call_args
     assert kwargs["resources"] == [{"type": "memory_store", "memory_store_id": "store_123"}]
-    assert agents_sdk.MEMORY_STORE_BETA in kwargs["betas"]
+    assert MEMORY_STORE_BETA in kwargs["betas"]
     assert result["memory_store_id"] == "store_123"
 
 
@@ -274,7 +308,7 @@ def test_cmd_managed_agent_run_creates_and_mounts_store_when_named(agents_sdk, m
     mac.run_task.return_value = {"text": "done", "tool_calls": []}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_managed_agent_run("do the thing", api_key="sk-test", memory_store="notes")
+    cmd_managed_agent_run("do the thing", api_key="sk-test", memory_store="notes")
 
     mac.create_memory_store.assert_called_once_with(name="notes")
     _, kwargs = mac.create_session.call_args
@@ -289,7 +323,7 @@ def test_cmd_managed_agent_run_skips_store_when_not_named(agents_sdk, monkeypatc
     mac.run_task.return_value = {"text": "done", "tool_calls": []}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_managed_agent_run("do the thing", api_key="sk-test")
+    cmd_managed_agent_run("do the thing", api_key="sk-test")
 
     mac.create_memory_store.assert_not_called()
     _, kwargs = mac.create_session.call_args
@@ -301,7 +335,7 @@ def test_cmd_agent_memory_store_create_standalone(agents_sdk, monkeypatch):
     mac.create_memory_store.return_value = {"id": "store_9", "name": "shared"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_agent_memory_store_create("shared", api_key="sk-test")
+    result = cmd_agent_memory_store_create("shared", api_key="sk-test")
 
     mac.create_memory_store.assert_called_once_with(name="shared")
     assert result == {"id": "store_9", "name": "shared"}
@@ -311,7 +345,7 @@ def test_cmd_agent_memory_store_create_standalone(agents_sdk, monkeypatch):
 
 
 def test_dreaming_beta_header_unchanged(agents_sdk):
-    assert agents_sdk.DREAMING_BETA == "dreaming-2026-04-21"
+    assert DREAMING_BETA == "dreaming-2026-04-21"
 
 
 def test_create_dream_sends_expected_inputs_and_betas(agents_sdk):
@@ -328,7 +362,7 @@ def test_create_dream_sends_expected_inputs_and_betas(agents_sdk):
         {"type": "memory_store", "memory_store_id": "store_1"},
         {"type": "sessions", "session_ids": ["sesn_1", "sesn_2"]},
     ]
-    assert kwargs["betas"] == [agents_sdk.MANAGED_AGENTS_BETA, agents_sdk.DREAMING_BETA]
+    assert kwargs["betas"] == [agents_sdk.MANAGED_AGENTS_BETA, DREAMING_BETA]
     assert result == {"id": "drm_1", "status": "pending"}
 
 
@@ -498,7 +532,7 @@ def test_archive_dream(agents_sdk):
     result = client.archive_dream("drm_1")
 
     _, kwargs = client.client.beta.dreams.archive.call_args
-    assert kwargs["betas"] == [agents_sdk.MANAGED_AGENTS_BETA, agents_sdk.DREAMING_BETA]
+    assert kwargs["betas"] == [agents_sdk.MANAGED_AGENTS_BETA, DREAMING_BETA]
     assert result == {"id": "drm_1", "status": "completed", "archived_at": "2026-07-26T00:00:00Z"}
 
 
@@ -507,7 +541,7 @@ def test_cmd_agent_dream_prints_and_returns(agents_sdk, monkeypatch, capsys):
     mac.create_dream.return_value = {"id": "drm_1", "status": "pending"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_agent_dream("store_1", api_key="sk-test")
+    result = cmd_agent_dream("store_1", api_key="sk-test")
 
     mac.create_dream.assert_called_once()
     assert result == {"id": "drm_1", "status": "pending"}
@@ -519,7 +553,7 @@ def test_cmd_agent_dream_list_handles_empty(agents_sdk, monkeypatch, capsys):
     mac.list_dreams.return_value = []
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_agent_dream_list(api_key="sk-test")
+    result = cmd_agent_dream_list(api_key="sk-test")
 
     assert result == []
     assert "no dreams found" in capsys.readouterr().out
@@ -530,7 +564,7 @@ def test_cmd_agent_dream_list_passes_pagination_through(agents_sdk, monkeypatch)
     mac.list_dreams.return_value = []
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_dream_list(api_key="sk-test", include_archived=True, limit=100, page="cursor_1")
+    cmd_agent_dream_list(api_key="sk-test", include_archived=True, limit=100, page="cursor_1")
 
     mac.list_dreams.assert_called_once_with(include_archived=True, limit=100, page="cursor_1")
 
@@ -540,31 +574,31 @@ def test_cmd_agent_dream_list_passes_pagination_through(agents_sdk, monkeypatch)
 
 
 def test_validate_dreaming_model_supported_returns_none(agents_sdk):
-    assert agents_sdk.validate_dreaming_model("claude-opus-4-8") is None
-    assert agents_sdk.validate_dreaming_model("claude-sonnet-4-6") is None
+    assert validate_dreaming_model("claude-opus-4-8") is None
+    assert validate_dreaming_model("claude-sonnet-4-6") is None
 
 
 def test_validate_dreaming_model_expansion_fable5_sonnet5(agents_sdk):
     """Per the July 10, 2026 release note ('Dreams (research preview) now
     supports Claude Fable 5 and Claude Sonnet 5'), checked 2026-07-26."""
-    assert agents_sdk.validate_dreaming_model("claude-fable-5") is None
-    assert agents_sdk.validate_dreaming_model("claude-sonnet-5") is None
+    assert validate_dreaming_model("claude-fable-5") is None
+    assert validate_dreaming_model("claude-sonnet-5") is None
 
 
 def test_validate_dreaming_model_unsupported_warns(agents_sdk):
-    warning = agents_sdk.validate_dreaming_model("claude-haiku-4-5-20251001")
+    warning = validate_dreaming_model("claude-haiku-4-5-20251001")
     assert warning is not None
     assert "claude-haiku-4-5-20251001" in warning
 
 
 def test_validate_dreaming_instructions_within_limit(agents_sdk):
-    assert agents_sdk.validate_dreaming_instructions(None) is None
-    assert agents_sdk.validate_dreaming_instructions("short") is None
-    assert agents_sdk.validate_dreaming_instructions("x" * 4096) is None
+    assert validate_dreaming_instructions(None) is None
+    assert validate_dreaming_instructions("short") is None
+    assert validate_dreaming_instructions("x" * 4096) is None
 
 
 def test_validate_dreaming_instructions_over_limit_warns(agents_sdk):
-    warning = agents_sdk.validate_dreaming_instructions("x" * 4097)
+    warning = validate_dreaming_instructions("x" * 4097)
     assert warning is not None
     assert "4097" in warning
 
@@ -574,7 +608,7 @@ def test_cmd_agent_dream_warns_on_unsupported_model(agents_sdk, monkeypatch, cap
     mac.create_dream.return_value = {"id": "drm_1", "status": "pending"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_dream("store_1", api_key="sk-test", model="claude-haiku-4-5-20251001")
+    cmd_agent_dream("store_1", api_key="sk-test", model="claude-haiku-4-5-20251001")
 
     out = capsys.readouterr().out
     assert "not in claude_agents_sdk.DREAMING_SUPPORTED_MODELS" in out
@@ -585,7 +619,7 @@ def test_cmd_agent_dream_no_warning_for_supported_model(agents_sdk, monkeypatch,
     mac.create_dream.return_value = {"id": "drm_1", "status": "pending"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_dream("store_1", api_key="sk-test", model="claude-sonnet-5")
+    cmd_agent_dream("store_1", api_key="sk-test", model="claude-sonnet-5")
 
     assert "DREAMING_SUPPORTED_MODELS" not in capsys.readouterr().out
 
@@ -608,7 +642,7 @@ def test_cmd_agent_dream_get_prints_usage_and_session_id(agents_sdk, monkeypatch
     }
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_dream_get("drm_1", api_key="sk-test")
+    cmd_agent_dream_get("drm_1", api_key="sk-test")
 
     out = capsys.readouterr().out
     assert "sesn_dream_1" in out
@@ -622,7 +656,7 @@ def test_cmd_agent_dream_cancel_prints_and_returns(agents_sdk, monkeypatch, caps
     mac.cancel_dream.return_value = {"id": "drm_1", "status": "canceled"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_agent_dream_cancel("drm_1", api_key="sk-test")
+    result = cmd_agent_dream_cancel("drm_1", api_key="sk-test")
 
     mac.cancel_dream.assert_called_once_with("drm_1")
     assert result == {"id": "drm_1", "status": "canceled"}
@@ -638,7 +672,7 @@ def test_cmd_agent_dream_archive_prints_and_returns(agents_sdk, monkeypatch, cap
     }
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_agent_dream_archive("drm_1", api_key="sk-test")
+    result = cmd_agent_dream_archive("drm_1", api_key="sk-test")
 
     mac.archive_dream.assert_called_once_with("drm_1")
     assert result["archived_at"] == "2026-07-26T00:00:00Z"
@@ -682,7 +716,7 @@ def test_cmd_managed_agent_run_with_outcome_calls_define_outcome_not_run_task(ag
     mac.wait_for_outcome.return_value = {"text": "done", "result": "satisfied"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_managed_agent_run(
+    result = cmd_managed_agent_run(
         "unused task text",
         api_key="sk-test",
         outcome_description="Build a report",
@@ -714,7 +748,7 @@ def test_cmd_managed_agent_run_without_outcome_calls_run_task(agents_sdk, monkey
     mac.run_task.return_value = {"text": "done", "tool_calls": []}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_managed_agent_run("plain task", api_key="sk-test")
+    cmd_managed_agent_run("plain task", api_key="sk-test")
 
     mac.define_outcome.assert_not_called()
     # run_task has taken stream_deltas since v1.22.0 (default False), and
@@ -761,7 +795,7 @@ def test_cmd_agent_webhook_register_prints_and_returns(agents_sdk, monkeypatch, 
     mac.register_webhook.return_value = {"id": "wh_1", "url": "https://x.test/h", "event_types": None}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_agent_webhook_register("https://x.test/h", api_key="sk-test")
+    result = cmd_agent_webhook_register("https://x.test/h", api_key="sk-test")
 
     assert result["id"] == "wh_1"
     assert "wh_1" in capsys.readouterr().out
@@ -807,7 +841,7 @@ def test_cmd_managed_agent_run_merges_override_model_and_system(agents_sdk, monk
     mac.run_task.return_value = {"text": "done", "tool_calls": []}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_managed_agent_run(
+    cmd_managed_agent_run(
         "task",
         api_key="sk-test",
         agent_overrides={"model": "claude-sonnet-5", "system": "be terse"},
@@ -825,7 +859,7 @@ def test_cmd_managed_agent_run_without_overrides_passes_none(agents_sdk, monkeyp
     mac.run_task.return_value = {"text": "done", "tool_calls": []}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_managed_agent_run("task", api_key="sk-test")
+    cmd_managed_agent_run("task", api_key="sk-test")
 
     _, kwargs = mac.create_session.call_args
     assert kwargs["agent_overrides"] is None
@@ -921,7 +955,7 @@ def test_cmd_agent_vault_add_credential_threads_injection_location(agents_sdk, m
     }
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_vault_add_credential(
+    cmd_agent_vault_add_credential(
         "vault_1",
         "environment_variable",
         api_key="sk-test",
@@ -978,7 +1012,7 @@ def test_managed_agent_orchestrate_calls_on_step_with_expected_events(agents_sdk
     agent.chat = fake_chat
     agent.spawn_subagent = lambda task, context="": f"result for {task}"
 
-    session = agents_sdk.AgentSession()
+    session = AgentSession()
     events = []
 
     def on_step(event, data):
@@ -999,7 +1033,7 @@ def test_managed_agent_orchestrate_default_on_step_is_silent(agents_sdk, capsys)
         '[{"step": 1, "task": "x", "depends_on": []}]' if "Break this goal" in prompt else "final"
     )
     agent.spawn_subagent = lambda task, context="": "sub result"
-    session = agents_sdk.AgentSession()
+    session = AgentSession()
 
     result = agent.orchestrate("goal", session)
 
@@ -1132,7 +1166,7 @@ def test_cmd_managed_agent_run_threads_stream_deltas_into_run_task(agents_sdk, m
     mac.run_task.return_value = {"text": "done", "tool_calls": []}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_managed_agent_run("task", api_key="sk-test", stream_deltas=True)
+    cmd_managed_agent_run("task", api_key="sk-test", stream_deltas=True)
 
     _, kwargs = mac.run_task.call_args
     assert kwargs["stream_deltas"] is True
@@ -1146,7 +1180,7 @@ def test_cmd_managed_agent_run_threads_stream_deltas_into_wait_for_outcome(agent
     mac.wait_for_outcome.return_value = {"text": "done", "result": "satisfied"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_managed_agent_run(
+    cmd_managed_agent_run(
         "unused",
         api_key="sk-test",
         outcome_description="Build a report",
@@ -1172,7 +1206,7 @@ def test_list_memories_sends_expected_params_and_betas(agents_sdk):
 
     args, kwargs = client.client.beta.memory_stores.memories.list.call_args
     assert args[0] == "store_1"
-    assert kwargs["betas"] == [agents_sdk.MEMORY_STORE_BETA]
+    assert kwargs["betas"] == [MEMORY_STORE_BETA]
     assert kwargs["path_prefix"] == "notes/"
     assert kwargs["depth"] == 1
     assert kwargs["limit"] == 10
@@ -1237,7 +1271,7 @@ def test_cmd_agent_memory_list_prints_paths(agents_sdk, monkeypatch, capsys):
     }
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_agent_memory_list("store_1", api_key="sk-test")
+    result = cmd_agent_memory_list("store_1", api_key="sk-test")
 
     out = capsys.readouterr().out
     assert "a.md" in out
@@ -1255,7 +1289,7 @@ def test_cmd_agent_memory_list_handles_empty(agents_sdk, monkeypatch, capsys):
     }
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_memory_list("store_1", api_key="sk-test")
+    cmd_agent_memory_list("store_1", api_key="sk-test")
 
     out = capsys.readouterr().out
     assert "no memories found" in out
@@ -1312,7 +1346,7 @@ def test_cmd_agent_env_self_hosted_create_prints_next_steps(agents_sdk, monkeypa
     mac.create_environment.return_value = {"id": "env_9", "name": "sh", "type": "self_hosted"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    result = agents_sdk.cmd_agent_env_self_hosted_create("sh", api_key="sk-test")
+    result = cmd_agent_env_self_hosted_create("sh", api_key="sk-test")
 
     mac.create_environment.assert_called_once_with(name="sh", env_type="self_hosted")
     out = capsys.readouterr().out
@@ -1331,7 +1365,7 @@ def test_cmd_agent_env_work_stats_warns_when_no_workers(agents_sdk, monkeypatch,
     }
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_env_work_stats("env_1", api_key="sk-test")
+    cmd_agent_env_work_stats("env_1", api_key="sk-test")
 
     out = capsys.readouterr().out
     assert "no worker has polled" in out
@@ -1347,7 +1381,7 @@ def test_cmd_agent_env_work_stats_no_warning_when_workers_active(agents_sdk, mon
     }
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_env_work_stats("env_1", api_key="sk-test")
+    cmd_agent_env_work_stats("env_1", api_key="sk-test")
 
     out = capsys.readouterr().out
     assert "no worker has polled" not in out
@@ -1358,38 +1392,38 @@ def test_cmd_agent_env_work_stats_no_warning_when_workers_active(agents_sdk, mon
 
 
 def test_encode_session_budget_valid(agents_sdk):
-    budget = agents_sdk._encode_session_budget(2500)
+    budget = _encode_session_budget(2500)
     assert budget == {"type": "limit", "max_list_cost": {"amount": "2500", "currency": "USD"}}
 
 
 def test_encode_session_budget_amount_is_string_not_float(agents_sdk):
     # Regression guard: the API rejects floats/leading zeros; amount must
     # always be a plain integer string.
-    budget = agents_sdk._encode_session_budget(50)
+    budget = _encode_session_budget(50)
     assert budget["max_list_cost"]["amount"] == "50"
     assert isinstance(budget["max_list_cost"]["amount"], str)
 
 
 def test_encode_session_budget_rejects_zero(agents_sdk):
     with pytest.raises(ValueError):
-        agents_sdk._encode_session_budget(0)
+        _encode_session_budget(0)
 
 
 def test_encode_session_budget_rejects_negative(agents_sdk):
     with pytest.raises(ValueError):
-        agents_sdk._encode_session_budget(-100)
+        _encode_session_budget(-100)
 
 
 def test_encode_session_budget_rejects_float(agents_sdk):
     with pytest.raises(ValueError):
-        agents_sdk._encode_session_budget(25.5)
+        _encode_session_budget(25.5)
 
 
 def test_encode_session_budget_rejects_bool(agents_sdk):
     # bool is a subclass of int in Python; guard against True/False slipping
     # through as 1/0 cents.
     with pytest.raises(ValueError):
-        agents_sdk._encode_session_budget(True)
+        _encode_session_budget(True)
 
 
 def test_create_session_without_budget_omits_budget_kwarg(agents_sdk):
@@ -1493,7 +1527,7 @@ def test_cmd_managed_agent_run_passes_budget_through(agents_sdk, monkeypatch, ca
     mac.run_task.return_value = {"text": "done", "tool_calls": []}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_managed_agent_run("do the thing", api_key="sk-test", budget_usd_cents=2500)
+    cmd_managed_agent_run("do the thing", api_key="sk-test", budget_usd_cents=2500)
 
     _, kwargs = mac.create_session.call_args
     assert kwargs["budget_usd_cents"] == 2500
@@ -1509,7 +1543,7 @@ def test_cmd_managed_agent_run_no_budget_by_default(agents_sdk, monkeypatch):
     mac.run_task.return_value = {"text": "done", "tool_calls": []}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_managed_agent_run("do the thing", api_key="sk-test")
+    cmd_managed_agent_run("do the thing", api_key="sk-test")
 
     _, kwargs = mac.create_session.call_args
     assert kwargs["budget_usd_cents"] is None
@@ -1525,7 +1559,7 @@ def test_cmd_agent_session_get_prints_budget_progress(agents_sdk, monkeypatch, c
     }
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_session_get("sess_1", api_key="sk-test")
+    cmd_agent_session_get("sess_1", api_key="sk-test")
 
     out = capsys.readouterr().out
     assert "budget_reached" in out
@@ -1542,7 +1576,7 @@ def test_cmd_agent_session_get_no_budget(agents_sdk, monkeypatch, capsys):
     }
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_session_get("sess_1", api_key="sk-test")
+    cmd_agent_session_get("sess_1", api_key="sk-test")
 
     out = capsys.readouterr().out
     assert "budget: none" in out
@@ -1553,7 +1587,7 @@ def test_cmd_agent_session_budget_set_calls_client(agents_sdk, monkeypatch, caps
     mac.update_session_budget.return_value = {"id": "sess_1", "status": "running"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_session_budget_set("sess_1", api_key="sk-test", usd_cents=5000)
+    cmd_agent_session_budget_set("sess_1", api_key="sk-test", usd_cents=5000)
 
     mac.update_session_budget.assert_called_once_with("sess_1", budget_usd_cents=5000)
     assert "$50.00" in capsys.readouterr().out
@@ -1564,7 +1598,7 @@ def test_cmd_agent_session_budget_remove_calls_client_with_none(agents_sdk, monk
     mac.update_session_budget.return_value = {"id": "sess_1", "status": "running"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_session_budget_remove("sess_1", api_key="sk-test")
+    cmd_agent_session_budget_remove("sess_1", api_key="sk-test")
 
     mac.update_session_budget.assert_called_once_with("sess_1", budget_usd_cents=None)
 
@@ -1577,7 +1611,7 @@ def test_cmd_agent_create_calls_client_and_prints(agents_sdk, monkeypatch, capsy
     mac.create_agent.return_value = {"id": "agent_1", "name": "n", "model": "claude-opus-4-8"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_create("n", api_key="sk-test")
+    cmd_agent_create("n", api_key="sk-test")
 
     mac.create_agent.assert_called_once()
     assert "agent_1" in capsys.readouterr().out
@@ -1588,7 +1622,7 @@ def test_cmd_agent_get_calls_client(agents_sdk, monkeypatch):
     mac.get_agent.return_value = {"id": "agent_1", "raw": MagicMock()}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_get("agent_1", api_key="sk-test", version=3)
+    cmd_agent_get("agent_1", api_key="sk-test", version=3)
 
     mac.get_agent.assert_called_once_with("agent_1", version=3)
 
@@ -1598,7 +1632,7 @@ def test_cmd_agent_list_calls_client(agents_sdk, monkeypatch):
     mac.list_agents.return_value = {"raw": []}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_list(api_key="sk-test", limit=10)
+    cmd_agent_list(api_key="sk-test", limit=10)
 
     mac.list_agents.assert_called_once_with(limit=10)
 
@@ -1608,7 +1642,7 @@ def test_cmd_agent_update_calls_client(agents_sdk, monkeypatch):
     mac.update_agent.return_value = {"id": "agent_1", "version": 2}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_update("agent_1", api_key="sk-test", name="new-name")
+    cmd_agent_update("agent_1", api_key="sk-test", name="new-name")
 
     mac.update_agent.assert_called_once()
 
@@ -1664,7 +1698,7 @@ def test_cmd_agent_create_passes_inference_geo(agents_sdk, monkeypatch, capsys):
     mac.create_agent.return_value = {"id": "agent_1", "name": "n", "model": "claude-opus-4-8"}
     monkeypatch.setattr(agent_svc, "ManagedAgentsClient", lambda api_key: mac)
 
-    agents_sdk.cmd_agent_create("n", api_key="sk-test", inference_geo="us")
+    cmd_agent_create("n", api_key="sk-test", inference_geo="us")
 
     _, kwargs = mac.create_agent.call_args
     assert kwargs["inference_geo"] == "us"
@@ -1675,7 +1709,7 @@ def test_cmd_agent_create_passes_inference_geo(agents_sdk, monkeypatch, capsys):
 
 
 def test_build_multiagent_config_without_advisor_unchanged(agents_sdk):
-    config = agents_sdk.build_multiagent_config(["agent_a", "agent_b"])
+    config = build_multiagent_config(["agent_a", "agent_b"])
     assert config == {
         "type": "coordinator",
         "agents": [
@@ -1686,13 +1720,13 @@ def test_build_multiagent_config_without_advisor_unchanged(agents_sdk):
 
 
 def test_build_multiagent_config_appends_advisor_entry(agents_sdk):
-    config = agents_sdk.build_multiagent_config(["agent_a"], advisor_model="claude-opus-4-8")
+    config = build_multiagent_config(["agent_a"], advisor_model="claude-opus-4-8")
     assert config["agents"][-1] == {"type": "advisor", "model": "claude-opus-4-8"}
     assert len(config["agents"]) == 2
 
 
 def test_build_multiagent_config_advisor_only(agents_sdk):
-    config = agents_sdk.build_multiagent_config([], advisor_model="claude-opus-4-8")
+    config = build_multiagent_config([], advisor_model="claude-opus-4-8")
     assert config["agents"] == [{"type": "advisor", "model": "claude-opus-4-8"}]
 
 
@@ -1702,11 +1736,11 @@ def test_build_multiagent_config_roster_limit_excludes_advisor_call(agents_sdk):
     # (the docs don't count the advisor against the delegate cap), so
     # this must NOT raise.
     roster = [f"agent_{i}" for i in range(20)]
-    config = agents_sdk.build_multiagent_config(roster, advisor_model="claude-opus-4-8")
+    config = build_multiagent_config(roster, advisor_model="claude-opus-4-8")
     assert len(config["agents"]) == 21
 
 
 def test_build_multiagent_config_still_enforces_delegate_limit(agents_sdk):
     roster = [f"agent_{i}" for i in range(21)]
     with pytest.raises(ValueError):
-        agents_sdk.build_multiagent_config(roster)
+        build_multiagent_config(roster)

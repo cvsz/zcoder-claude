@@ -5,10 +5,19 @@ See docs/35_upgrade_v1.23.0_audit_and_impl.md Finding 1.
 """
 
 import json
+import urllib.request
 
 import pytest
 
-import claude_wif as wif
+from domain.wif import (
+    JWT_BEARER_GRANT,
+    OAUTH_TOKEN_ENDPOINT,
+    WIF_ENV_VARS,
+    WIFExchangeError,
+    resolve_wif_env,
+)
+from infrastructure.anthropic_api.wif_gateway import WIFAdminClient, WIFCredentialExchanger
+from interfaces.cli.commands.wif_commands import cmd_wif_exchange_token, cmd_wif_status
 
 # ── resolve_wif_env() ─────────────────────────────────────────────────
 
@@ -21,11 +30,11 @@ FULL_ENV = {
 
 
 def test_resolve_wif_env_empty_returns_none():
-    assert wif.resolve_wif_env({}) is None
+    assert resolve_wif_env({}) is None
 
 
 def test_resolve_wif_env_full_literal_token():
-    cfg = wif.resolve_wif_env(FULL_ENV)
+    cfg = resolve_wif_env(FULL_ENV)
     assert cfg == {
         "federation_rule_id": "fdrl_1",
         "organization_id": "org_1",
@@ -37,7 +46,7 @@ def test_resolve_wif_env_full_literal_token():
 
 def test_resolve_wif_env_includes_workspace_id_when_set():
     env = dict(FULL_ENV, ANTHROPIC_WORKSPACE_ID="wrkspc_1")
-    cfg = wif.resolve_wif_env(env)
+    cfg = resolve_wif_env(env)
     assert cfg["workspace_id"] == "wrkspc_1"
 
 
@@ -52,12 +61,12 @@ def test_resolve_wif_env_includes_workspace_id_when_set():
 def test_resolve_wif_env_missing_required_var_returns_none(missing):
     env = dict(FULL_ENV)
     del env[missing]
-    assert wif.resolve_wif_env(env) is None
+    assert resolve_wif_env(env) is None
 
 
 def test_resolve_wif_env_missing_both_token_sources_returns_none():
     env = {k: v for k, v in FULL_ENV.items() if k != "ANTHROPIC_IDENTITY_TOKEN"}
-    assert wif.resolve_wif_env(env) is None
+    assert resolve_wif_env(env) is None
 
 
 def test_resolve_wif_env_file_takes_precedence_over_literal(tmp_path):
@@ -67,7 +76,7 @@ def test_resolve_wif_env_file_takes_precedence_over_literal(tmp_path):
     env["ANTHROPIC_IDENTITY_TOKEN_FILE"] = str(token_file)
     env["ANTHROPIC_IDENTITY_TOKEN"] = "literal-should-be-ignored"
 
-    cfg = wif.resolve_wif_env(env)
+    cfg = resolve_wif_env(env)
 
     assert cfg["identity_token"] == "file-token-value"
 
@@ -75,7 +84,7 @@ def test_resolve_wif_env_file_takes_precedence_over_literal(tmp_path):
 def test_resolve_wif_env_unreadable_file_returns_none(tmp_path):
     env = dict(FULL_ENV)
     env["ANTHROPIC_IDENTITY_TOKEN_FILE"] = str(tmp_path / "does-not-exist")
-    assert wif.resolve_wif_env(env) is None
+    assert resolve_wif_env(env) is None
 
 
 # ── WIFCredentialExchanger.exchange() ────────────────────────────────
@@ -112,12 +121,12 @@ def test_exchange_sends_jwt_bearer_grant(monkeypatch):
             ).encode()
         )
 
-    monkeypatch.setattr(wif.urllib.request, "urlopen", fake_urlopen)
-    exchanger = wif.WIFCredentialExchanger()
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    exchanger = WIFCredentialExchanger()
 
     result = exchanger.exchange("fdrl_1", "org_1", "svac_1", "eyJhbGciOi.fake.jwt")
 
-    assert captured["body"]["grant_type"] == wif.JWT_BEARER_GRANT
+    assert captured["body"]["grant_type"] == JWT_BEARER_GRANT
     assert captured["body"]["assertion"] == "eyJhbGciOi.fake.jwt"
     assert "workspace_id" not in captured["body"]
     assert result["access_token"].startswith("sk-ant-oat01-")
@@ -130,8 +139,8 @@ def test_exchange_includes_workspace_id_when_given(monkeypatch):
         captured["body"] = json.loads(req.data.decode())
         return _FakeResp(json.dumps({"access_token": "tok", "expires_in": 3600}).encode())
 
-    monkeypatch.setattr(wif.urllib.request, "urlopen", fake_urlopen)
-    wif.WIFCredentialExchanger().exchange("fdrl_1", "org_1", "svac_1", "tok", workspace_id="wrkspc_1")
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    WIFCredentialExchanger().exchange("fdrl_1", "org_1", "svac_1", "tok", workspace_id="wrkspc_1")
 
     assert captured["body"]["workspace_id"] == "wrkspc_1"
 
@@ -144,13 +153,13 @@ def test_exchange_401_raises_wif_exchange_error_without_leaking_token(monkeypatc
             return b'{"error": "invalid_grant"}'
 
     def fake_urlopen(req, timeout=None):
-        raise FakeHTTPError(wif.OAUTH_TOKEN_ENDPOINT, 401, "unauthorized", {}, None)
+        raise FakeHTTPError(OAUTH_TOKEN_ENDPOINT, 401, "unauthorized", {}, None)
 
-    monkeypatch.setattr(wif.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
     secret_token = "super-secret-identity-token-value"
 
-    with pytest.raises(wif.WIFExchangeError) as exc_info:
-        wif.WIFCredentialExchanger().exchange("fdrl_1", "org_1", "svac_1", secret_token)
+    with pytest.raises(WIFExchangeError) as exc_info:
+        WIFCredentialExchanger().exchange("fdrl_1", "org_1", "svac_1", secret_token)
 
     assert exc_info.value.status == 401
     assert secret_token not in str(exc_info.value)
@@ -168,13 +177,13 @@ def _install_fake_admin_urlopen(monkeypatch, captured: dict, response_body: dict
             captured["body"] = json.loads(req.data.decode())
         return _FakeResp(json.dumps(response_body).encode())
 
-    monkeypatch.setattr(wif.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
 
 
 def test_wif_admin_client_uses_bearer_not_api_key(monkeypatch):
     captured = {}
     _install_fake_admin_urlopen(monkeypatch, captured, {"id": "svac_123", "name": "test"})
-    client = wif.WIFAdminClient("org-admin-oauth-token-xyz")
+    client = WIFAdminClient("org-admin-oauth-token-xyz")
 
     result = client.create_service_account("test")
 
@@ -186,7 +195,7 @@ def test_wif_admin_client_uses_bearer_not_api_key(monkeypatch):
 def test_wif_admin_client_list_service_accounts_uses_get(monkeypatch):
     captured = {}
     _install_fake_admin_urlopen(monkeypatch, captured, {"data": []})
-    client = wif.WIFAdminClient("token")
+    client = WIFAdminClient("token")
 
     client.list_service_accounts()
 
@@ -197,7 +206,7 @@ def test_wif_admin_client_list_service_accounts_uses_get(monkeypatch):
 def test_wif_admin_client_create_federation_issuer_defaults_jwks_discovery(monkeypatch):
     captured = {}
     _install_fake_admin_urlopen(monkeypatch, captured, {"id": "fdis_1"})
-    client = wif.WIFAdminClient("token")
+    client = WIFAdminClient("token")
 
     client.create_federation_issuer("gha", "https://token.actions.githubusercontent.com")
 
@@ -207,7 +216,7 @@ def test_wif_admin_client_create_federation_issuer_defaults_jwks_discovery(monke
 def test_wif_admin_client_create_federation_rule_omits_optional_fields(monkeypatch):
     captured = {}
     _install_fake_admin_urlopen(monkeypatch, captured, {"id": "fdrl_1"})
-    client = wif.WIFAdminClient("token")
+    client = WIFAdminClient("token")
 
     client.create_federation_rule("rule1", "fdis_1", "svac_1", {"subject_prefix": "repo:x"})
 
@@ -219,7 +228,7 @@ def test_wif_admin_client_create_federation_rule_omits_optional_fields(monkeypat
 def test_wif_admin_client_create_federation_rule_includes_optional_fields_when_given(monkeypatch):
     captured = {}
     _install_fake_admin_urlopen(monkeypatch, captured, {"id": "fdrl_1"})
-    client = wif.WIFAdminClient("token")
+    client = WIFAdminClient("token")
 
     client.create_federation_rule(
         "rule1",
@@ -245,7 +254,7 @@ def test_cmd_wif_status_never_prints_env_values(monkeypatch, capsys):
     monkeypatch.delenv("ANTHROPIC_WORKSPACE_ID", raising=False)
     monkeypatch.delenv("ANTHROPIC_IDENTITY_TOKEN_FILE", raising=False)
 
-    wif.cmd_wif_status()
+    cmd_wif_status()
 
     out = capsys.readouterr().out
     assert "fdrl_super_secret_id" not in out
@@ -254,10 +263,10 @@ def test_cmd_wif_status_never_prints_env_values(monkeypatch, capsys):
 
 
 def test_cmd_wif_exchange_token_fails_gracefully_when_unconfigured(monkeypatch, capsys):
-    for var in wif.WIF_ENV_VARS:
+    for var in WIF_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
 
-    result = wif.cmd_wif_exchange_token()
+    result = cmd_wif_exchange_token()
 
     assert result is None
     assert "not fully configured" in capsys.readouterr().out
@@ -279,9 +288,9 @@ def test_cmd_wif_exchange_token_never_prints_full_access_token(monkeypatch, caps
             "scope": "workspace:developer",
         }
 
-    monkeypatch.setattr(wif.WIFCredentialExchanger, "exchange", fake_exchange)
+    monkeypatch.setattr(WIFCredentialExchanger, "exchange", fake_exchange)
 
-    result = wif.cmd_wif_exchange_token()
+    result = cmd_wif_exchange_token()
 
     out = capsys.readouterr().out
     assert result["access_token"] == long_token

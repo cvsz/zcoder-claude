@@ -9,8 +9,13 @@ docs/36_upgrade_v1.24.0_audit_and_impl.md Finding 1.
 import json
 import urllib.request
 
-import claude_tools as mod
-from claude_tools import RETIRED_TOOL_VERSIONS, SERVER_TOOLS, ToolCoder
+from domain.tools import (
+    RETIRED_TOOL_VERSIONS,
+    SERVER_TOOLS,
+    check_retired_tool_version,
+    computer_use_tool_for_model,
+)
+from infrastructure.anthropic_api.tools_gateway import ToolCoder
 
 
 class _FakeResp:
@@ -57,9 +62,9 @@ def test_retired_tool_versions_tracks_v1_24_0_supersessions():
 
 
 def test_check_retired_tool_version_flags_previous_defaults():
-    assert mod.check_retired_tool_version("code_execution_20260120") is not None
-    assert mod.check_retired_tool_version("web_search_20260209") is not None
-    assert mod.check_retired_tool_version("code_execution_20260521") is None  # current, not retired
+    assert check_retired_tool_version("code_execution_20260120") is not None
+    assert check_retired_tool_version("web_search_20260209") is not None
+    assert check_retired_tool_version("code_execution_20260521") is None  # current, not retired
 
 
 def test_generate_with_server_tools_response_inclusion_applied(monkeypatch):
@@ -112,24 +117,24 @@ def test_computer_use_tool_for_model_exists_and_is_callable():
     # Regression: this function's `def` line was previously missing, so it
     # didn't exist as a module attribute at all — its body had silently
     # become unreachable dead code appended to check_retired_tool_version().
-    assert callable(mod.computer_use_tool_for_model)
+    assert callable(computer_use_tool_for_model)
 
 
 def test_computer_use_tool_for_model_current_model_uses_2025_11_24():
-    tool, beta = mod.computer_use_tool_for_model("claude-sonnet-5")
+    tool, beta = computer_use_tool_for_model("claude-sonnet-5")
     assert tool["type"] == "computer_20251124"
     assert tool["name"] == "computer"
     assert beta == "computer-use-2025-11-24"
 
 
 def test_computer_use_tool_for_model_older_model_uses_2025_01_24():
-    tool, beta = mod.computer_use_tool_for_model("claude-sonnet-4-5")
+    tool, beta = computer_use_tool_for_model("claude-sonnet-4-5")
     assert tool["type"] == "computer_20250124"
     assert beta == "computer-use-2025-01-24"
 
 
 def test_computer_use_tool_for_model_respects_custom_dimensions():
-    tool, _ = mod.computer_use_tool_for_model("claude-sonnet-5", width=1280, height=800)
+    tool, _ = computer_use_tool_for_model("claude-sonnet-5", width=1280, height=800)
     assert tool["display_width_px"] == 1280
     assert tool["display_height_px"] == 800
 
@@ -152,14 +157,14 @@ def test_generate_with_server_tools_computer_use_builds_tool_without_crashing(mo
 
 
 def test_validate_mid_conversation_tool_change_supported_models():
-    from claude_tools import validate_mid_conversation_tool_change
+    from domain.tools import validate_mid_conversation_tool_change
 
     for model_id in ("claude-fable-5", "claude-mythos-5", "claude-opus-4-8", "claude-opus-5"):
         assert validate_mid_conversation_tool_change(model_id) is None
 
 
 def test_validate_mid_conversation_tool_change_unsupported_model_warns():
-    from claude_tools import validate_mid_conversation_tool_change
+    from domain.tools import validate_mid_conversation_tool_change
 
     warning = validate_mid_conversation_tool_change("claude-sonnet-5")
     assert warning is not None
@@ -167,14 +172,14 @@ def test_validate_mid_conversation_tool_change_unsupported_model_warns():
 
 
 def test_with_mid_conversation_tool_changes_adds_beta_header_for_supported_model():
-    from claude_tools import MID_CONVERSATION_TOOL_CHANGES_BETA, with_mid_conversation_tool_changes
+    from domain.tools import MID_CONVERSATION_TOOL_CHANGES_BETA, with_mid_conversation_tool_changes
 
     headers = with_mid_conversation_tool_changes({}, "claude-opus-5")
     assert MID_CONVERSATION_TOOL_CHANGES_BETA in headers["anthropic-beta"]
 
 
 def test_with_mid_conversation_tool_changes_appends_to_existing_beta_header():
-    from claude_tools import MID_CONVERSATION_TOOL_CHANGES_BETA, with_mid_conversation_tool_changes
+    from domain.tools import MID_CONVERSATION_TOOL_CHANGES_BETA, with_mid_conversation_tool_changes
 
     headers = with_mid_conversation_tool_changes({"anthropic-beta": "some-other-beta"}, "claude-fable-5")
     assert "some-other-beta" in headers["anthropic-beta"]
@@ -182,7 +187,7 @@ def test_with_mid_conversation_tool_changes_appends_to_existing_beta_header():
 
 
 def test_with_mid_conversation_tool_changes_noop_for_unsupported_model():
-    from claude_tools import with_mid_conversation_tool_changes
+    from domain.tools import with_mid_conversation_tool_changes
 
     headers = {"anthropic-beta": "some-other-beta"}
     result = with_mid_conversation_tool_changes(headers, "claude-sonnet-5")

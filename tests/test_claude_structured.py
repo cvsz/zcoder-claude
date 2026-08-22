@@ -9,7 +9,7 @@ StructuredCoder.BETA attribute — see docs/42_upgrade_v1.30.0.md.
 import json
 from unittest.mock import patch
 
-import claude_structured as mod
+from infrastructure.anthropic_api.messaging_gateway import StructuredCoder
 
 
 def _fake_urlopen_json(payload_text):
@@ -20,7 +20,7 @@ def _fake_urlopen_json(payload_text):
 
 
 def test_no_beta_header_sent_on_structured_request():
-    sc = mod.StructuredCoder(api_key="sk-test")
+    sc = StructuredCoder(api_key="sk-test")
 
     # Patch urlopen_json (imported into this module's namespace) to
     # capture the Request object _call() builds, without hitting the
@@ -41,11 +41,11 @@ def test_no_beta_header_sent_on_structured_request():
 
 
 def test_bare_class_has_no_dead_beta_attribute():
-    assert not hasattr(mod.StructuredCoder, "BETA")
+    assert not hasattr(StructuredCoder, "BETA")
 
 
 def test_json_object_still_uses_ga_output_config_format():
-    sc = mod.StructuredCoder(api_key="sk-test")
+    sc = StructuredCoder(api_key="sk-test")
     captured_req = {}
 
     def _fake_urlopen_json(req, timeout=120):
@@ -60,7 +60,7 @@ def test_json_object_still_uses_ga_output_config_format():
 
 
 def test_json_schema_mode_validates_required_fields():
-    sc = mod.StructuredCoder(api_key="sk-test")
+    sc = StructuredCoder(api_key="sk-test")
     schema = {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}
 
     def _fake_urlopen_json(req, timeout=120):
@@ -73,7 +73,7 @@ def test_json_schema_mode_validates_required_fields():
 
 
 def test_json_schema_mode_raises_on_missing_required_field():
-    sc = mod.StructuredCoder(api_key="sk-test")
+    sc = StructuredCoder(api_key="sk-test")
     schema = {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}
 
     def _fake_urlopen_json(req, timeout=120):

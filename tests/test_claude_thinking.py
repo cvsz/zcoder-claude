@@ -16,6 +16,13 @@ from unittest.mock import MagicMock
 import pytest
 
 import application.messaging_service as messaging_service_mod
+from domain.messaging import (
+    EFFORT_BUDGETS,
+    ThinkingModeError,
+    supports_adaptive_thinking,
+    supports_manual_budget_tokens,
+)
+from interfaces.cli.commands.messaging_commands import cmd_thinking
 
 
 @pytest.fixture
@@ -33,17 +40,14 @@ def thinking_mod(monkeypatch):
 
     # Phase B (2026-08-15): ThinkingCoder's real `import anthropic` now
     # lives in infrastructure/anthropic_api/messaging_gateway.py, not in
-    # this shim — reload THAT module first so its `anthropic` name rebinds
-    # to the fake, then reload the shim so its re-exported ThinkingCoder
+    # this gateway — reload it so its `anthropic` name rebinds to the
+    # fake and its ThinkingCoder picks up the freshly-rebound class
     # picks up the freshly-rebound class (same "second repoint" pattern
     # documented in the master exec plan's playbook §5 addendum).
     import infrastructure.anthropic_api.messaging_gateway as gateway_mod
 
     importlib.reload(gateway_mod)
-    import claude_thinking as mod
-
-    importlib.reload(mod)
-    return mod
+    return gateway_mod
 
 
 def _fake_message_response():
@@ -126,7 +130,7 @@ def test_effort_legacy_budget_forces_manual_on_deprecated_but_supported_model(th
 
     _, kwargs = tc.client.messages.create.call_args
     assert kwargs["thinking"]["type"] == "enabled"
-    assert kwargs["thinking"]["budget_tokens"] == thinking_mod.EFFORT_BUDGETS["high"]
+    assert kwargs["thinking"]["budget_tokens"] == EFFORT_BUDGETS["high"]
 
 
 def test_effort_legacy_budget_refuses_on_hard_400_model(thinking_mod):
@@ -135,7 +139,7 @@ def test_effort_legacy_budget_refuses_on_hard_400_model(thinking_mod):
     never send the doomed request."""
     tc = thinking_mod.ThinkingCoder(api_key="sk-test", model="claude-sonnet-5")
 
-    with pytest.raises(thinking_mod.ThinkingModeError, match="budget_tokens is not accepted"):
+    with pytest.raises(ThinkingModeError, match="budget_tokens is not accepted"):
         tc.generate_with_thinking("q", legacy_budget=True)
 
     tc.client.messages.create.assert_not_called()
@@ -144,7 +148,7 @@ def test_effort_legacy_budget_refuses_on_hard_400_model(thinking_mod):
 def test_explicit_adaptive_true_on_manual_only_model_raises(thinking_mod):
     tc = thinking_mod.ThinkingCoder(api_key="sk-test", model="claude-haiku-4-5-20251001")
 
-    with pytest.raises(thinking_mod.ThinkingModeError, match="doesn't support adaptive"):
+    with pytest.raises(ThinkingModeError, match="doesn't support adaptive"):
         tc.generate_with_thinking("q", adaptive=True)
 
 
@@ -155,7 +159,7 @@ def test_explicit_adaptive_false_with_legacy_budget_raises_on_hard_400_model(thi
     # adaptive=False + legacy_budget=True on Sonnet 5 (a hard-400 model
     # for budget_tokens) must raise via the same guard as legacy_budget
     # alone would.
-    with pytest.raises(thinking_mod.ThinkingModeError):
+    with pytest.raises(ThinkingModeError):
         tc.generate_with_thinking("q", adaptive=False, legacy_budget=True)
 
 
@@ -191,9 +195,9 @@ def test_supports_adaptive_thinking_matrix(thinking_mod):
         "claude-opus-4-6",
         "claude-sonnet-4-6",
     ):
-        assert thinking_mod.supports_adaptive_thinking(model), model
+        assert supports_adaptive_thinking(model), model
     for model in ("claude-opus-4-5", "claude-haiku-4-5-20251001", "claude-sonnet-4-5"):
-        assert not thinking_mod.supports_adaptive_thinking(model), model
+        assert not supports_adaptive_thinking(model), model
 
 
 def test_supports_manual_budget_tokens_matrix(thinking_mod):
@@ -204,9 +208,9 @@ def test_supports_manual_budget_tokens_matrix(thinking_mod):
         "claude-mythos-5",
         "claude-fable-5",
     ):
-        assert not thinking_mod.supports_manual_budget_tokens(model), model
+        assert not supports_manual_budget_tokens(model), model
     for model in ("claude-opus-4-6", "claude-sonnet-4-6", "claude-opus-4-5", "claude-haiku-4-5-20251001"):
-        assert thinking_mod.supports_manual_budget_tokens(model), model
+        assert supports_manual_budget_tokens(model), model
 
 
 # ── cmd_thinking wiring ─────────────────────────────────────────────────
@@ -228,7 +232,7 @@ def test_cmd_thinking_threads_display_omitted(thinking_mod, monkeypatch):
 
     monkeypatch.setattr(messaging_service_mod, "ThinkingCoder", FakeCoder)
 
-    thinking_mod.cmd_thinking(
+    cmd_thinking(
         "q",
         api_key="sk-test",
         model="claude-sonnet-5",
@@ -259,7 +263,7 @@ def test_cmd_thinking_threads_legacy_budget_flag(thinking_mod, monkeypatch):
 
     monkeypatch.setattr(messaging_service_mod, "ThinkingCoder", FakeCoder)
 
-    thinking_mod.cmd_thinking(
+    cmd_thinking(
         "q",
         api_key="sk-test",
         model="claude-opus-4-5",
@@ -298,7 +302,7 @@ def test_cmd_thinking_reads_correct_thinking_tokens_usage_field(thinking_mod, mo
 
     monkeypatch.setattr(messaging_service_mod, "ThinkingCoder", FakeCoder)
 
-    thinking_mod.cmd_thinking(
+    cmd_thinking(
         "q",
         api_key="sk-test",
         model="claude-sonnet-5",

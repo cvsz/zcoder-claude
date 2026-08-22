@@ -13,13 +13,13 @@ Previously this module (claude_cache.py) had zero test coverage at all.
 
 import pytest
 
-from claude_cache import (
+from domain.cache import (
     MID_SYSTEM_SUPPORTED_MODELS,
-    CachingCoder,
     SystemMessagePlacementError,
     build_mid_system_message,
     validate_system_message_placement,
 )
+from infrastructure.anthropic_api.cache_gateway import CachingCoder
 
 
 def _response(text="ok", usage=None, diagnostics=None, message_id="msg_1"):

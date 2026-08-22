@@ -90,7 +90,7 @@ def run_native_turn(client, files_api, messages, user_input, pending_file_ids, c
     """Run one --pptx-native turn against the pptx Skill. `messages` is
     mutated in place (appended to on success, popped back on error,
     matching the original). Returns a result dict; does not print."""
-    from claude_skills_api import build_user_content, extract_output_file_ids
+    from domain.skills_api import build_user_content, extract_output_file_ids
 
     messages.append({"role": "user", "content": build_user_content(user_input, pending_file_ids)})
     has_uploads = bool(pending_file_ids)

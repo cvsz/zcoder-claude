@@ -10,16 +10,8 @@ pricing regression here fails a test instead of shipping silently.
 
 import pytest
 
-from claude_cost_optimizer import (
-    INFERENCE_GEO_MULTIPLIER,
-    INFERENCE_GEO_SUPPORTED,
-    LONG_CONTEXT_SURCHARGE,
-    PRICE,
-    SONNET5_INTRO_PRICE,
-    classify_complexity,
-    estimate_cost,
-    select_model,
-)
+from domain.models.catalog import INFERENCE_GEO_MULTIPLIER, INFERENCE_GEO_SUPPORTED, LONG_CONTEXT_SURCHARGE
+from domain.observability import PRICE, SONNET5_INTRO_PRICE, classify_complexity, estimate_cost, select_model
 
 # ── pricing table (2026-08-10 release note: $2/$10 is now permanent) ────
 

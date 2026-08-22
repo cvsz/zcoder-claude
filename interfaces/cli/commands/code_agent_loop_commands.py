@@ -310,15 +310,15 @@ def cmd_code_slash(command: str, api_key: str, model: str, cwd: str = ".", promp
         elif cmd == "doctor":
             _run_doctor()
         elif cmd == "plugin":
-            from claude_plugins import cmd_plugin_list
+            from interfaces.cli.commands.plugins_commands import cmd_plugin_list
 
             cmd_plugin_list()
         elif cmd == "output-style":
-            from claude_output_styles import cmd_list_output_styles
+            from interfaces.cli.commands.output_styles_commands import cmd_list_output_styles
 
             cmd_list_output_styles()
         elif cmd == "statusline":
-            from claude_settings import cmd_status_line
+            from interfaces.cli.commands.settings_commands import cmd_status_line
 
             cmd_status_line(model=model, cwd=cwd)
         return

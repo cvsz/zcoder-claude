@@ -11,11 +11,13 @@ import json
 
 import pytest
 
-from claude_compliance_api import (
+from infrastructure.anthropic_api.compliance_gateway import (
     ComplianceApiClient,
     ComplianceApiError,
     _is_retryable,
     _parse_content_disposition_filename,
+)
+from interfaces.cli.commands.compliance_commands import (
     cmd_compliance_chat_delete,
     cmd_compliance_file_delete,
     cmd_compliance_project_delete,
@@ -455,7 +457,7 @@ def test_cmd_local_sessions_list_prints_rows(monkeypatch, capsys):
             }
 
     monkeypatch.setattr("application.compliance_service.ComplianceApiClient", FakeClient)
-    from claude_compliance_api import cmd_compliance_local_sessions_list
+    from interfaces.cli.commands.compliance_commands import cmd_compliance_local_sessions_list
 
     cmd_compliance_local_sessions_list("k")
     assert "clls_1" in capsys.readouterr().out
@@ -474,7 +476,7 @@ def test_cmd_remote_session_messages_prints_transcript(monkeypatch, capsys):
             }
 
     monkeypatch.setattr("application.compliance_service.ComplianceApiClient", FakeClient)
-    from claude_compliance_api import cmd_compliance_remote_session_messages
+    from interfaces.cli.commands.compliance_commands import cmd_compliance_remote_session_messages
 
     cmd_compliance_remote_session_messages("k", "cse_abc")
     out = capsys.readouterr().out

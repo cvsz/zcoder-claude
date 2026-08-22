@@ -12,8 +12,21 @@ import json
 
 import pytest
 
-import claude_metrics as metrics
+from domain.models.catalog import DEFAULT_PRICE as _CATALOG_DEFAULT
+from domain.models.catalog import PRICE as _CATALOG_PRICE
+from domain.observability import price_lookup as _price
+from domain.observability import summarise_metrics as summarise
 from infrastructure.local_storage import observability_store as _obs_store
+from infrastructure.local_storage.observability_store import (
+    load_metrics_log,
+    record_metric,
+)
+from interfaces.cli.commands.observability_commands import cmd_metrics_export
+
+# Derived views over the single source-of-truth catalog (were
+# claude_metrics.PRICE_TABLE / DEFAULT_PRICE):
+PRICE_TABLE = {model_id: (p["in"], p["out"]) for model_id, p in _CATALOG_PRICE.items()}
+DEFAULT_PRICE = (_CATALOG_DEFAULT["in"], _CATALOG_DEFAULT["out"])
 
 
 @pytest.fixture(autouse=True)
@@ -36,24 +49,24 @@ def isolated_log(tmp_path, monkeypatch):
 
 
 def test_sonnet5_price_table_entry_is_2_10_not_cancelled_3_15():
-    assert metrics.PRICE_TABLE["claude-sonnet-5"] == (2.0, 10.0)
+    assert PRICE_TABLE["claude-sonnet-5"] == (2.0, 10.0)
 
 
 def test_price_uses_sonnet5_rate():
-    cost = metrics._price("claude-sonnet-5", 1_000_000, 1_000_000)
+    cost = _price("claude-sonnet-5", 1_000_000, 1_000_000)
     assert cost == pytest.approx(2.0 + 10.0)
 
 
 def test_price_unknown_model_falls_back_to_default():
-    cost = metrics._price("claude-unknown-future-model", 1_000_000, 1_000_000)
-    assert cost == pytest.approx(metrics.DEFAULT_PRICE[0] + metrics.DEFAULT_PRICE[1])
+    cost = _price("claude-unknown-future-model", 1_000_000, 1_000_000)
+    assert cost == pytest.approx(DEFAULT_PRICE[0] + DEFAULT_PRICE[1])
 
 
 # ── record() / not_billed refusal handling (v1.11.0) ─────────────────
 
 
 def test_record_writes_priced_entry(isolated_log):
-    metrics.record("claude-sonnet-5", 1_000_000, 1_000_000, 1.5, command="chat")
+    record_metric("claude-sonnet-5", 1_000_000, 1_000_000, 1.5, command="chat")
     lines = isolated_log.read_text().strip().splitlines()
     assert len(lines) == 1
     entry = json.loads(lines[0])
@@ -63,7 +76,7 @@ def test_record_writes_priced_entry(isolated_log):
 
 
 def test_record_refusal_with_zero_output_is_not_billed(isolated_log):
-    metrics.record("claude-sonnet-5", 500_000, 0, 0.8, stop_reason="refusal")
+    record_metric("claude-sonnet-5", 500_000, 0, 0.8, stop_reason="refusal")
     entry = json.loads(isolated_log.read_text().strip())
     assert entry["not_billed"] is True
     assert entry["cost_usd"] == 0.0
@@ -72,7 +85,7 @@ def test_record_refusal_with_zero_output_is_not_billed(isolated_log):
 def test_record_refusal_with_nonzero_output_is_still_billed(isolated_log):
     # Only a *pure* refusal (no generated output at all) is documented as
     # not billed -- a refusal after partial output should still be priced.
-    metrics.record("claude-sonnet-5", 500_000, 100, 0.8, stop_reason="refusal")
+    record_metric("claude-sonnet-5", 500_000, 100, 0.8, stop_reason="refusal")
     entry = json.loads(isolated_log.read_text().strip())
     assert entry["not_billed"] is False
     assert entry["cost_usd"] > 0.0
@@ -82,13 +95,13 @@ def test_record_refusal_with_nonzero_output_is_still_billed(isolated_log):
 
 
 def test_load_log_empty_when_no_file(isolated_log):
-    assert metrics.load_log() == []
+    assert load_metrics_log() == []
 
 
 def test_load_log_model_filter(isolated_log):
-    metrics.record("claude-sonnet-5", 100, 100, 0.1)
-    metrics.record("claude-opus-4-8", 100, 100, 0.1)
-    entries = metrics.load_log(model_filter="claude-opus-4-8")
+    record_metric("claude-sonnet-5", 100, 100, 0.1)
+    record_metric("claude-opus-4-8", 100, 100, 0.1)
+    entries = load_metrics_log(model_filter="claude-opus-4-8")
     assert len(entries) == 1
     assert entries[0]["model"] == "claude-opus-4-8"
 
@@ -96,7 +109,7 @@ def test_load_log_model_filter(isolated_log):
 def test_load_log_skips_malformed_lines(isolated_log):
     isolated_log.parent.mkdir(parents=True, exist_ok=True)
     isolated_log.write_text('not json\n{"model": "claude-sonnet-5", "ts": "x"}\n')
-    entries = metrics.load_log()
+    entries = load_metrics_log()
     assert len(entries) == 1
 
 
@@ -104,7 +117,7 @@ def test_load_log_skips_malformed_lines(isolated_log):
 
 
 def test_summarise_empty_entries():
-    assert metrics.summarise([]) == {"calls": 0}
+    assert summarise([]) == {"calls": 0}
 
 
 def test_summarise_aggregates_by_model():
@@ -131,7 +144,7 @@ def test_summarise_aggregates_by_model():
             "latency_seconds": 1.0,
         },
     ]
-    s = metrics.summarise(entries)
+    s = summarise(entries)
     assert s["calls"] == 3
     assert s["total_cost_usd"] == pytest.approx(3.5)
     assert s["by_model"]["claude-sonnet-5"]["calls"] == 2
@@ -143,9 +156,9 @@ def test_summarise_aggregates_by_model():
 
 
 def test_cmd_metrics_export_writes_entries_and_summary(isolated_log, tmp_path):
-    metrics.record("claude-sonnet-5", 1000, 1000, 0.5)
+    record_metric("claude-sonnet-5", 1000, 1000, 0.5)
     out_path = tmp_path / "export.json"
-    metrics.cmd_metrics_export(str(out_path))
+    cmd_metrics_export(str(out_path))
     data = json.loads(out_path.read_text())
     assert len(data["entries"]) == 1
     assert data["summary"]["calls"] == 1

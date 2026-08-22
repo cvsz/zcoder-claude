@@ -16,7 +16,7 @@ import pytest
 
 @pytest.fixture
 def search_mod(monkeypatch):
-    """Import claude_search with a fake anthropic module installed, mirroring
+    """Import the search gateway with a fake anthropic module installed, mirroring
     the mocking style used for claude_agents_sdk's tests in this repo."""
     fake_anthropic = types.ModuleType("anthropic")
 
@@ -31,19 +31,14 @@ def search_mod(monkeypatch):
 
     import importlib
 
-    # Phase C (2026-08-16): SearchCoder's real `import anthropic` now lives
-    # in infrastructure/anthropic_api/search_gateway.py, not in this shim —
-    # reload THAT module first so its `anthropic` name rebinds to the
-    # fake, then reload the shim so its re-exported SearchCoder picks up
-    # the freshly-rebound class (same pattern as test_claude_thinking.py's
-    # fixture, Phase B).
+    # SearchCoder's real `import anthropic` lives in
+    # infrastructure/anthropic_api/search_gateway.py — reload it so its
+    # `anthropic` name rebinds to the fake and SearchCoder picks up the
+    # freshly-rebound class.
     import infrastructure.anthropic_api.search_gateway as gateway_mod
 
     importlib.reload(gateway_mod)
-    import claude_search as mod
-
-    importlib.reload(mod)
-    return mod
+    return gateway_mod
 
 
 def _fake_response():

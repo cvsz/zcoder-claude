@@ -48,8 +48,8 @@ except ImportError as e:  # pragma: no cover - exercised only w/o textual instal
         "(or: pip install -r requirements.txt, it's an optional extra there)"
     ) from e
 
-from claude_models import MODEL_CATALOG
 from config import Config
+from domain.models.catalog import MODEL_CATALOG
 from personalities import PersonalityManager
 from skills import SkillManager
 from tui_streaming import StreamRenderGate
@@ -254,7 +254,7 @@ class ZCoderTUI(App):
                     prompt, model, system, temperature, history_snapshot, reply_widget
                 )
             else:
-                from coder import Coder
+                from infrastructure.anthropic_api.core_gateway import Coder
 
                 coder = Coder(api_key=self.api_key, model=model, temperature=temperature)
                 full_text = coder.generate(prompt, system=system, history=history_snapshot)

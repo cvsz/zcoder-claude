@@ -1,13 +1,17 @@
 """tests/test_cli_wiring.py — CLI-to-API wiring coverage
 
-Regression test for the v1.30.0 wiring audit: every `cmd_*` function
-defined in a `claude_*.py` module is expected to be reachable from
-`main.py`'s dispatch, either directly or via a re-exported name. This
-doesn't verify the *behavior* of each wired command (that's each
+Two invariants:
+
+1. Every `cmd_*` function defined in interfaces/cli/commands/
+   wrapper_commands.py is dispatched by interfaces/cli/dispatcher.py.
+2. The retired repo-root compatibility shims (claude_*.py, coder.py)
+   never come back.
+
+This doesn't verify the *behavior* of each wired command (that's each
 module's own test file's job) — only that nothing gets left behind the
 way claude_github.py, claude_metrics.py, claude_prompt_optimizer.py,
-and claude_router.py were before this cycle: fully written, fully
-tested at the function level, and never given a CLI flag.
+and claude_router.py once were: fully written, fully tested at the
+function level, and never given a CLI flag.
 """
 
 import ast
@@ -21,17 +25,6 @@ REPO_ROOT = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
-# Modules intentionally excluded from the "every cmd_* must be wired"
-# sweep, with the reason on file:
-#
-# Historical note: claude_evals.py (plural, the pre-v1.10 eval harness
-# superseded by claude_eval.py singular) was the sole entry here from
-# v1.30.0 until 2026-08-21, when the dead file was deleted outright
-# (retiring the last KNOWN_EXCEPTIONS entry). The set and its guard test
-# below are kept so future intentional exclusions have a documented home.
-KNOWN_EXCEPTIONS: set = set()
-
-
 def _cmd_functions(path):
     """Top-level `def cmd_*` function names in a Python source file."""
     tree = ast.parse(open(path, encoding="utf-8").read(), filename=path)
@@ -40,10 +33,6 @@ def _cmd_functions(path):
         for node in ast.iter_child_nodes(tree)
         if isinstance(node, ast.FunctionDef) and node.name.startswith("cmd_")
     ]
-
-
-def _all_claude_modules():
-    return sorted(glob.glob(os.path.join(REPO_ROOT, "claude_*.py")))
 
 
 @pytest.fixture(scope="module")
@@ -56,20 +45,6 @@ def main_source():
     return "\n".join(sources)
 
 
-@pytest.mark.parametrize("module_path", _all_claude_modules(), ids=lambda p: os.path.basename(p))
-def test_every_cmd_function_is_referenced_in_main(module_path, main_source):
-    module_name = os.path.basename(module_path)
-    for fn in _cmd_functions(module_path):
-        if (module_name, fn) in KNOWN_EXCEPTIONS:
-            continue
-        pattern = r"\b" + re.escape(fn) + r"\b"
-        assert re.search(pattern, main_source), (
-            f"{module_name}.{fn}() is defined but never referenced in "
-            f"main.py — add a CLI flag and dispatch line, or add it to "
-            f"KNOWN_EXCEPTIONS with a reason if it's intentionally unwired."
-        )
-
-
 def _interfaces_cmd_functions():
     """cmd_* functions defined in the migrated wrapper command module."""
     path = os.path.join(REPO_ROOT, "interfaces/cli/commands/wrapper_commands.py")
@@ -77,11 +52,9 @@ def _interfaces_cmd_functions():
 
 
 def test_every_wrapper_commands_function_is_dispatched(main_source):
-    """The Context #6 fold-in moved the wrappers' cmd_* entry points out of
-    the flat claude_*.py files into interfaces/cli/commands/
-    wrapper_commands.py — this keeps the same no-orphaned-command
-    guarantee for the new home (the claude_* shim scan above can't see
-    functions that no longer originate there)."""
+    """The Context #6 fold-in moved the wrappers' cmd_* entry points into
+    interfaces/cli/commands/wrapper_commands.py — this keeps the
+    no-orphaned-command guarantee for their canonical home."""
     dispatcher_path = os.path.join(REPO_ROOT, "interfaces/cli/dispatcher.py")
     with open(dispatcher_path, encoding="utf-8") as f:
         dispatcher_source = f.read()
@@ -94,17 +67,12 @@ def test_every_wrapper_commands_function_is_dispatched(main_source):
         )
 
 
-def test_known_exceptions_still_point_at_real_functions():
-    """Guards against KNOWN_EXCEPTIONS silently going stale (e.g. the
-    excepted function gets renamed or the file gets deleted, and the
-    exception entry keeps suppressing a check that would now catch
-    something real)."""
-    for module_name, fn in KNOWN_EXCEPTIONS:
-        module_path = os.path.join(REPO_ROOT, module_name)
-        assert os.path.exists(module_path), f"{module_name} no longer exists"
-        assert fn in _cmd_functions(
-            module_path
-        ), f"{module_name}.{fn} no longer defined — remove from KNOWN_EXCEPTIONS"
+def test_no_claude_shim_files_remain():
+    """The Clean Architecture migration retired every repo-root
+    compatibility shim (claude_*.py plus coder.py) — guard against
+    reintroduction."""
+    assert glob.glob(os.path.join(REPO_ROOT, "claude_*.py")) == []
+    assert not os.path.exists(os.path.join(REPO_ROOT, "coder.py"))
 
 
 # ── Targeted dispatch tests for the four newly-wired modules ────────────
@@ -185,7 +153,7 @@ def _run_main_with(monkeypatch, argv, api_key="sk-ant-test"):
 
 
 def test_route_list_dispatches_to_cmd_route_list(monkeypatch):
-    import claude_router
+    from interfaces.cli.commands import code_agent_commands as claude_router
 
     called = {}
     monkeypatch.setattr(claude_router, "cmd_route_list", lambda *a, **k: called.setdefault("hit", True))
@@ -194,7 +162,7 @@ def test_route_list_dispatches_to_cmd_route_list(monkeypatch):
 
 
 def test_prompt_lib_list_dispatches(monkeypatch):
-    import claude_prompt_optimizer
+    from interfaces.cli.commands import prompt_optimizer_commands as claude_prompt_optimizer
 
     called = {}
     monkeypatch.setattr(
@@ -205,7 +173,7 @@ def test_prompt_lib_list_dispatches(monkeypatch):
 
 
 def test_metrics_clear_dispatches(monkeypatch):
-    import claude_metrics
+    from interfaces.cli.commands import observability_commands as claude_metrics
 
     called = {}
     monkeypatch.setattr(claude_metrics, "cmd_metrics_clear", lambda *a, **k: called.setdefault("hit", True))
@@ -214,7 +182,7 @@ def test_metrics_clear_dispatches(monkeypatch):
 
 
 def test_gh_triage_dispatches_with_positional_order(monkeypatch):
-    import claude_github
+    from interfaces.cli.commands import devtools_commands as claude_github
 
     seen = {}
 
@@ -289,7 +257,7 @@ def test_ce_user_management_dispatch_requires_admin_key(monkeypatch, capsys):
 
 
 def test_members_list_dispatches_to_cmd(monkeypatch):
-    import claude_admin_api
+    from interfaces.cli.commands import admin_commands as claude_admin_api
 
     seen = {}
 

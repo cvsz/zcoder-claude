@@ -1,6 +1,18 @@
 """
-coder.py — Claude API integration core
-AI Model Coder CLI v1.7.0
+# mypy: ignore-errors
+infrastructure/anthropic_api/core_gateway.py — Claude API core gateway
+AI Model Coder CLI v1.42.0 (Clean Architecture refactor, coder.py fold-in)
+
+The non-streaming Messages-API integration core (the Coder class) plus its
+module-level shared CircuitBreaker/retry wiring — zero print(). Moved
+intact 2026-08-22 from flat coder.py (which remains as a re-export shim).
+
+The shared breaker is module-level on purpose: repeated failures across
+Coder instances within one process (e.g. an outage during a long
+--agent-orchestrate run) trip it once rather than per-instance. Note it is
+bound inside Coder.generate() at call time (the @retry decoration happens
+per generate() invocation), so tests can swap the breaker by patching this
+module's _default_breaker attribute.
 """
 
 import json
@@ -102,8 +114,7 @@ class Coder:
         if self.inference_geo:
             payload["inference_geo"] = self.inference_geo
         if self.fast_mode:
-            from claude_models import FAST_MODE_REMOVED_ERROR, validate_fast_mode
-
+            from domain.models.catalog import FAST_MODE_REMOVED_ERROR, validate_fast_mode
             reason = validate_fast_mode(self.model)
             if self.model in FAST_MODE_REMOVED_ERROR:
                 logger.error("fast_mode_removed", extra={"model": self.model})

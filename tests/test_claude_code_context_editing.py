@@ -12,8 +12,10 @@ Covers the --agent-context-editing wiring described in claude_code.py:
 
 import pytest
 
-from claude_code import CodeAgent, CodeSession, cmd_code_agent
-from claude_tools import CONTEXT_MANAGEMENT_BETA, build_context_management
+from domain.tools import CONTEXT_MANAGEMENT_BETA, build_context_management
+from infrastructure.anthropic_api.code_agent_loop_gateway import CodeAgent
+from infrastructure.local_storage.code_agent_store import CodeSession
+from interfaces.cli.commands.code_agent_loop_commands import cmd_code_agent
 
 # cmd_code_agent now lives in interfaces/cli/commands/code_agent_loop_commands.py
 # and imports CodeAgent from infrastructure/anthropic_api/code_agent_loop_gateway.py

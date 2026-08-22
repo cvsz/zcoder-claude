@@ -22,8 +22,8 @@ from domain.plugins import (
     discover_plugins_in_marketplace,
     read_manifest,
 )
-from exceptions import AICoderError
-from resilience import TransientAPIError, retry
+from exceptions import AICoderError, TransientAPIError
+from resilience import retry
 
 
 def _load_registry() -> dict:

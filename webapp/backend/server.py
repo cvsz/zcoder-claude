@@ -37,10 +37,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from claude_models import MODEL_CATALOG  # noqa: E402
-from coder import Coder  # noqa: E402
 from config import Config  # noqa: E402
+from domain.models.catalog import MODEL_CATALOG  # noqa: E402
 from health import run_health_check  # noqa: E402
+from infrastructure.anthropic_api.core_gateway import Coder  # noqa: E402
 from interfaces.cli.dispatcher import AGENT_SYSTEM_PROMPTS, VERSION  # noqa: E402
 from logging_config import get_logger  # noqa: E402
 from personalities import PersonalityManager  # noqa: E402

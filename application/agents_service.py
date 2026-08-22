@@ -412,7 +412,7 @@ def upload_outcome_rubric(api_key: str, file_path: str, model: str) -> dict:
     bounded context, claude_files.py — not yet migrated to
     infrastructure/, imported directly here as a deliberate cross-context
     call until that module's own migration)."""
-    from claude_files import FilesAPI
+    from infrastructure.anthropic_api.files_gateway import FilesAPI
 
     fa = FilesAPI(api_key=api_key, model=model)
     return fa.upload(file_path)

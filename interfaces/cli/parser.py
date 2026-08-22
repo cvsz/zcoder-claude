@@ -23,13 +23,13 @@ AGENT_SYSTEM_PROMPTS = {
 }
 
 try:
-    from claude_models import UPGRADE_TARGETS
+    from domain.models.catalog import UPGRADE_TARGETS
 except ImportError:
     UPGRADE_TARGETS = {}
 
 
 def build_parser():
-    from claude_models import UPGRADE_TARGETS
+    from domain.models.catalog import UPGRADE_TARGETS
 
     p = argparse.ArgumentParser(
         prog="ai-coder",

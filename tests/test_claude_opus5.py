@@ -2,14 +2,18 @@
 
 import pytest
 
-from claude_opus5 import (
+from domain.model_wrappers import (
     OPUS5_EFFORT_LEVELS,
     OPUS5_MODEL_ID,
-    Opus5Client,
-    estimate_cost_usd,
     validate_effort_thinking,
-    validate_inference_geo,
 )
+from domain.model_wrappers import (
+    estimate_opus5_cost_usd as estimate_cost_usd,
+)
+from domain.model_wrappers import (
+    validate_opus5_inference_geo as validate_inference_geo,
+)
+from infrastructure.anthropic_api.model_wrappers_gateway import Opus5Client
 
 # ── validate_effort_thinking: the breaking-change guard ─────────────────
 

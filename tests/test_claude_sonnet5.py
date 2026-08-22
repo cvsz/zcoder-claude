@@ -4,18 +4,20 @@ from datetime import date
 
 import pytest
 
-from claude_sonnet5 import (
+from domain.model_wrappers import (
     PROMO_END_DATE,
     PROMO_PRICE_IN_USD,
     PROMO_PRICE_OUT_USD,
     SONNET5_MODEL_ID,
     STANDARD_PRICE_IN_USD,
     STANDARD_PRICE_OUT_USD,
-    Sonnet5Client,
     current_pricing,
-    estimate_cost_usd,
     validate_service_tier,
 )
+from domain.model_wrappers import (
+    estimate_sonnet5_cost_usd as estimate_cost_usd,
+)
+from infrastructure.anthropic_api.model_wrappers_gateway import Sonnet5Client
 
 # ── pricing (2026-08-10 release note: the scheduled 2026-09-01 increase to
 # $3/$15 was cancelled, so $2/$10 is now the permanent standard price and
@@ -80,14 +82,14 @@ def test_call_attaches_service_tier_warning(monkeypatch):
 
 
 def test_validate_sampling_params_none_set_is_safe():
-    from claude_sonnet5 import validate_sampling_params
+    from domain.model_wrappers import validate_sampling_params
 
     assert validate_sampling_params() is None
     assert validate_sampling_params(None, None, None) is None
 
 
 def test_validate_sampling_params_temperature_flagged():
-    from claude_sonnet5 import validate_sampling_params
+    from domain.model_wrappers import validate_sampling_params
 
     warning = validate_sampling_params(temperature=0.5)
     assert warning is not None
@@ -95,7 +97,7 @@ def test_validate_sampling_params_temperature_flagged():
 
 
 def test_validate_sampling_params_multiple_flagged():
-    from claude_sonnet5 import validate_sampling_params
+    from domain.model_wrappers import validate_sampling_params
 
     warning = validate_sampling_params(temperature=0.5, top_p=0.9, top_k=40)
     assert "temperature=0.5" in warning

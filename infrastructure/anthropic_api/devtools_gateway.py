@@ -102,7 +102,7 @@ def fetch_page(url: str, timeout: float = 15) -> tuple[str | None, list[tuple[st
 
 
 def make_coder(api_key: str, model: str, temperature: float = 0.0, max_tokens: int = 1024):
-    from coder import Coder
+    from infrastructure.anthropic_api.core_gateway import Coder
 
     return Coder(api_key=api_key, model=model, temperature=temperature, max_tokens=max_tokens)
 

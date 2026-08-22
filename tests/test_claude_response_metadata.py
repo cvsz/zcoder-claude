@@ -17,9 +17,10 @@ repointing anywhere in this suite.
 
 import json
 
-import claude_response_metadata as rm
 import infrastructure.anthropic_api.model_wrappers_gateway as gw
 from exceptions import AICoderError
+from infrastructure.anthropic_api.model_wrappers_gateway import get_response_metadata
+from interfaces.cli.commands.wrapper_commands import cmd_whoami
 
 
 def test_get_response_metadata_parses_lowercase_headers(monkeypatch):
@@ -27,7 +28,7 @@ def test_get_response_metadata_parses_lowercase_headers(monkeypatch):
         return {"content": []}, {"anthropic-workspace-id": "wrkspc_1", "anthropic-organization-id": "org_1"}
 
     monkeypatch.setattr(gw, "_call_with_headers", fake_call)
-    meta = rm.get_response_metadata("sk-ant-fake")
+    meta = get_response_metadata("sk-ant-fake")
     assert meta.workspace_id == "wrkspc_1"
     assert meta.organization_id == "org_1"
 
@@ -37,14 +38,14 @@ def test_get_response_metadata_parses_titlecase_headers(monkeypatch):
         return {"content": []}, {"Anthropic-Workspace-Id": "wrkspc_2", "Anthropic-Organization-Id": "org_2"}
 
     monkeypatch.setattr(gw, "_call_with_headers", fake_call)
-    meta = rm.get_response_metadata("sk-ant-fake")
+    meta = get_response_metadata("sk-ant-fake")
     assert meta.workspace_id == "wrkspc_2"
     assert meta.organization_id == "org_2"
 
 
 def test_get_response_metadata_missing_headers_are_none(monkeypatch):
     monkeypatch.setattr(gw, "_call_with_headers", lambda api_key: ({"content": []}, {}))
-    meta = rm.get_response_metadata("sk-ant-fake")
+    meta = get_response_metadata("sk-ant-fake")
     assert meta.workspace_id is None
     assert meta.organization_id is None
 
@@ -61,7 +62,7 @@ def test_call_with_headers_sends_minimal_documented_payload(monkeypatch):
         return {"content": []}, {"anthropic-workspace-id": "wrkspc_3"}
 
     monkeypatch.setattr(gw, "urlopen_json_with_headers", fake_urlopen_json_with_headers)
-    meta = rm.get_response_metadata("sk-ant-fake")
+    meta = get_response_metadata("sk-ant-fake")
 
     assert captured["url"] == gw.MESSAGES_ENDPOINT
     assert captured["payload"]["model"] == gw._WHOAMI_MODEL
@@ -79,7 +80,7 @@ def test_cmd_whoami_prints_ids(monkeypatch, capsys):
             {"anthropic-workspace-id": "wrkspc_4", "anthropic-organization-id": "org_4"},
         ),
     )
-    rm.cmd_whoami("sk-ant-fake")
+    cmd_whoami("sk-ant-fake")
     out = capsys.readouterr().out
     assert "wrkspc_4" in out
     assert "org_4" in out
@@ -90,6 +91,6 @@ def test_cmd_whoami_handles_error(monkeypatch, capsys):
         raise AICoderError("bad key")
 
     monkeypatch.setattr(gw, "_call_with_headers", raise_error)
-    result = rm.cmd_whoami("sk-ant-bad")
+    result = cmd_whoami("sk-ant-bad")
     assert result is None
     assert "ERROR" in capsys.readouterr().out

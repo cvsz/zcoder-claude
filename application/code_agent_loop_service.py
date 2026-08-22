@@ -62,9 +62,9 @@ def load_or_create_session(
 
 def apply_output_style(session: CodeSession, output_style: str):
     try:
-        from claude_output_styles import system_prompt_fragment
+        from application.output_styles_service import build_system_prompt_fragment
 
-        fragment = system_prompt_fragment(output_style)
+        fragment = build_system_prompt_fragment(output_style)
         if fragment:
             session.system_prompt = (session.system_prompt + "\n\n" + fragment).strip()
     except ImportError:
@@ -88,9 +88,9 @@ def enable_sandbox(cwd: str, allow_net: bool, extra_roots: list | None = None):
 
 def add_plugin_bin_paths():
     try:
-        from claude_plugins import plugin_bin_paths
+        from application.plugins_service import get_plugin_bin_paths
 
-        extra_bins = plugin_bin_paths()
+        extra_bins = get_plugin_bin_paths()
         if extra_bins:
             os.environ["PATH"] = os.pathsep.join(extra_bins) + os.pathsep + os.environ.get("PATH", "")
     except ImportError:
@@ -206,9 +206,9 @@ def find_custom_command(cmd: str) -> dict | None:
                 if f.stem == cmd:
                     return {"content": f.read_text(), "source": "custom", "name": cmd}
     try:
-        from claude_plugins import load_plugin_commands
+        from application.plugins_service import get_enabled_commands
 
-        for entry in load_plugin_commands():
+        for entry in get_enabled_commands():
             if entry["name"] == cmd or entry["name"].split(":", 1)[-1] == cmd:
                 return {"content": Path(entry["path"]).read_text(), "source": "plugin", "name": entry["name"]}
     except ImportError:
@@ -261,9 +261,13 @@ def run_diagnostics() -> list:
         ("Sessions dir", SESSIONS_DIR.exists()),
     ]
     try:
-        from claude_plugins import marketplace_list, plugin_list
+        from infrastructure.local_storage.plugins_store import (
+            _load_registry,
+            marketplace_list,
+            plugin_list,
+        )
 
-        checks.append(("Plugins installed", len(plugin_list()) > 0))
+        checks.append(("Plugins installed", len(plugin_list(_load_registry())) > 0))
         checks.append(("Marketplaces registered", len(marketplace_list()) > 0))
     except ImportError:
         pass

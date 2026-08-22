@@ -9,7 +9,7 @@ from application import interactive_service as service
 
 
 def cmd_interactive(api_key, model, system=None, temperature=0.3, max_tokens=4096, personality_style=None):
-    from coder import Coder
+    from infrastructure.anthropic_api.core_gateway import Coder
 
     history = []
     c = Coder(

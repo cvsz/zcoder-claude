@@ -11,7 +11,6 @@ from collections.abc import Iterable
 from pathlib import Path
 
 
-
 class SkillsManagementGateway:
     def __init__(self, api_key: str):
         import anthropic

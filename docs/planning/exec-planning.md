@@ -1047,3 +1047,21 @@ application, and infrastructure files (zero mentions of security
 scanning). ✅ **CLOSED later the same day:** the doc comment was added to
 `domain/skills_api.py`'s module docstring during the loop-engineering-kit
 execution (see history log, Loop A), with no API surface to wire.
+
+### 2026-08-22 validation (post-v1.43.0)
+
+**Method:** live web search of platform.claude.com release notes +
+pricing pages, cross-checked against `domain/models/catalog.py`.
+
+| Area | Real-world state (2026-08-22) | ZCoder state | Verdict |
+|---|---|---|---|
+| Model catalog + pricing | Fable 5 $10/$50, Mythos 5 $10/$50 (Project Glasswing limited availability), Opus 5 $5/$25, Sonnet 5 $2/$10 **permanent**, Haiku 4.5 $1/$5; Opus 4.1 retired | `domain/models/catalog.py` matches exactly | ✅ in sync |
+| Sonnet 5 pricing increase cancelled | Confirmed again — $2/$10 is standard price; Sep 1 increase will not occur | Already corrected (v1.41.0) | ✅ in sync |
+| Files API → GA (Aug 19–20) | `files-api-2025-04-14` beta header no longer required; GA adds expiration + pagination. Old beta-header requests keep working | `domain/skills_api.py` still sends the beta header — harmless (back-compat honored); optional follow-up to drop it and adopt GA response format | 🟡 no action required now; note for next feature cycle |
+| Agent Skills / Skills API → GA (Aug 19–20) | Skills beta header no longer required on `/v1/skills` or Messages `container` usage; old requests keep working | Same disposition as Files API — header still sent, still accepted | 🟡 same as above |
+| Computer use tool → GA (`computer_toolset_20260801`) | No beta header; batch actions; zoom default; per-member configs | ZCoder uses the earlier beta toolset shape via `models_gateway.py` — still functional; migration to GA toolset is a feature-cycle item | 🟡 deferred — behavior change, not a breakage |
+| Managed agents: domain controls, sandbox memory stores, Console session viewer (Aug 19) | Real API additions | Not yet surfaced in ZCoder's agents context | 🟡 note only — candidate features, not gaps in existing coverage |
+
+**Conclusion:** catalog/pricing fully in sync. Three beta→GA transitions
+(Aug 19–20) are backward-compatible — no code action required for
+correctness; adopting the GA shapes is queued as next-feature-cycle work.

@@ -30,6 +30,6 @@ make build && make start
 
 ## Current release
 
-**v1.41.0 — Claude 2026-08-21 Upgrade Alignment**
+**v1.43.0 — Repo organization + Clean Architecture refactor**
 
 The project currently covers Claude model/runtime features, Agent Skills, Managed Agents, compliance/session APIs, enterprise administration, web/TUI interfaces, GitHub workflows, prompt tooling, and usage metrics.

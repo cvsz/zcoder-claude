@@ -59,9 +59,9 @@ python main.py --help
 If you have an Admin API key or Compliance Access Key (org-level,
 different from a regular `ANTHROPIC_API_KEY`), `--usage-report`,
 `--admin-list-keys`, and `--compliance-activities` are the entry points
-into that surface — see `README.md`'s "New in v1.15.0" / "New in
-v1.16.0" sections before using them, since a few of those flags
-(`--compliance-*-delete`) are permanent, org-wide deletes.
+into that surface — see `COMMAND.md` before using them, since a few of
+those flags (`--compliance-*-delete`) are permanent, org-wide deletes.
 
-See `README.md` for the full feature list and `docs/` for the detailed,
-dated history of what was added, changed, or fixed in each release.
+See `README.md` for the short overview, `COMMAND.md` for the full
+command reference, and `docs/` for the detailed, dated history of what
+was added, changed, or fixed in each release.

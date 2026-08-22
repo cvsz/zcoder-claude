@@ -1,4 +1,4 @@
-# AI Model Coder CLI — v1.41.0 "Claude 2026-08-21 Upgrade Alignment"
+# AI Model Coder CLI — v1.43.0 (Clean Architecture layout)
 All Claude API Features + Claude Code / Agent SDK + Cowork + Plugins
 
 ## Full command and release reference
